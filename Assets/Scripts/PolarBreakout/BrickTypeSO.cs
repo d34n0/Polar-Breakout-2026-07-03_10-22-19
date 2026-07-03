@@ -1,0 +1,44 @@
+using UnityEngine;
+
+namespace PolarBreakout
+{
+    /// <summary>
+    /// Base class for all brick types. To add a new brick type, subclass this
+    /// and override OnHit / OnDestroyed - no changes to existing code needed.
+    /// </summary>
+    public abstract class BrickTypeSO : ScriptableObject
+    {
+        [Header("Identity")]
+        public string brickId = "brick_default";
+        public string displayName = "Brick";
+
+        [Header("Stats")]
+        public int maxHealth = 1;
+        public int scoreValue = 10;
+        public bool isIndestructible = false;
+
+        [Header("Visuals")]
+        public Color color = Color.white;
+        public Sprite sprite;
+
+        /// <summary>
+        /// Called whenever the ball hits a brick of this type.
+        /// Return true if the brick should be destroyed as a result of this hit.
+        /// </summary>
+        public virtual bool OnHit(Brick brick, GameObject ball)
+        {
+            if (isIndestructible) return false;
+
+            brick.CurrentHealth -= 1;
+            return brick.CurrentHealth <= 0;
+        }
+
+        /// <summary>
+        /// Called once, right when the brick is destroyed. Override for
+        /// explosions, power-up drops, chain reactions into neighboring bricks, etc.
+        /// </summary>
+        public virtual void OnDestroyed(Brick brick)
+        {
+        }
+    }
+}
