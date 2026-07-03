@@ -19,6 +19,11 @@ namespace PolarBreakout
         public int RemainingDestructibleCount { get; private set; }
         public event Action OnLevelCleared;
 
+        /// <summary>Fired once per brick right when it's destroyed (never for indestructible
+        /// bricks, since those never reach here) - ScoreManager listens for this to award
+        /// each brick's BrickTypeSO.scoreValue.</summary>
+        public event Action<Brick> OnBrickDestroyed;
+
         // Start() is deferred to the next frame after this component is added/enabled, so a
         // caller that manually calls BuildLevel() right after AddComponent<BrickGridManager>()
         // (as the ability tests do) would otherwise have Start() redundantly rebuild - and
@@ -81,6 +86,8 @@ namespace PolarBreakout
                 if (RemainingDestructibleCount <= 0)
                     OnLevelCleared?.Invoke();
             }
+
+            OnBrickDestroyed?.Invoke(brick);
         }
 
         public Brick GetBrickAt(PolarCoordinate coord)
