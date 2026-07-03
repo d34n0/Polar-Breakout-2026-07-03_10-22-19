@@ -15,7 +15,11 @@ MonoBehaviour:
   deathZoneRadius: 1
   paddleOrbitRadius: 1.5
   firstRingRadius: 2.5
-  ringSpacing: 0.8
-  ringCount: 5
-  segmentsPerRing: 0c0000001000000014000000180000001c000000
+  ringSpacing: 0.5
+  ringCount: 10
+  segmentsPerRing: 270000002f000000370000003f000000470000004f000000560000005e000000660000006e000000
   outerWallRadius: 8
+  brickRadialThickness: 0.45
+  radialGap: 0.04
+  angularGapWorldUnits: 0.04
+  curveResolutionDegrees: 4
