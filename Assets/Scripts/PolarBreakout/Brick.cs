@@ -53,6 +53,9 @@ namespace PolarBreakout
             collider.SetPath(0, points);
 
             _renderer = GetComponent<MeshRenderer>();
+            // Falls back to whatever material Brick.prefab already has (shared across every
+            // brick type by default) unless this specific type opts into its own shader.
+            if (type.materialOverride != null) _renderer.sharedMaterial = type.materialOverride;
             UpdateVisualColor();
         }
 

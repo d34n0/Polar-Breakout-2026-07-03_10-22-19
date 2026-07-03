@@ -20,6 +20,11 @@ namespace PolarBreakout
         [Header("Visuals")]
         public Color color = Color.white;
         public Sprite sprite;
+        [Tooltip("Optional. Overrides the brick prefab's default material for bricks of this " +
+                 "type, so different types can use entirely different shaders (e.g. a glowing " +
+                 "shader for exploding bricks) rather than just a color tint. Leave unset to use " +
+                 "whatever material is already on Brick.prefab.")]
+        public Material materialOverride;
 
         /// <summary>
         /// Called whenever the ball hits a brick of this type.

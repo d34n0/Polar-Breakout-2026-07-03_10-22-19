@@ -39,6 +39,77 @@ namespace PolarBreakout
             return _proceduralUnlitMaterial;
         }
 
+        /// <summary>
+        /// Builds a fresh transparent unlit Material (not shared/cached - callers like the
+        /// death zone visual only ever need one instance). Setting the URP Unlit shader's
+        /// surface-type properties by hand mirrors what the Shader GUI does when you toggle
+        /// "Surface Type: Transparent" in the Inspector, since there's no public API for it.
+        /// </summary>
+        public static Material CreateTransparentUnlitMaterial(Color color)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit")
+                ?? Shader.Find("Sprites/Default")
+                ?? Shader.Find("Standard");
+            var material = new Material(shader);
+
+            if (material.HasProperty("_Surface"))
+            {
+                material.SetFloat("_Surface", 1f); // Transparent
+                material.SetFloat("_Blend", 0f);   // Alpha
+                material.SetOverrideTag("RenderType", "Transparent");
+                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.SetInt("_ZWrite", 0);
+                material.DisableKeyword("_ALPHATEST_ON");
+                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            if (material.HasProperty("_Cull"))
+                material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
+
+            material.SetColor("_Color", color);
+            material.SetColor("_BaseColor", color);
+            return material;
+        }
+
+        /// <summary>Simple filled disc (triangle fan from the center), used for the death zone
+        /// warning visual - not curved-brick-specific like the rest of this class, but this is
+        /// the shared home for procedural mesh building in this project.</summary>
+        public static Mesh BuildFilledCircleMesh(float radius, int segments = 48)
+        {
+            segments = Mathf.Max(3, segments);
+            var vertices = new Vector3[segments + 1];
+            var uvs = new Vector2[segments + 1];
+            var triangles = new int[segments * 3];
+
+            vertices[0] = Vector3.zero;
+            uvs[0] = new Vector2(0.5f, 0.5f);
+
+            for (int i = 0; i < segments; i++)
+            {
+                float angleRad = i * Mathf.PI * 2f / segments;
+                float cos = Mathf.Cos(angleRad);
+                float sin = Mathf.Sin(angleRad);
+                vertices[i + 1] = new Vector3(cos * radius, sin * radius, 0f);
+                uvs[i + 1] = new Vector2(cos * 0.5f + 0.5f, sin * 0.5f + 0.5f);
+            }
+
+            for (int i = 0; i < segments; i++)
+            {
+                triangles[i * 3] = 0;
+                triangles[i * 3 + 1] = i + 1;
+                triangles[i * 3 + 2] = (i + 1) % segments + 1;
+            }
+
+            var mesh = new Mesh { name = "FilledCircle" };
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
         public static Mesh BuildArcSegmentMesh(
             float innerRadius,
             float outerRadius,

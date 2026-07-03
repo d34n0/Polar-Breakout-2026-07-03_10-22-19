@@ -24,6 +24,12 @@ namespace PolarBreakout
         [Tooltip("Radial thickness of the paddle, world units.")]
         public float radialThickness = 0.35f;
 
+        [Header("Visuals")]
+        [Tooltip("Optional. Overrides whatever material is already on this GameObject's " +
+                 "MeshRenderer, so the paddle can use a custom shader without editing this " +
+                 "script. Leave unset to keep the material assigned in the Inspector.")]
+        public Material materialOverride;
+
         [Header("Movement")]
         [Tooltip("Below this stick magnitude, the paddle holds its last angle instead of snapping to 0.")]
         public float stickDeadzone = 0.1f;
@@ -67,6 +73,8 @@ namespace PolarBreakout
             var collider = GetComponent<PolygonCollider2D>();
             collider.pathCount = 1;
             collider.SetPath(0, points);
+
+            if (materialOverride != null) GetComponent<MeshRenderer>().sharedMaterial = materialOverride;
         }
 
         private void FixedUpdate()
