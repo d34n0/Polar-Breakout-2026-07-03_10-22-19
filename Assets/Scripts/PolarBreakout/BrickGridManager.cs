@@ -19,13 +19,21 @@ namespace PolarBreakout
         public int RemainingDestructibleCount { get; private set; }
         public event Action OnLevelCleared;
 
+        // Start() is deferred to the next frame after this component is added/enabled, so a
+        // caller that manually calls BuildLevel() right after AddComponent<BrickGridManager>()
+        // (as the ability tests do) would otherwise have Start() redundantly rebuild - and
+        // thus reset - the level out from under it the moment control returns to Unity's
+        // frame loop, discarding any destruction that already happened that frame.
+        private bool _hasBuilt;
+
         private void Start()
         {
-            if (level != null) BuildLevel(level);
+            if (!_hasBuilt && level != null) BuildLevel(level);
         }
 
         public void BuildLevel(LevelSO levelToBuild)
         {
+            _hasBuilt = true;
             ClearGrid();
             level = levelToBuild;
 
@@ -79,6 +87,25 @@ namespace PolarBreakout
         {
             _activeBricks.TryGetValue(coord, out var brick);
             return brick;
+        }
+
+        /// <summary>
+        /// Snapshot (not a live view) of every active brick within <paramref name="radius"/>
+        /// world units of <paramref name="worldPos"/>. Used by effects like exploding bricks
+        /// that may destroy several bricks in one pass - a live/lazy view over the same
+        /// dictionary they're being removed from would be fragile.
+        /// </summary>
+        public List<Brick> GetBricksInRadius(Vector2 worldPos, float radius)
+        {
+            var result = new List<Brick>();
+            float sqrRadius = radius * radius;
+            foreach (var brick in _activeBricks.Values)
+            {
+                if (brick == null || brick.IsDestroyed) continue;
+                if ((brick.WorldPosition - worldPos).sqrMagnitude <= sqrRadius)
+                    result.Add(brick);
+            }
+            return result;
         }
 
         private void ClearGrid()

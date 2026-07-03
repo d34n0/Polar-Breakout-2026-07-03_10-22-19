@@ -9,6 +9,36 @@ namespace PolarBreakout
     /// </summary>
     public static class PolarMeshUtility
     {
+        private static Material _proceduralUnlitMaterial;
+
+        /// <summary>
+        /// A single shared Material for runtime-built quads (power-up capsules, bullets) that
+        /// - unlike Brick.prefab's MeshRenderer - never got a material serialized in the Editor.
+        /// Resources.GetBuiltinResource&lt;Material&gt;("Default-Material.mat") looks like the
+        /// obvious fix but isn't reliable once URP is the active render pipeline (URP doesn't
+        /// ship that builtin resource under the same name), so this instead finds URP's own
+        /// Unlit shader directly. Colors are still applied per-instance via
+        /// MaterialPropertyBlock, so every caller sharing this one Material is fine.
+        /// </summary>
+        public static Material GetProceduralUnlitMaterial()
+        {
+            if (_proceduralUnlitMaterial != null) return _proceduralUnlitMaterial;
+
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit")
+                ?? Shader.Find("Sprites/Default")
+                ?? Shader.Find("Standard");
+            _proceduralUnlitMaterial = new Material(shader);
+
+            // The quads these capsules/bullets build use a fixed CCW winding that doesn't
+            // reliably face the 2D scene camera once rotated (Bullet rotates to match its
+            // travel angle) or depending on which side of the arena they're on. Disabling
+            // culling means the quad renders regardless of which way it's facing, instead of
+            // silently vanishing when its back face happens to point at the camera.
+            if (_proceduralUnlitMaterial.HasProperty("_Cull"))
+                _proceduralUnlitMaterial.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
+            return _proceduralUnlitMaterial;
+        }
+
         public static Mesh BuildArcSegmentMesh(
             float innerRadius,
             float outerRadius,
@@ -69,6 +99,42 @@ namespace PolarBreakout
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
+        }
+
+        /// <summary>
+        /// Same arc shape as BuildArcSegmentMesh, but as a single closed polygon outline
+        /// (outer edge forward, then inner edge backward) - suitable for PolygonCollider2D.SetPath.
+        /// </summary>
+        public static Vector2[] BuildArcOutlinePoints(
+            float innerRadius,
+            float outerRadius,
+            float startAngleDeg,
+            float endAngleDeg,
+            float degreesPerSubdivision = 4f)
+        {
+            outerRadius = Mathf.Max(outerRadius, innerRadius + 0.001f);
+            float span = endAngleDeg - startAngleDeg;
+            int subdivisions = Mathf.Max(1, Mathf.CeilToInt(Mathf.Abs(span) / Mathf.Max(0.01f, degreesPerSubdivision)));
+
+            var points = new Vector2[(subdivisions + 1) * 2];
+
+            for (int i = 0; i <= subdivisions; i++)
+            {
+                float t = (float)i / subdivisions;
+                float angleDeg = Mathf.Lerp(startAngleDeg, endAngleDeg, t);
+                float rad = angleDeg * Mathf.Deg2Rad;
+                points[i] = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * outerRadius;
+            }
+
+            for (int i = 0; i <= subdivisions; i++)
+            {
+                float t = 1f - (float)i / subdivisions;
+                float angleDeg = Mathf.Lerp(startAngleDeg, endAngleDeg, t);
+                float rad = angleDeg * Mathf.Deg2Rad;
+                points[subdivisions + 1 + i] = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * innerRadius;
+            }
+
+            return points;
         }
     }
 }

@@ -1,0 +1,18 @@
+{
+    "name": "PolarBreakout.Editor",
+    "rootNamespace": "",
+    "references": [
+        "PolarBreakout.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
