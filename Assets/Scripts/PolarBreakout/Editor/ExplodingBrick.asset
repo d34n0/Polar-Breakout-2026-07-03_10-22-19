@@ -21,6 +21,6 @@ MonoBehaviour:
   sprite: {fileID: 0}
   materialOverride: {fileID: 0}
   powerUpDropChance: 0.15
-  powerUpType: 1
+  possiblePowerUps: 01000000
   explosionRadius: 1.5
   fuseDuration: 0.35

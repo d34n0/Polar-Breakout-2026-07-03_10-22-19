@@ -37,26 +37,60 @@ namespace PolarBreakout
         /// fires for each individual ball instance leaving play.</summary>
         public event Action OnAllBallsLost;
 
+        /// <summary>Splits the currently active, launched ball furthest from the arena center
+        /// into two extra clones fanned off its current velocity - deliberately NOT always the
+        /// primary ball, since the primary specifically can be the one already lost while clones
+        /// from an earlier Multiball remain in play (its BallState field stays stuck reporting
+        /// Launched even once deactivated, since it's only ever updated by Redock()). Picking
+        /// whichever active ball is actually furthest out means a second Multiball capsule keeps
+        /// working no matter which of the balls in play has been lost so far, and lets multiple
+        /// Multiball pickups stack instead of only ever working once.</summary>
         public void ActivateMultiball()
         {
-            // Only meaningful once there's a ball actually in play to split.
-            if (primaryBall.State != BallState.Launched) return;
+            BallController source = GetFurthestActiveBall();
+            if (source == null) return;
 
-            SpawnClone(-20f);
-            SpawnClone(20f);
+            SpawnCloneFrom(source, -20f);
+            SpawnCloneFrom(source, 20f);
         }
 
-        private void SpawnClone(float angleOffsetDegrees)
+        private BallController GetFurthestActiveBall()
         {
-            var primaryRb = primaryBall.GetComponent<Rigidbody2D>();
-            Vector2 baseVelocity = primaryRb.linearVelocity;
+            BallController furthest = null;
+            float furthestSqrDistance = -1f;
+
+            void Consider(BallController ball)
+            {
+                if (ball == null || !ball.gameObject.activeSelf || ball.State != BallState.Launched) return;
+                float sqrDistance = ball.GetComponent<Rigidbody2D>().position.sqrMagnitude;
+                if (sqrDistance > furthestSqrDistance)
+                {
+                    furthestSqrDistance = sqrDistance;
+                    furthest = ball;
+                }
+            }
+
+            Consider(primaryBall);
+            foreach (var clone in _clones)
+                Consider(clone);
+
+            return furthest;
+        }
+
+        private void SpawnCloneFrom(BallController source, float angleOffsetDegrees)
+        {
+            var sourceRb = source.GetComponent<Rigidbody2D>();
+            Vector2 baseVelocity = sourceRb.linearVelocity;
             float baseAngleDegrees = Mathf.Atan2(baseVelocity.y, baseVelocity.x) * Mathf.Rad2Deg;
             float newAngleRad = (baseAngleDegrees + angleOffsetDegrees) * Mathf.Deg2Rad;
             Vector2 newVelocity = new Vector2(Mathf.Cos(newAngleRad), Mathf.Sin(newAngleRad)) * baseVelocity.magnitude;
 
-            var cloneObject = Instantiate(primaryBall.gameObject, primaryBall.transform.parent);
+            // Always parented alongside the primary (not source.transform.parent) so clones stay
+            // siblings of one another regardless of which ball - primary or an existing clone -
+            // was chosen as this split's source.
+            var cloneObject = Instantiate(source.gameObject, primaryBall.transform.parent);
             var clone = cloneObject.GetComponent<BallController>();
-            clone.LaunchAt(primaryRb.position, newVelocity);
+            clone.LaunchAt(sourceRb.position, newVelocity);
 
             _clones.Add(clone);
         }
@@ -83,6 +117,12 @@ namespace PolarBreakout
             // reacts the instant the ball is actually lost instead of lagging behind the effect.
             OnAllBallsLost?.Invoke();
 
+            // Also immediate rather than deferred to the end of the sequence - abilities (and any
+            // bullets already in flight) shouldn't survive a death for the ~1s+ the rest of this
+            // coroutine takes to play out, or the player can keep firing the Cannon after losing.
+            var abilities = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<PaddleAbilities>() : null;
+            if (abilities != null) abilities.ResetAbilities();
+
             if (explosionEffectPrefab != null)
                 Instantiate(explosionEffectPrefab, Vector3.zero, Quaternion.identity);
 
@@ -94,12 +134,6 @@ namespace PolarBreakout
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();
-
-            if (primaryBall.paddle != null)
-            {
-                var abilities = primaryBall.paddle.GetComponent<PaddleAbilities>();
-                if (abilities != null) abilities.ResetAbilities();
-            }
 
             var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
             if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);

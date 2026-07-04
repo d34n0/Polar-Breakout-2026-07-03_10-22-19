@@ -124,7 +124,7 @@ namespace PolarBreakout.Tests
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
             brickType.powerUpDropChance = 1f;
-            brickType.powerUpType = PowerUpType.Cannon;
+            brickType.possiblePowerUps = new[] { PowerUpType.Cannon };
 
             var brickGO = Track(new GameObject("DropChanceBrick"));
             var brick = brickGO.AddComponent<Brick>();

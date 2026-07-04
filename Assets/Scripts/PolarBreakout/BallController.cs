@@ -79,6 +79,7 @@ namespace PolarBreakout
         private float _initialSpeed;
         private Camera _arenaCamera;
         private Vector2 _lastStableVelocity;
+        private TrailRenderer _trail;
 
         // CircleCollider2D.radius is in local space; the ball's transform is scaled down
         // (e.g. 0.5 with a 0.2 scale is really only 0.1 in world space), so any positioning
@@ -94,6 +95,7 @@ namespace PolarBreakout
             _rb.gravityScale = 0f;
             _rb.freezeRotation = true;
             _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            _trail = GetComponent<TrailRenderer>();
 
             _collider = GetComponent<CircleCollider2D>();
             _collider.sharedMaterial = new PhysicsMaterial2D("BallBounce") { bounciness = 1f, friction = 0f };
@@ -127,6 +129,7 @@ namespace PolarBreakout
 
                 if (_launchRequested)
                     Launch();
+
 
                 _launchRequested = false;
                 _bounceOccurred = false;
@@ -175,6 +178,7 @@ namespace PolarBreakout
             float rad = paddle.CurrentAngleDegrees * Mathf.Deg2Rad;
             _rb.position = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * dockRadius;
             _rb.linearVelocity = Vector2.zero;
+            if (_trail != null) _trail.emitting = false;
         }
 
         private void Launch()
@@ -185,6 +189,7 @@ namespace PolarBreakout
             _rb.linearVelocity = direction * speed;
             _lastStableVelocity = _rb.linearVelocity;
             State = BallState.Launched;
+            if (_trail != null) _trail.emitting = true;
         }
 
         /// <summary>Used by BallManager to bring a freshly spawned multiball clone straight

@@ -21,4 +21,4 @@ MonoBehaviour:
   sprite: {fileID: 21300000, guid: 6caf0b6102f4f884f8b8457cd482235a, type: 3}
   materialOverride: {fileID: 2100000, guid: 9e2019be76f711644813bc042a3e91f1, type: 2}
   powerUpDropChance: 0.15
-  powerUpType: 2
+  possiblePowerUps: 0200000000000000

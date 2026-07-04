@@ -32,9 +32,10 @@ namespace PolarBreakout
                  "configured as a power-up source.")]
         [Range(0f, 1f)]
         public float powerUpDropChance = 0f;
-        [Tooltip("Which power-up to drop when the chance above succeeds. Irrelevant if " +
-                 "powerUpDropChance is 0.")]
-        public PowerUpType powerUpType;
+        [Tooltip("Which power-up(s) this brick type can drop when the chance above succeeds - " +
+                 "one is picked at random from this list each time. Irrelevant if " +
+                 "powerUpDropChance is 0. Leave empty to never drop even with a nonzero chance.")]
+        public PowerUpType[] possiblePowerUps = new PowerUpType[0];
 
         /// <summary>
         /// Called whenever the ball hits a brick of this type.
@@ -66,11 +67,13 @@ namespace PolarBreakout
         protected void TryDropPowerUp(Brick brick)
         {
             if (powerUpDropChance <= 0f) return;
+            if (possiblePowerUps == null || possiblePowerUps.Length == 0) return;
             if (Random.value > powerUpDropChance) return;
 
-            var capsuleObject = new GameObject($"PowerUpCapsule_{powerUpType}");
+            PowerUpType chosen = possiblePowerUps[Random.Range(0, possiblePowerUps.Length)];
+            var capsuleObject = new GameObject($"PowerUpCapsule_{chosen}");
             var capsule = capsuleObject.AddComponent<PowerUpCapsule>();
-            capsule.Initialize(brick.WorldPosition, powerUpType);
+            capsule.Initialize(brick.WorldPosition, chosen);
         }
 
         /// <summary>
