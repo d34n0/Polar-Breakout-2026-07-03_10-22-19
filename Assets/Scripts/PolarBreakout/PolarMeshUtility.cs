@@ -154,13 +154,19 @@ namespace PolarBreakout
                 int innerNext = (i + 1) * 2;
                 int outerNext = (i + 1) * 2 + 1;
 
+                // Wound so the computed normal faces -Z (toward the camera, which sits at
+                // negative Z looking toward the arena at z=0) - this makes bricks/paddle
+                // correctly front-facing under any material's standard back-face culling.
+                // The old winding faced +Z (away from the camera) and only ever looked right
+                // because the default brick material (Sprites/Default) doesn't cull at all;
+                // any other material assigned as an override would be invisible.
                 triangles[triIndex++] = innerCurr;
-                triangles[triIndex++] = outerCurr;
                 triangles[triIndex++] = outerNext;
+                triangles[triIndex++] = outerCurr;
 
                 triangles[triIndex++] = innerCurr;
-                triangles[triIndex++] = outerNext;
                 triangles[triIndex++] = innerNext;
+                triangles[triIndex++] = outerNext;
             }
 
             var mesh = new Mesh { name = "ArcBrickSegment" };
@@ -168,6 +174,10 @@ namespace PolarBreakout
             mesh.uv = uvs;
             mesh.triangles = triangles;
             mesh.RecalculateNormals();
+            // Needed for any shader that reads a tangent-space normal map (e.g. the gemstone
+            // brick shader's faceted normal) - without a valid tangent basis, transforming that
+            // normal into world space produces garbage lighting instead of just looking flat.
+            mesh.RecalculateTangents();
             mesh.RecalculateBounds();
             return mesh;
         }

@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: HardBrick_Tier3
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.StandardBrickType
   brickId: hard_brick_tier3
-  displayName: Hard Brick (3 hits)
+  displayName: Diamond Brick
   maxHealth: 3
   scoreValue: 30
   isIndestructible: 0
-  color: {r: 0.8, g: 0.1, b: 0.1, a: 1}
+  color: {r: 0.9, g: 0.95, b: 1, a: 1}
   sprite: {fileID: 0}
+  materialOverride: {fileID: 2100000, guid: cb0e068bc0708784c803261f76b0b62a, type: 2}

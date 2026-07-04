@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: HardBrick_Tier2
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.StandardBrickType
   brickId: hard_brick_tier2
-  displayName: Hard Brick (2 hits)
+  displayName: Ruby Brick
   maxHealth: 2
   scoreValue: 20
   isIndestructible: 0
-  color: {r: 1, g: 0.55, b: 0.1, a: 1}
+  color: {r: 0.75, g: 0.05, b: 0.15, a: 1}
   sprite: {fileID: 0}
+  materialOverride: {fileID: 2100000, guid: 5de3237d69270a8469974e8f519c4ccc, type: 2}
