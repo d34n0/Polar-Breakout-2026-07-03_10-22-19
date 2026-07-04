@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39eb7d41f63b88c49b3e39a28e65be44, type: 3}
   m_Name: PolarGridSettings
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.PolarGridSettings
-  deathZoneRadius: 1
-  paddleOrbitRadius: 1.2
-  firstRingRadius: 4
+  deathZoneRadius: 0.5
+  paddleOrbitRadius: 0.7
+  firstRingRadius: 2
   ringSpacing: 0.5
   ringCount: 15
-  segmentsPerRing: 32000000390000003f000000450000004b00000052000000580000005e000000650000006b00000071000000770000007e000000840000008a000000
+  segmentsPerRing: 190000001900000019000000190000001900000019000000190000001900000019000000190000001900000019000000190000001900000019000000
   outerWallRadius: 8.5
   brickRadialThickness: 0.45
   radialGap: 0.04
