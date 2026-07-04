@@ -22,4 +22,4 @@ MonoBehaviour:
   brickRadialThickness: 0.45
   radialGap: 0.04
   angularGapWorldUnits: 0.04
-  curveResolutionDegrees: 4
+  curveResolutionDegrees: 1

@@ -100,7 +100,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - ring: 0
     segment: 5
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
   - ring: 0
     segment: 6
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -172,7 +172,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - ring: 0
     segment: 29
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: f499c86268cf5a84d96f66f194c4b45d, type: 2}
   - ring: 0
     segment: 30
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -226,7 +226,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
   - ring: 1
     segment: 6
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+    brickType: {fileID: 11400000, guid: 12eb0c714880a7b41834b9848639351a, type: 2}
   - ring: 1
     segment: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -343,7 +343,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - ring: 1
     segment: 49
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: 892d76856fd047b449bb8b9be1595786, type: 2}
   - ring: 2
     segment: 6
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
@@ -382,7 +382,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - ring: 2
     segment: 18
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: f499c86268cf5a84d96f66f194c4b45d, type: 2}
   - ring: 2
     segment: 19
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -1075,7 +1075,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - ring: 5
     segment: 70
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: f499c86268cf5a84d96f66f194c4b45d, type: 2}
   - ring: 5
     segment: 71
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}

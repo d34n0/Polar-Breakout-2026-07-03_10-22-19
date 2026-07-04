@@ -38,6 +38,12 @@ namespace PolarBreakout
         [Tooltip("How far outward from the paddle's outer edge the ball sits while docked.")]
         public float dockOffset = 0.25f;
 
+        [Header("Speed Ramp")]
+        [Tooltip("Units/sec that speed gains per second spent in flight, so long rallies get progressively harder.")]
+        public float speedRampPerSecond = 0.4f;
+        [Tooltip("Upper bound speed ramps toward - keeps the ball from eventually becoming unplayable.")]
+        public float maxSpeed = 20f;
+
         public BallState State { get; private set; } = BallState.Docked;
 
         /// <summary>Raised when the ball falls into the center death zone.</summary>
@@ -48,6 +54,7 @@ namespace PolarBreakout
         private bool _launchRequested;
         private bool _bounceOccurred;
         private bool _reportedLost;
+        private float _initialSpeed;
 
         // CircleCollider2D.radius is in local space; the ball's transform is scaled down
         // (e.g. 0.5 with a 0.2 scale is really only 0.1 in world space), so any positioning
@@ -56,6 +63,8 @@ namespace PolarBreakout
 
         private void Awake()
         {
+            _initialSpeed = speed;
+
             _rb = GetComponent<Rigidbody2D>();
             _rb.gravityScale = 0f;
             _rb.freezeRotation = true;
@@ -109,6 +118,8 @@ namespace PolarBreakout
                 _bounceOccurred = false;
                 EnforceMinimumRadialComponent();
             }
+
+            speed = Mathf.Min(maxSpeed, speed + speedRampPerSecond * Time.fixedDeltaTime);
 
             MaintainConstantSpeed();
             HandleOuterWallAndDeathZone();
@@ -192,6 +203,7 @@ namespace PolarBreakout
             _rb.linearVelocity = Vector2.zero;
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _reportedLost = false;
+            speed = _initialSpeed;
         }
 
         /// <summary>Public entry point for BallManager to bring the primary ball back into

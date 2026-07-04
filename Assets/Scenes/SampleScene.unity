@@ -462,7 +462,7 @@ Camera:
   m_GameObject: {fileID: 330585543}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
+  m_ClearFlags: 2
   m_BackGroundColor: {r: 0.028301895, g: 0.028301895, b: 0.028301895, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -1462,6 +1462,8 @@ MonoBehaviour:
   ballManager: {fileID: 1973265797}
   speed: 5
   dockOffset: 0
+  speedRampPerSecond: 0.4
+  maxSpeed: 20
 --- !u!58 &1426727419
 CircleCollider2D:
   m_ObjectHideFlags: 0

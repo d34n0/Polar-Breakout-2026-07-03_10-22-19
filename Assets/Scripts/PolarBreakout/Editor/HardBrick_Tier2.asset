@@ -17,6 +17,6 @@ MonoBehaviour:
   maxHealth: 2
   scoreValue: 20
   isIndestructible: 0
-  color: {r: 0.75, g: 0.05, b: 0.15, a: 1}
+  color: {r: 1, g: 0.19339621, b: 0.30668333, a: 1}
   sprite: {fileID: 0}
-  materialOverride: {fileID: 2100000, guid: 5de3237d69270a8469974e8f519c4ccc, type: 2}
+  materialOverride: {fileID: 2100000, guid: 5a5aff2808b2bf042a8918524d329795, type: 2}
