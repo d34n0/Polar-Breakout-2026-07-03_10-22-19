@@ -303,12 +303,15 @@ namespace PolarBreakout
         private void OnCollisionEnter2D(Collision2D collision)
         {
             var hitPaddle = collision.collider.GetComponent<PaddleController>();
-            if (hitPaddle != null)
+            if (hitPaddle != null && State == BallState.Launched)
             {
                 // A paddle swept quickly past the ball at the moment of contact imparts spin -
                 // overwritten rather than accumulated, since each paddle strike is a fresh
                 // deliberate shot that should determine its own curve, not stack with whatever
-                // spin happened to be left over from before.
+                // spin happened to be left over from before. Gated to Launched only - while
+                // still Docked, the ball is just riding the paddle (kinematic, being carried by
+                // DockToPaddle), and a fast pre-launch swing shouldn't already be winding up spin
+                // before the player has actually released the ball.
                 Spin = Mathf.Clamp(hitPaddle.AngularVelocityDegreesPerSecond * spinTransferFactor, -maxSpin, maxSpin);
             }
 

@@ -189,7 +189,7 @@ namespace PolarBreakout
             transform.position = new Vector3(Mathf.Cos(rad) * _radius, Mathf.Sin(rad) * _radius, 0f);
             // Orients the capsule's long axis along its current radial line, so it reads as
             // falling in along its own length rather than always facing a fixed direction.
-            transform.rotation = Quaternion.Euler(0f, 0f, _currentAngleDegrees);
+            transform.rotation = Quaternion.Euler(0f, 0f, _currentAngleDegrees -90f);
         }
 
         private bool IsCaughtByPaddle()
