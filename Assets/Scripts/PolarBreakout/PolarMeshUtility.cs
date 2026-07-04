@@ -96,9 +96,14 @@ namespace PolarBreakout
 
             for (int i = 0; i < segments; i++)
             {
+                // Wound so the computed normal faces -Z (toward the camera), matching the same
+                // convention as PolarMeshUtility's other meshes - this mesh only ever worked
+                // before because the material DeathZoneVisual auto-generates explicitly disables
+                // culling; a custom material with normal back-face culling would cull this whole
+                // disc, since it's the camera-facing side that's actually the "back" face.
                 triangles[i * 3] = 0;
-                triangles[i * 3 + 1] = i + 1;
-                triangles[i * 3 + 2] = (i + 1) % segments + 1;
+                triangles[i * 3 + 1] = (i + 1) % segments + 1;
+                triangles[i * 3 + 2] = i + 1;
             }
 
             var mesh = new Mesh { name = "FilledCircle" };

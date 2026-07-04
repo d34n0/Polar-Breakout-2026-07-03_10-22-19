@@ -48,7 +48,11 @@ namespace PolarBreakout
                 new Vector3(-visualLength, visualWidth, 0f),
             };
             mesh.uv = new Vector2[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
-            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            // Wound so the computed normal faces -Z (toward the camera), matching the convention
+            // used elsewhere in PolarMeshUtility - only ever looked right because
+            // GetProceduralUnlitMaterial() explicitly disables culling; a custom material with
+            // normal back-face culling would make this bolt invisible.
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             GetComponent<MeshFilter>().mesh = mesh;

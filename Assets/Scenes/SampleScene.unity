@@ -151,8 +151,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.DeathZoneVisual
   settings: {fileID: 11400000, guid: 657ddceca95ac3145a66cae7fdf4ba4c, type: 2}
-  color: {r: 0.6, g: 0.05, b: 0.05, a: 0.35}
+  color: {r: 1, g: 0, b: 0, a: 1}
   circleSegments: 48
+  materialOverride: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
 --- !u!23 &37882379
 MeshRenderer:
   m_ObjectHideFlags: 0
