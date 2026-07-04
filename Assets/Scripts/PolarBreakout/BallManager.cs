@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,12 +10,25 @@ namespace PolarBreakout
     /// scene ball, wired in the Inspector) plus any runtime-spawned clone balls, and decides
     /// when a ball falling into the death zone actually costs the player their ball versus
     /// just removing one of several balls in play. Losing an individual ball while others
-    /// remain does nothing further; only once every ball is gone does the primary get
-    /// reactivated/redocked and abilities reset.
+    /// remain does nothing further; only once every ball is gone does a respawn sequence run:
+    /// an explosion effect plays at the death zone, then - after a short delay - the paddle and
+    /// ball dissolve back into place together (see DissolveEffect) as the primary ball redocks.
     /// </summary>
     public class BallManager : MonoBehaviour
     {
         public BallController primaryBall;
+
+        [Header("Respawn")]
+        [Tooltip("Played at the arena center (the death zone) the moment every ball is lost. " +
+                 "Leave unset to skip the effect.")]
+        public GameObject explosionEffectPrefab;
+        [Tooltip("How long to wait after the explosion before the ball/paddle respawn - gives " +
+                 "the explosion effect room to play before everything resets.")]
+        public float respawnDelay = 1f;
+        [Tooltip("How long the paddle takes to dissolve out immediately after losing the ball.")]
+        public float paddleDissolveOutDuration = 0.3f;
+        [Tooltip("How long the paddle and ball take to dissolve back into place once respawning.")]
+        public float dissolveInDuration = 0.6f;
 
         private readonly List<BallController> _clones = new List<BallController>();
 
@@ -60,18 +74,36 @@ namespace PolarBreakout
             }
 
             if (!primaryBall.gameObject.activeSelf && _clones.Count == 0)
+                StartCoroutine(RespawnSequence());
+        }
+
+        private IEnumerator RespawnSequence()
+        {
+            // Fired immediately rather than after the sequence below, so the lives/score HUD
+            // reacts the instant the ball is actually lost instead of lagging behind the effect.
+            OnAllBallsLost?.Invoke();
+
+            if (explosionEffectPrefab != null)
+                Instantiate(explosionEffectPrefab, Vector3.zero, Quaternion.identity);
+
+            var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
+            if (paddleDissolve != null)
+                yield return paddleDissolve.DissolveOut(paddleDissolveOutDuration);
+
+            yield return new WaitForSeconds(respawnDelay);
+
+            primaryBall.gameObject.SetActive(true);
+            primaryBall.Redock();
+
+            if (primaryBall.paddle != null)
             {
-                primaryBall.gameObject.SetActive(true);
-                primaryBall.Redock();
-
-                if (primaryBall.paddle != null)
-                {
-                    var abilities = primaryBall.paddle.GetComponent<PaddleAbilities>();
-                    if (abilities != null) abilities.ResetAbilities();
-                }
-
-                OnAllBallsLost?.Invoke();
+                var abilities = primaryBall.paddle.GetComponent<PaddleAbilities>();
+                if (abilities != null) abilities.ResetAbilities();
             }
+
+            var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
+            if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
+            if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
         /// <summary>Angle (degrees) of whichever active, launched ball is angularly closest

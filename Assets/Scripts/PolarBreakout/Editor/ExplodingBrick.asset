@@ -19,4 +19,8 @@ MonoBehaviour:
   isIndestructible: 0
   color: {r: 1, g: 0.4, b: 0, a: 1}
   sprite: {fileID: 0}
+  materialOverride: {fileID: 0}
+  powerUpDropChance: 0.15
+  powerUpType: 1
   explosionRadius: 1.5
+  fuseDuration: 0.35

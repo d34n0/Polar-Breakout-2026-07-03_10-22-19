@@ -26,6 +26,16 @@ namespace PolarBreakout
                  "whatever material is already on Brick.prefab.")]
         public Material materialOverride;
 
+        [Header("Power-Up Drop")]
+        [Tooltip("Chance (0-1) that destroying a brick of this type drops a power-up capsule. " +
+                 "0 = never drops - this is how most tiers should stay unless deliberately " +
+                 "configured as a power-up source.")]
+        [Range(0f, 1f)]
+        public float powerUpDropChance = 0f;
+        [Tooltip("Which power-up to drop when the chance above succeeds. Irrelevant if " +
+                 "powerUpDropChance is 0.")]
+        public PowerUpType powerUpType;
+
         /// <summary>
         /// Called whenever the ball hits a brick of this type.
         /// Return true if the brick should be destroyed as a result of this hit.
@@ -39,11 +49,28 @@ namespace PolarBreakout
         }
 
         /// <summary>
-        /// Called once, right when the brick is destroyed. Override for
-        /// explosions, power-up drops, chain reactions into neighboring bricks, etc.
+        /// Called once, right when the brick is destroyed. Base implementation rolls
+        /// powerUpDropChance and spawns a capsule on success - any brick tier can become a
+        /// power-up source just by setting that chance above 0, rather than needing a dedicated
+        /// power-up-only brick type. Override (calling base.OnDestroyed to keep the roll, or not,
+        /// to replace it) for explosions, chain reactions into neighboring bricks, etc.
         /// </summary>
         public virtual void OnDestroyed(Brick brick)
         {
+            TryDropPowerUp(brick);
+        }
+
+        /// <summary>Rolls powerUpDropChance and, on success, spawns a PowerUpCapsule at the
+        /// brick's position. Exposed as protected so subclasses that override OnDestroyed for
+        /// other behavior (explosions, etc.) can still opt into the same roll.</summary>
+        protected void TryDropPowerUp(Brick brick)
+        {
+            if (powerUpDropChance <= 0f) return;
+            if (Random.value > powerUpDropChance) return;
+
+            var capsuleObject = new GameObject($"PowerUpCapsule_{powerUpType}");
+            var capsule = capsuleObject.AddComponent<PowerUpCapsule>();
+            capsule.Initialize(brick.WorldPosition, powerUpType);
         }
 
         /// <summary>

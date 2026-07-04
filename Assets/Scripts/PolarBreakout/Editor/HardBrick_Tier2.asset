@@ -19,4 +19,6 @@ MonoBehaviour:
   isIndestructible: 0
   color: {r: 1, g: 0, b: 0, a: 1}
   sprite: {fileID: 21300000, guid: 6caf0b6102f4f884f8b8457cd482235a, type: 3}
-  materialOverride: {fileID: 2100000, guid: 67938fab402caaa459aa5c6c3f87cdd9, type: 2}
+  materialOverride: {fileID: 2100000, guid: 9e2019be76f711644813bc042a3e91f1, type: 2}
+  powerUpDropChance: 0.15
+  powerUpType: 2

@@ -96,6 +96,80 @@ namespace PolarBreakout.Tests
         }
 
         [UnityTest]
+        public IEnumerator BrickTypeSO_GuaranteedDropChance_SpawnsPowerUpCapsuleOnDestroy()
+        {
+            var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
+            settings.firstRingRadius = 2f;
+            settings.ringSpacing = 1f;
+            settings.ringCount = 1;
+            settings.segmentsPerRing = new[] { 8 };
+            settings.brickRadialThickness = 0.7f;
+            settings.radialGap = 0.04f;
+            settings.angularGapWorldUnits = 0.04f;
+            settings.curveResolutionDegrees = 10f;
+
+            var managerGO = Track(new GameObject("DropChanceManager"));
+            var manager = managerGO.AddComponent<BrickGridManager>();
+
+            // PowerUpCapsule.Update() self-destructs immediately if it can't find a
+            // PaddleController in the scene, so one needs to exist even though this test isn't
+            // about catching it. Its default angle (0, no stick input) doesn't line up with the
+            // brick's segment center (~22.5 degrees), so it won't accidentally catch it either.
+            var paddleGO = Track(new GameObject("DropChancePaddle"));
+            paddleGO.SetActive(false);
+            var paddle = paddleGO.AddComponent<PaddleController>();
+            paddle.settings = settings;
+            paddleGO.SetActive(true);
+
+            var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
+            brickType.maxHealth = 1;
+            brickType.powerUpDropChance = 1f;
+            brickType.powerUpType = PowerUpType.Cannon;
+
+            var brickGO = Track(new GameObject("DropChanceBrick"));
+            var brick = brickGO.AddComponent<Brick>();
+            brick.Initialize(manager, settings, new PolarCoordinate(0, 0), brickType);
+
+            brick.Hit(null);
+            yield return new WaitForSeconds(brick.flashDuration + 0.2f);
+
+            var capsules = Object.FindObjectsByType<PowerUpCapsule>(FindObjectsSortMode.None);
+            Assert.AreEqual(1, capsules.Length, "A brick type with a guaranteed (100%) drop chance should spawn exactly one power-up capsule when destroyed.");
+            Assert.AreEqual(PowerUpType.Cannon, capsules[0].Type, "The spawned capsule should carry the brick type's configured power-up type.");
+        }
+
+        [UnityTest]
+        public IEnumerator BrickTypeSO_ZeroDropChance_NeverSpawnsPowerUpCapsule()
+        {
+            var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
+            settings.firstRingRadius = 2f;
+            settings.ringSpacing = 1f;
+            settings.ringCount = 1;
+            settings.segmentsPerRing = new[] { 8 };
+            settings.brickRadialThickness = 0.7f;
+            settings.radialGap = 0.04f;
+            settings.angularGapWorldUnits = 0.04f;
+            settings.curveResolutionDegrees = 10f;
+
+            var managerGO = Track(new GameObject("NoDropChanceManager"));
+            var manager = managerGO.AddComponent<BrickGridManager>();
+
+            var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
+            brickType.maxHealth = 1;
+            // powerUpDropChance left at its default (0) - the common case for most brick tiers.
+
+            var brickGO = Track(new GameObject("NoDropChanceBrick"));
+            var brick = brickGO.AddComponent<Brick>();
+            brick.Initialize(manager, settings, new PolarCoordinate(0, 0), brickType);
+
+            brick.Hit(null);
+            yield return new WaitForSeconds(brick.flashDuration + 0.2f);
+
+            var capsules = Object.FindObjectsByType<PowerUpCapsule>(FindObjectsSortMode.None);
+            Assert.AreEqual(0, capsules.Length, "A brick type with a 0 drop chance should never spawn a power-up capsule.");
+        }
+
+        [UnityTest]
         public IEnumerator PowerUpCapsule_CaughtByPaddle_GrantsAbility()
         {
             var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
@@ -213,10 +287,13 @@ namespace PolarBreakout.Tests
             Assert.IsTrue(clones[1] == null, "The other lost clone should be destroyed too.");
             Assert.AreEqual(BallState.Launched, ball.State, "One ball is still in play - should not redock yet.");
 
-            // Lose the primary - now every ball is gone, so it should redock.
+            // Lose the primary - now every ball is gone, so it should redock. BallManager now
+            // runs a respawn sequence (explosion + delay + dissolve-in) rather than redocking
+            // instantly - this test has no explosion prefab or DissolveEffect wired, so the only
+            // real delay left is respawnDelay itself; wait it out with margin before asserting.
             ball.GetComponent<Rigidbody2D>().position = Vector2.zero;
             yield return new WaitForFixedUpdate();
-            yield return null;
+            yield return new WaitForSeconds(ballManager.respawnDelay + 0.3f);
             Assert.AreEqual(BallState.Docked, ball.State, "Losing the last ball in play should redock the primary.");
         }
 
@@ -324,16 +401,18 @@ namespace PolarBreakout.Tests
             var targetBrick = brickManager.GetBrickAt(new PolarCoordinate(0, 0));
             Assert.IsNotNull(targetBrick, "Precondition: target brick should exist in the bullet's path.");
 
-            ball.LaunchAt(new Vector2(0.5f, 0f), new Vector2(8f, 0f)); // ball in Launched state so firing is allowed
+            // Spawned well outside deathZoneRadius (1f), moving further outward - this test never
+            // wires ball.ballManager (only ballManager.primaryBall), so BallController takes its
+            // no-manager death-zone branch and would silently redock (undoing Launched) if this
+            // ever drifted back inside the death zone, regardless of script execution order.
+            ball.LaunchAt(new Vector2(2f, 0f), new Vector2(8f, 0f)); // ball in Launched state so firing is allowed
             abilities.CollectPowerUp(PowerUpType.Cannon);
             Assert.AreEqual(2, abilities.CannonAmmo);
 
             var gamepad = InputSystem.AddDevice<Gamepad>();
 
             SetButtonSouth(gamepad, true);
-            yield return null;
-            yield return new WaitForFixedUpdate();
-
+            yield return WaitUntilAmmoIs(abilities, 1);
             Assert.AreEqual(1, abilities.CannonAmmo, "Firing once should consume one shot.");
 
             bool brickDestroyed = false;
@@ -347,20 +426,35 @@ namespace PolarBreakout.Tests
             SetButtonSouth(gamepad, false);
             yield return new WaitForFixedUpdate();
             SetButtonSouth(gamepad, true);
-            yield return null;
-            yield return new WaitForFixedUpdate();
-
+            yield return WaitUntilAmmoIs(abilities, 0);
             Assert.AreEqual(0, abilities.CannonAmmo, "The second shot should deplete the ammo.");
 
             SetButtonSouth(gamepad, false);
             yield return new WaitForFixedUpdate();
             SetButtonSouth(gamepad, true);
-            yield return null;
-            yield return new WaitForFixedUpdate();
+            // No ammo left, so there's nothing to "wait until" - just give firing a few frames'
+            // worth of chances to (incorrectly) go negative before confirming it stayed at 0.
+            for (int i = 0; i < 5; i++)
+                yield return new WaitForFixedUpdate();
 
             Assert.AreEqual(0, abilities.CannonAmmo, "Firing with no ammo left should not go negative.");
 
             InputSystem.RemoveDevice(gamepad);
+        }
+
+        // The button-press latch (Update sets a flag, FixedUpdate consumes it) needs the Input
+        // System to have actually processed the queued state event first, which isn't always
+        // guaranteed within exactly one Update+FixedUpdate pair - looping a bounded number of
+        // times until the expected ammo change lands (matching GamepadInputTests'
+        // PressButtonSouthUntilLaunched pattern) is more robust than assuming a single cycle
+        // suffices.
+        private static IEnumerator WaitUntilAmmoIs(PaddleAbilities abilities, int expectedAmmo, int maxIterations = 10)
+        {
+            for (int i = 0; i < maxIterations && abilities.CannonAmmo != expectedAmmo; i++)
+            {
+                yield return null;
+                yield return new WaitForFixedUpdate();
+            }
         }
 
         private static void SetButtonSouth(Gamepad gamepad, bool pressed)

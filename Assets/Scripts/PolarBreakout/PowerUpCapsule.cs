@@ -3,7 +3,8 @@ using UnityEngine;
 namespace PolarBreakout
 {
     /// <summary>
-    /// Spawned by PowerUpBrickType at a destroyed brick's position. Falls toward the arena
+    /// Spawned by BrickTypeSO.TryDropPowerUp at a destroyed brick's position (any brick tier can
+    /// be configured to drop one via its powerUpDropChance/powerUpType fields). Falls toward the arena
     /// center (same "gravitate inward" idea as everything else in this polar arena) while
     /// swaying side to side in a slow sine wave, and grants its ability if the paddle catches
     /// it along the way. The wobble means a straight radial line from spawn point to center no
