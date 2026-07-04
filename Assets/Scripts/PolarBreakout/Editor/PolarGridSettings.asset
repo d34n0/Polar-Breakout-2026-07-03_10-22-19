@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.PolarGridSettings
   deathZoneRadius: 1
   paddleOrbitRadius: 1.5
-  firstRingRadius: 3.5
+  firstRingRadius: 4
   ringSpacing: 0.5
-  ringCount: 7
-  segmentsPerRing: 2c00000032000000390000003f000000450000004b00000052000000
+  ringCount: 15
+  segmentsPerRing: 32000000390000003f000000450000004b00000052000000580000005e000000650000006b00000071000000770000007e000000840000008a000000
   outerWallRadius: 8.5
   brickRadialThickness: 0.45
   radialGap: 0.04

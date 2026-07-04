@@ -231,10 +231,90 @@ namespace PolarBreakout.Tests
 
             Assert.IsTrue(bouncedBack, "Ball moving straight into a brick should bounce back rather than pass through it.");
 
-            // Destroy() defers actual removal to the end of the frame it's called in - give
-            // that a moment to land before checking.
-            yield return null;
+            // A destroyed brick shows a brief white hit-flash before its GameObject actually
+            // goes away (see Brick.DestroyAfterFlash). WaitForSeconds is real-time based, so
+            // this stays correct regardless of how fast the test runner ticks frames (unlike a
+            // fixed frame-count loop, which can elapse far less real time than the flash needs).
+            yield return new WaitForSeconds(brick.flashDuration + 0.2f);
             Assert.IsTrue(brickGO == null, "Hitting the brick should have destroyed it (1 max health).");
+        }
+
+        [UnityTest]
+        public IEnumerator PaddleFastSweep_ImpartsSpinToBallOnContact()
+        {
+            // Position the ball dead-center of where the paddle's arc will be after its very
+            // first (fastest) physics tick following a stick flick, so a real collision happens
+            // while the paddle's angular velocity reading is still large.
+            float firstTickAngle = _paddle.turnSpeedDegreesPerSecond * Time.fixedDeltaTime;
+            Assert.Less(firstTickAngle, 90f, "Test assumption: the paddle shouldn't reach its target in a single tick.");
+
+            float rad = firstTickAngle * Mathf.Deg2Rad;
+            Vector2 ballPos = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * _settings.paddleOrbitRadius;
+            _ball.LaunchAt(ballPos, Vector2.zero);
+
+            InputSystem.QueueDeltaStateEvent(_gamepad.leftStick, new Vector2(0f, 1f));
+            InputSystem.Update();
+
+            bool spunUp = false;
+            for (int i = 0; i < 5 && !spunUp; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                spunUp = Mathf.Abs(_ball.Spin) > 0.01f;
+            }
+
+            Assert.IsTrue(spunUp, "A paddle swept quickly through the ball's position should impart spin to it.");
+        }
+
+        [UnityTest]
+        public IEnumerator Phasing_BallPassesThroughBrickWithoutBouncing_AndDestroysIt()
+        {
+            _settings.firstRingRadius = 5f;
+            _settings.ringSpacing = 1f;
+            _settings.ringCount = 1;
+            _settings.segmentsPerRing = new[] { 8 };
+            _settings.brickRadialThickness = 0.7f;
+            _settings.radialGap = 0.04f;
+            _settings.angularGapWorldUnits = 0.04f;
+
+            var managerGO = new GameObject("PhaseTestBrickManager");
+            var manager = managerGO.AddComponent<BrickGridManager>();
+
+            var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
+            brickType.maxHealth = 1;
+
+            var coord = new PolarCoordinate(0, 0);
+            var brickGO = new GameObject("PhaseTestBrick");
+            var brick = brickGO.AddComponent<Brick>();
+            brick.Initialize(manager, _settings, coord, brickType);
+
+            float centerAngleDeg = _settings.SegmentCenterAngle(coord);
+            float rad = centerAngleDeg * Mathf.Deg2Rad;
+            Vector2 dir = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
+
+            // Force the ball into a strongly-phasing spin state directly - isolates this
+            // behavior from the separate paddle-contact spin-transfer mechanism (see
+            // PaddleFastSweep_ImpartsSpinToBallOnContact), which has its own test.
+            var spinProperty = typeof(BallController).GetProperty("Spin", BindingFlags.Public | BindingFlags.Instance);
+            spinProperty.SetValue(_ball, 1f);
+
+            _ball.LaunchAt(dir * 4f, dir * 5f);
+
+            var rb = _ballObject.GetComponent<Rigidbody2D>();
+            Vector2 velocityBeforeStep = rb.linearVelocity;
+            bool everReversed = false;
+            for (int i = 0; i < 40 && brickGO != null; i++)
+            {
+                velocityBeforeStep = rb.linearVelocity;
+                yield return new WaitForFixedUpdate();
+                if (Vector2.Dot(velocityBeforeStep, rb.linearVelocity) < 0f) everReversed = true;
+            }
+
+            yield return new WaitForSeconds(brick.flashDuration + 0.2f);
+            Assert.IsTrue(brickGO == null, "A phasing ball should still destroy the brick it touches.");
+            Assert.IsFalse(everReversed,
+                "A phasing ball should punch through the brick without its velocity reversing (no bounce).");
+
+            Object.Destroy(managerGO);
         }
 
         [Test]

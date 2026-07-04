@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace PolarBreakout
@@ -12,6 +13,9 @@ namespace PolarBreakout
     [RequireComponent(typeof(PolygonCollider2D))]
     public class Brick : MonoBehaviour
     {
+        [Tooltip("How long the white hit-flash lasts, in seconds, for both a surviving hit and the final destroying hit.")]
+        public float flashDuration = 0.08f;
+
         public PolarCoordinate Coordinate { get; private set; }
         public BrickTypeSO BrickType { get; private set; }
         public int CurrentHealth;
@@ -30,6 +34,8 @@ namespace PolarBreakout
         private BrickGridManager _manager;
         private MeshRenderer _renderer;
         private MaterialPropertyBlock _propBlock;
+        private PolygonCollider2D _collider;
+        private Coroutine _flashCoroutine;
 
         public void Initialize(BrickGridManager manager, PolarGridSettings settings, PolarCoordinate coord, BrickTypeSO type)
         {
@@ -46,11 +52,11 @@ namespace PolarBreakout
             meshFilter.mesh = PolarMeshUtility.BuildArcSegmentMesh(
                 innerRadius, outerRadius, startAngleDeg, endAngleDeg, settings.curveResolutionDegrees);
 
-            var collider = GetComponent<PolygonCollider2D>();
+            _collider = GetComponent<PolygonCollider2D>();
             var points = PolarMeshUtility.BuildArcOutlinePoints(
                 innerRadius, outerRadius, startAngleDeg, endAngleDeg, settings.curveResolutionDegrees);
-            collider.pathCount = 1;
-            collider.SetPath(0, points);
+            _collider.pathCount = 1;
+            _collider.SetPath(0, points);
 
             _renderer = GetComponent<MeshRenderer>();
             // Falls back to whatever material Brick.prefab already has (shared across every
@@ -67,14 +73,18 @@ namespace PolarBreakout
                 ? Mathf.Clamp01((float)CurrentHealth / BrickType.maxHealth)
                 : 1f;
             Color tinted = Color.Lerp(Color.black, BrickType.color, Mathf.Lerp(0.4f, 1f, healthFraction));
+            SetRenderColor(tinted);
+        }
 
-            // Use a MaterialPropertyBlock so bricks share one Material asset
-            // (no per-instance material instantiation) while still showing
-            // per-brick-type color.
+        // Use a MaterialPropertyBlock so bricks share one Material asset
+        // (no per-instance material instantiation) while still showing
+        // per-brick-type color.
+        private void SetRenderColor(Color color)
+        {
             _propBlock ??= new MaterialPropertyBlock();
             _renderer.GetPropertyBlock(_propBlock);
-            _propBlock.SetColor("_Color", tinted);      // Built-in RP / Unlit
-            _propBlock.SetColor("_BaseColor", tinted);  // URP Lit/Unlit
+            _propBlock.SetColor("_Color", color);      // Built-in RP / Unlit
+            _propBlock.SetColor("_BaseColor", color);  // URP Lit/Unlit
             _renderer.SetPropertyBlock(_propBlock);
         }
 
@@ -84,17 +94,39 @@ namespace PolarBreakout
             if (BrickType == null || IsDestroyed) return;
 
             bool destroyed = BrickType.OnHit(this, ball);
+
+            if (_flashCoroutine != null) StopCoroutine(_flashCoroutine);
+            SetRenderColor(Color.white);
+
             if (destroyed)
             {
                 IsDestroyed = true;
                 BrickType.OnDestroyed(this);
                 _manager.NotifyBrickDestroyed(this);
-                Destroy(gameObject);
+
+                // Stop reacting to further collisions immediately - the brick is already
+                // logically destroyed, it's just sticking around a moment longer to show
+                // the flash before the GameObject actually goes away.
+                _collider.enabled = false;
+                _flashCoroutine = StartCoroutine(DestroyAfterFlash());
             }
             else
             {
-                UpdateVisualColor();
+                _flashCoroutine = StartCoroutine(RevertColorAfterFlash());
             }
+        }
+
+        private IEnumerator DestroyAfterFlash()
+        {
+            yield return new WaitForSeconds(flashDuration);
+            Destroy(gameObject);
+        }
+
+        private IEnumerator RevertColorAfterFlash()
+        {
+            yield return new WaitForSeconds(flashDuration);
+            UpdateVisualColor();
+            _flashCoroutine = null;
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

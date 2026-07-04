@@ -38,6 +38,12 @@ namespace PolarBreakout
 
         public float CurrentAngleDegrees { get; private set; }
 
+        /// <summary>How fast the paddle's angle is currently changing, in degrees/second
+        /// (signed - positive is counter-clockwise). Read by BallController to decide how much
+        /// spin a paddle strike imparts: a paddle swept quickly past the ball at contact should
+        /// send it off with a curving spin, not just a flat bounce.</summary>
+        public float AngularVelocityDegreesPerSecond { get; private set; }
+
         /// <summary>
         /// When set, overrides the stick-derived target angle each FixedUpdate (used by the
         /// Autopilot ability). Set back to null to return control to the stick.
@@ -45,6 +51,7 @@ namespace PolarBreakout
         public float? AutopilotOverrideAngleDegrees;
 
         private float _targetAngleDegrees;
+        private float _previousAngleDegrees;
         private Rigidbody2D _rb;
 
         private void Awake()
@@ -98,6 +105,9 @@ namespace PolarBreakout
             // straight to it, so a sudden stick flick doesn't look like the paddle teleporting.
             float maxDelta = turnSpeedDegreesPerSecond * Time.fixedDeltaTime;
             CurrentAngleDegrees = Mathf.MoveTowardsAngle(CurrentAngleDegrees, _targetAngleDegrees, maxDelta);
+
+            AngularVelocityDegreesPerSecond = Mathf.DeltaAngle(_previousAngleDegrees, CurrentAngleDegrees) / Time.fixedDeltaTime;
+            _previousAngleDegrees = CurrentAngleDegrees;
 
             _rb.MoveRotation(CurrentAngleDegrees);
         }

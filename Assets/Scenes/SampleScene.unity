@@ -347,84 +347,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!1 &137046226
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 137046227}
-  - component: {fileID: 137046228}
-  m_Layer: 0
-  m_Name: ArenaBoundary
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &137046227
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 137046226}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1775400326}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!68 &137046228
-EdgeCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 137046226}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 0
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_EdgeRadius: 0
-  m_Points:
-  - {x: -12.45, y: 7}
-  - {x: 12.45, y: 7}
-  - {x: 12.45, y: -7}
-  - {x: -12.45, y: -7}
-  - {x: -12.45, y: 7}
-  m_AdjacentStartPoint: {x: 0, y: 0}
-  m_AdjacentEndPoint: {x: 0, y: 0}
-  m_UseAdjacentStartPoint: 0
-  m_UseAdjacentEndPoint: 0
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -800,7 +722,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.PaddleController
   settings: {fileID: 11400000, guid: 657ddceca95ac3145a66cae7fdf4ba4c, type: 2}
-  angularWidthDegrees: 24
+  angularWidthDegrees: 30
   radialThickness: 0.35
   materialOverride: {fileID: 0}
   stickDeadzone: 0.1
@@ -1464,6 +1386,11 @@ MonoBehaviour:
   dockOffset: 0
   speedRampPerSecond: 0.4
   maxSpeed: 20
+  spinTransferFactor: -0.012
+  maxSpin: 1.5
+  spinDecayPerSecond: 0.6
+  spinCurveStrength: 140
+  phaseSpinThreshold: 0.25
 --- !u!58 &1426727419
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -1709,7 +1636,6 @@ Transform:
   - {fileID: 452747082}
   - {fileID: 674391996}
   - {fileID: 1426727417}
-  - {fileID: 137046227}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1973265796

@@ -44,6 +44,28 @@ namespace PolarBreakout
         [Tooltip("Upper bound speed ramps toward - keeps the ball from eventually becoming unplayable.")]
         public float maxSpeed = 20f;
 
+        [Header("Spin")]
+        [Tooltip("How much of the paddle's angular velocity (deg/sec) at the moment of contact " +
+                 "converts into ball spin. A paddle swept quickly past the ball imparts more.")]
+        public float spinTransferFactor = -0.012f;
+        [Tooltip("Spin magnitude is capped to this.")]
+        public float maxSpin = 1.5f;
+        [Tooltip("Spin decays toward zero at this rate per second.")]
+        public float spinDecayPerSecond = 0.6f;
+        [Tooltip("How strongly spin bends the ball's travel direction, in degrees/second per unit of spin.")]
+        public float spinCurveStrength = 140f;
+        [Tooltip("Minimum |spin| for the ball to phase through bricks (destroying them without " +
+                 "bouncing) instead of bouncing off them normally.")]
+        public float phaseSpinThreshold = 0.25f;
+
+        /// <summary>Signed current spin - sign is curve direction, magnitude decays over time
+        /// (see spinDecayPerSecond) until it drops below phaseSpinThreshold.</summary>
+        public float Spin { get; private set; }
+
+        /// <summary>True while |Spin| is above phaseSpinThreshold - while true, the ball
+        /// destroys bricks it touches without bouncing off them (see OnCollisionEnter2D).</summary>
+        public bool IsPhasing => Mathf.Abs(Spin) >= phaseSpinThreshold;
+
         public BallState State { get; private set; } = BallState.Docked;
 
         /// <summary>Raised when the ball falls into the center death zone.</summary>
@@ -55,6 +77,8 @@ namespace PolarBreakout
         private bool _bounceOccurred;
         private bool _reportedLost;
         private float _initialSpeed;
+        private Camera _arenaCamera;
+        private Vector2 _lastStableVelocity;
 
         // CircleCollider2D.radius is in local space; the ball's transform is scaled down
         // (e.g. 0.5 with a 0.2 scale is really only 0.1 in world space), so any positioning
@@ -64,6 +88,7 @@ namespace PolarBreakout
         private void Awake()
         {
             _initialSpeed = speed;
+            _arenaCamera = Camera.main;
 
             _rb = GetComponent<Rigidbody2D>();
             _rb.gravityScale = 0f;
@@ -112,17 +137,36 @@ namespace PolarBreakout
 
             // Checked here rather than inside OnCollisionEnter2D so the native collision
             // response (this step's physics solve) has already fully resolved the bounce and
-            // separated the ball before we look at - and possibly nudge - the result.
+            // separated the ball before we look at - and possibly nudge - the result. (Phased
+            // brick collisions are the one exception - see OnCollisionEnter2D - since that
+            // cancellation needs to land before this same tick ends, not next tick.)
             if (_bounceOccurred)
             {
                 _bounceOccurred = false;
                 EnforceMinimumRadialComponent();
             }
 
+            if (Spin != 0f)
+            {
+                float curveDegrees = Spin * spinCurveStrength * Time.fixedDeltaTime;
+                _rb.linearVelocity = RotateVector(_rb.linearVelocity, curveDegrees);
+                Spin = Mathf.MoveTowards(Spin, 0f, spinDecayPerSecond * Time.fixedDeltaTime);
+            }
+
             speed = Mathf.Min(maxSpeed, speed + speedRampPerSecond * Time.fixedDeltaTime);
 
             MaintainConstantSpeed();
             HandleOuterWallAndDeathZone();
+
+            _lastStableVelocity = _rb.linearVelocity;
+        }
+
+        private static Vector2 RotateVector(Vector2 v, float degrees)
+        {
+            float rad = degrees * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(rad);
+            float sin = Mathf.Sin(rad);
+            return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         }
 
         private void DockToPaddle()
@@ -139,6 +183,7 @@ namespace PolarBreakout
             float rad = paddle.CurrentAngleDegrees * Mathf.Deg2Rad;
             Vector2 direction = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
             _rb.linearVelocity = direction * speed;
+            _lastStableVelocity = _rb.linearVelocity;
             State = BallState.Launched;
         }
 
@@ -150,6 +195,7 @@ namespace PolarBreakout
             _rb.bodyType = RigidbodyType2D.Dynamic;
             _rb.position = position;
             _rb.linearVelocity = velocity;
+            _lastStableVelocity = velocity;
             State = BallState.Launched;
         }
 
@@ -170,16 +216,10 @@ namespace PolarBreakout
             float dist = pos.magnitude;
             float ballRadius = WorldRadius;
 
-            float outerLimit = settings.outerWallRadius - ballRadius;
-            if (dist > outerLimit)
-            {
-                Vector2 normal = pos.normalized;
-                float outwardComponent = Vector2.Dot(_rb.linearVelocity, normal);
-                if (outwardComponent > 0f)
-                    _rb.linearVelocity -= 2f * outwardComponent * normal;
-
-                _rb.position = normal * outerLimit;
-            }
+            if (_arenaCamera != null && _arenaCamera.orthographic)
+                BounceOffScreenEdges(ballRadius);
+            else
+                BounceOffCircularWall(pos, ballRadius);
 
             if (dist < settings.deathZoneRadius)
             {
@@ -197,6 +237,55 @@ namespace PolarBreakout
             }
         }
 
+        /// <summary>Reflects the ball off the actual visible viewport (the camera's orthographic
+        /// bounds), so the outer boundary always matches the screen edges regardless of
+        /// resolution/aspect ratio, rather than a fixed radius that only lined up with one
+        /// specific aspect ratio.</summary>
+        private void BounceOffScreenEdges(float ballRadius)
+        {
+            float halfHeight = _arenaCamera.orthographicSize;
+            float halfWidth = halfHeight * _arenaCamera.aspect;
+
+            float rightLimit = halfWidth - ballRadius;
+            float leftLimit = -rightLimit;
+            float topLimit = halfHeight - ballRadius;
+            float bottomLimit = -topLimit;
+
+            Vector2 pos = _rb.position;
+            Vector2 vel = _rb.linearVelocity;
+            bool bounced = false;
+
+            if (pos.x > rightLimit && vel.x > 0f) { vel.x = -vel.x; bounced = true; }
+            else if (pos.x < leftLimit && vel.x < 0f) { vel.x = -vel.x; bounced = true; }
+
+            if (pos.y > topLimit && vel.y > 0f) { vel.y = -vel.y; bounced = true; }
+            else if (pos.y < bottomLimit && vel.y < 0f) { vel.y = -vel.y; bounced = true; }
+
+            if (!bounced) return;
+
+            pos.x = Mathf.Clamp(pos.x, leftLimit, rightLimit);
+            pos.y = Mathf.Clamp(pos.y, bottomLimit, topLimit);
+            _rb.position = pos;
+            _rb.linearVelocity = vel;
+        }
+
+        /// <summary>Fallback used when there's no real camera to derive screen edges from (e.g.
+        /// isolated unit tests that build a ball in a bare scene) - keeps the original
+        /// radius-based containment so those tests stay meaningful without a camera.</summary>
+        private void BounceOffCircularWall(Vector2 pos, float ballRadius)
+        {
+            float outerLimit = settings.outerWallRadius - ballRadius;
+            float dist = pos.magnitude;
+            if (dist <= outerLimit) return;
+
+            Vector2 normal = pos.normalized;
+            float outwardComponent = Vector2.Dot(_rb.linearVelocity, normal);
+            if (outwardComponent > 0f)
+                _rb.linearVelocity -= 2f * outwardComponent * normal;
+
+            _rb.position = normal * outerLimit;
+        }
+
         private void ResetToDocked()
         {
             State = BallState.Docked;
@@ -204,6 +293,7 @@ namespace PolarBreakout
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _reportedLost = false;
             speed = _initialSpeed;
+            Spin = 0f;
         }
 
         /// <summary>Public entry point for BallManager to bring the primary ball back into
@@ -212,6 +302,28 @@ namespace PolarBreakout
 
         private void OnCollisionEnter2D(Collision2D collision)
         {
+            var hitPaddle = collision.collider.GetComponent<PaddleController>();
+            if (hitPaddle != null)
+            {
+                // A paddle swept quickly past the ball at the moment of contact imparts spin -
+                // overwritten rather than accumulated, since each paddle strike is a fresh
+                // deliberate shot that should determine its own curve, not stack with whatever
+                // spin happened to be left over from before.
+                Spin = Mathf.Clamp(hitPaddle.AngularVelocityDegreesPerSecond * spinTransferFactor, -maxSpin, maxSpin);
+            }
+
+            if (IsPhasing && collision.collider.GetComponent<Brick>() != null)
+            {
+                // Let the brick's own OnCollisionEnter2D still destroy/damage it as normal
+                // (Brick.cs reacts to any BallController it touches, regardless of spin state).
+                // Cancel the bounce the physics solver just computed for this contact right here
+                // - restoring the direction the ball was heading in just before the collision -
+                // rather than deferring to next FixedUpdate, so there's no single-tick flicker
+                // of reversed velocity before the correction lands.
+                _rb.linearVelocity = _lastStableVelocity.normalized * speed;
+                return;
+            }
+
             // Just a flag - the native PhysicsMaterial2D bounce has already computed and
             // applied a correctly separated reflection by the time this fires. The actual
             // check/adjustment happens next FixedUpdate; see the comment there.

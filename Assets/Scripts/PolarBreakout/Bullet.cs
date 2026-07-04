@@ -20,9 +20,12 @@ namespace PolarBreakout
 
         private Rigidbody2D _rb;
         private PolarGridSettings _settings;
+        private Camera _arenaCamera;
 
         private void Awake()
         {
+            _arenaCamera = Camera.main;
+
             _rb = GetComponent<Rigidbody2D>();
             _rb.gravityScale = 0f;
             _rb.freezeRotation = true;
@@ -80,8 +83,18 @@ namespace PolarBreakout
 
         private void FixedUpdate()
         {
-            if (_settings != null && _rb.position.magnitude > _settings.outerWallRadius)
+            if (_arenaCamera != null && _arenaCamera.orthographic)
+            {
+                float halfHeight = _arenaCamera.orthographicSize;
+                float halfWidth = halfHeight * _arenaCamera.aspect;
+                Vector2 pos = _rb.position;
+                if (Mathf.Abs(pos.x) > halfWidth || Mathf.Abs(pos.y) > halfHeight)
+                    Destroy(gameObject);
+            }
+            else if (_settings != null && _rb.position.magnitude > _settings.outerWallRadius)
+            {
                 Destroy(gameObject);
+            }
         }
 
         private void OnCollisionEnter2D(Collision2D collision)
