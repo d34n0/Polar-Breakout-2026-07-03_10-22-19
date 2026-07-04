@@ -18,8 +18,15 @@ namespace PolarBreakout
     {
         [Tooltip("How fast the capsule falls toward the arena center, world units/second.")]
         public float fallSpeed = 2f;
-        [Tooltip("Half-size of the capsule's visual quad, world units.")]
-        public float visualSize = 0.25f;
+
+        [Header("Capsule Shape")]
+        [Tooltip("Length of the capsule's straight middle section, world units - excludes the " +
+                 "two rounded end caps. Set to 0 for a plain circular pill.")]
+        public float capsuleLength = 0.22f;
+        [Tooltip("Radius of the capsule's rounded ends, world units - this is also half its width.")]
+        public float capsuleRadius = 0.12f;
+        [Tooltip("How many segments approximate each rounded end - higher looks smoother.")]
+        public int capEndSegments = 8;
 
         [Header("Wobble")]
         [Tooltip("How far the capsule sways either side of its straight-line path, in degrees.")]
@@ -52,19 +59,7 @@ namespace PolarBreakout
 
         private void BuildVisual()
         {
-            var mesh = new Mesh { name = "PowerUpCapsule" };
-            mesh.vertices = new Vector3[]
-            {
-                new Vector3(-visualSize, -visualSize, 0f),
-                new Vector3(visualSize, -visualSize, 0f),
-                new Vector3(visualSize, visualSize, 0f),
-                new Vector3(-visualSize, visualSize, 0f),
-            };
-            mesh.uv = new Vector2[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
-            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            GetComponent<MeshFilter>().mesh = mesh;
+            GetComponent<MeshFilter>().mesh = BuildCapsuleMesh(capsuleLength, capsuleRadius, capEndSegments);
 
             var renderer = GetComponent<MeshRenderer>();
             // Bricks get away without ever assigning a Material because Brick.prefab already has
@@ -79,6 +74,70 @@ namespace PolarBreakout
             propBlock.SetColor("_Color", color);
             propBlock.SetColor("_BaseColor", color);
             renderer.SetPropertyBlock(propBlock);
+        }
+
+        /// <summary>Builds a "stadium" shape (two rounded end caps joined by a straight middle
+        /// section) lying along local +X, matching the same angle-0-is-+X convention Bullet.cs
+        /// uses so this can be rotated to face its direction of travel the same way. Triangulated
+        /// as a fan from the origin, which is valid since a stadium is always convex.</summary>
+        private static Mesh BuildCapsuleMesh(float length, float radius, int segmentsPerCap)
+        {
+            segmentsPerCap = Mathf.Max(2, segmentsPerCap);
+            radius = Mathf.Max(0.01f, radius);
+            float halfBodyLength = Mathf.Max(0f, length) / 2f;
+
+            int perimeterCount = (segmentsPerCap + 1) * 2;
+            var vertices = new Vector3[perimeterCount + 1];
+            var uvs = new Vector2[vertices.Length];
+            int centerIndex = perimeterCount;
+            vertices[centerIndex] = Vector3.zero;
+            uvs[centerIndex] = new Vector2(0.5f, 0.5f);
+
+            float halfExtent = halfBodyLength + radius;
+            int vi = 0;
+
+            // Right cap: -90 -> +90 degrees around (halfBodyLength, 0).
+            for (int i = 0; i <= segmentsPerCap; i++)
+            {
+                float angle = Mathf.Lerp(-90f, 90f, (float)i / segmentsPerCap) * Mathf.Deg2Rad;
+                float x = halfBodyLength + radius * Mathf.Cos(angle);
+                float y = radius * Mathf.Sin(angle);
+                vertices[vi] = new Vector3(x, y, 0f);
+                uvs[vi] = new Vector2(x / halfExtent * 0.5f + 0.5f, y / radius * 0.5f + 0.5f);
+                vi++;
+            }
+
+            // Left cap: +90 -> +270 degrees around (-halfBodyLength, 0) - continues the same
+            // counter-clockwise sweep around the perimeter.
+            for (int i = 0; i <= segmentsPerCap; i++)
+            {
+                float angle = Mathf.Lerp(90f, 270f, (float)i / segmentsPerCap) * Mathf.Deg2Rad;
+                float x = -halfBodyLength + radius * Mathf.Cos(angle);
+                float y = radius * Mathf.Sin(angle);
+                vertices[vi] = new Vector3(x, y, 0f);
+                uvs[vi] = new Vector2(x / halfExtent * 0.5f + 0.5f, y / radius * 0.5f + 0.5f);
+                vi++;
+            }
+
+            var triangles = new int[perimeterCount * 3];
+            int ti = 0;
+            for (int i = 0; i < perimeterCount; i++)
+            {
+                int next = (i + 1) % perimeterCount;
+                // (center, next, i) rather than (center, i, next) - matches the -Z-facing
+                // winding PolarMeshUtility uses elsewhere in this project for a CCW perimeter.
+                triangles[ti++] = centerIndex;
+                triangles[ti++] = next;
+                triangles[ti++] = i;
+            }
+
+            var mesh = new Mesh { name = "PowerUpCapsule" };
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         private static Color GetDefaultColor(PowerUpType type)
@@ -128,6 +187,9 @@ namespace PolarBreakout
 
             float rad = _currentAngleDegrees * Mathf.Deg2Rad;
             transform.position = new Vector3(Mathf.Cos(rad) * _radius, Mathf.Sin(rad) * _radius, 0f);
+            // Orients the capsule's long axis along its current radial line, so it reads as
+            // falling in along its own length rather than always facing a fixed direction.
+            transform.rotation = Quaternion.Euler(0f, 0f, _currentAngleDegrees);
         }
 
         private bool IsCaughtByPaddle()
