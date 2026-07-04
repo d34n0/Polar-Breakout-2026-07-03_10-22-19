@@ -13,8 +13,11 @@ namespace PolarBreakout
     [RequireComponent(typeof(PolygonCollider2D))]
     public class Brick : MonoBehaviour
     {
-        [Tooltip("How long the white hit-flash lasts, in seconds, for both a surviving hit and the final destroying hit.")]
+        [Tooltip("How long the white hit-flash lasts, in seconds, for both a surviving hit and the final destroying hit. " +
+                 "Overridden automatically for ExplodingBrickType bricks (see Initialize) to match their fuseDuration.")]
         public float flashDuration = 0.08f;
+        [Tooltip("How fast the destroying hit-flash blinks between white and the brick's own color, seconds per toggle.")]
+        public float blinkIntervalSeconds = 0.06f;
 
         public PolarCoordinate Coordinate { get; private set; }
         public BrickTypeSO BrickType { get; private set; }
@@ -44,6 +47,12 @@ namespace PolarBreakout
             Coordinate = coord;
             BrickType = type;
             CurrentHealth = type.maxHealth;
+
+            // An exploding brick's fuse (the delay before it detonates and chains into
+            // neighbors - see ExplodingBrickType.OnFlashComplete) is driven by this same
+            // flashDuration/DestroyAfterFlash timer, so the visual flash and the moment it
+            // actually explodes always line up as one single, consistent delay.
+            if (type is ExplodingBrickType exploding) flashDuration = exploding.fuseDuration;
 
             settings.GetBrickRadialRange(coord, out float innerRadius, out float outerRadius);
             settings.GetBrickAngleRange(coord, out float startAngleDeg, out float endAngleDeg);
@@ -118,7 +127,23 @@ namespace PolarBreakout
 
         private IEnumerator DestroyAfterFlash()
         {
-            yield return new WaitForSeconds(flashDuration);
+            // Blinks between white and the brick's own color rather than holding a single
+            // steady flash - at the short default duration it reads about the same as a solid
+            // flash, but for a much longer fuse (see ExplodingBrickType.fuseDuration) it gives a
+            // clear "about to explode" ticking effect instead of just staying lit the whole time.
+            float elapsed = 0f;
+            bool showWhite = true;
+            while (elapsed < flashDuration)
+            {
+                SetRenderColor(showWhite ? Color.white : BrickType.color);
+                showWhite = !showWhite;
+
+                float step = Mathf.Min(blinkIntervalSeconds, flashDuration - elapsed);
+                yield return new WaitForSeconds(step);
+                elapsed += step;
+            }
+
+            BrickType.OnFlashComplete(this);
             Destroy(gameObject);
         }
 

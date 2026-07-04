@@ -83,7 +83,12 @@ namespace PolarBreakout.Tests
             Assert.IsNotNull(triggerBrick, "Precondition: trigger brick should exist.");
 
             triggerBrick.Hit(null);
-            yield return null; // let deferred Destroy() calls settle
+
+            // Each exploding brick now flashes for its own fuseDuration before detonating and
+            // triggering the next link (see ExplodingBrickType.OnFlashComplete), so the 3-brick
+            // chain resolves over several sequential fuse delays instead of in a single frame -
+            // give it enough real time to fully cascade through before checking the end state.
+            yield return new WaitForSeconds(explodingType.fuseDuration * 4f + 0.5f);
 
             Assert.AreEqual(1, manager.RemainingDestructibleCount,
                 "The chain should destroy the 3 exploding bricks plus the adjacent standard brick exactly once each, leaving only the far-away control brick.");
@@ -145,14 +150,13 @@ namespace PolarBreakout.Tests
             float rad = 180f * Mathf.Deg2Rad;
             capsule.Initialize(new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * 1.2f, PowerUpType.Multiball);
 
-            bool destroyed = false;
-            for (int i = 0; i < 120 && !destroyed; i++)
-            {
-                yield return null;
-                destroyed = capsuleGO == null;
-            }
+            // Real-time wait rather than a fixed frame count - the capsule falls via
+            // Time.deltaTime in Update(), so how much it actually progresses per frame depends
+            // on how fast the Editor happens to be ticking, not on frame count alone. Distance
+            // to cover is only 0.2 units at fallSpeed 2/s (0.1s minimum); this leaves generous margin.
+            yield return new WaitForSeconds(1f);
 
-            Assert.IsTrue(destroyed, "An uncollected capsule should self-destruct once it reaches the death zone.");
+            Assert.IsTrue(capsuleGO == null, "An uncollected capsule should self-destruct once it reaches the death zone.");
         }
 
         [UnityTest]

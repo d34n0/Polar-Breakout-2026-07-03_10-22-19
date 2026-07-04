@@ -1,64 +1,38 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace PolarBreakout
 {
     /// <summary>
-    /// On destruction, damages every other brick within <see cref="explosionRadius"/> world
-    /// units. If that blast reaches another exploding brick, it explodes too, so a dense
-    /// cluster can chain-react.
+    /// Flashes for <see cref="fuseDuration"/> seconds (like a lit fuse) before actually
+    /// detonating, damaging every other brick within <see cref="explosionRadius"/> world units.
+    /// If that blast reaches another exploding brick, it starts its own fuse in turn, so a dense
+    /// cluster chain-reacts as a visible cascade of staggered explosions rather than an instant
+    /// simultaneous wipe.
     ///
-    /// Chaining is driven by an explicit worklist (a static queue), not by letting
-    /// OnDestroyed call Hit() on neighbors directly - a brick's own OnDestroyed calling Hit()
-    /// on a neighbor whose OnDestroyed calls Hit() on another neighbor is unbounded recursion
-    /// through the call stack, and a big enough connected cluster of touching exploding bricks
-    /// would blow it. Only the outermost OnDestroyed call actually drains the queue; any
-    /// explosion triggered while that's already running just adds to the queue instead of
-    /// recursing further, so total stack depth stays constant regardless of chain length.
+    /// The fuse delay is what keeps this safe from unbounded recursion, not an explicit
+    /// worklist: OnFlashComplete fires from a coroutine once per brick, on its own schedule, so
+    /// hitting a neighbor here just starts that neighbor's own independent fuse instead of
+    /// recursing synchronously into another explosion - stack depth stays O(1) regardless of
+    /// chain length.
     /// </summary>
     [CreateAssetMenu(fileName = "ExplodingBrickType", menuName = "PolarBreakout/Brick Types/Exploding")]
     public class ExplodingBrickType : BrickTypeSO
     {
         [Header("Explosion")]
         public float explosionRadius = 1.5f;
+        [Tooltip("How long this brick flashes (see Brick.flashDuration) before it actually " +
+                 "detonates and damages nearby bricks - roughly 0.2-0.5s reads as a short fuse.")]
+        public float fuseDuration = 0.35f;
 
-        private static readonly Queue<Brick> PendingExplosions = new Queue<Brick>();
-        private static readonly HashSet<Brick> VisitedThisChain = new HashSet<Brick>();
-        private static bool _processingChain;
-
-        public override void OnDestroyed(Brick brick)
+        public override void OnFlashComplete(Brick brick)
         {
-            PendingExplosions.Enqueue(brick);
-
-            if (_processingChain) return;
-
-            _processingChain = true;
-            try
+            var nearby = brick.Manager.GetBricksInRadius(brick.WorldPosition, explosionRadius);
+            foreach (var other in nearby)
             {
-                while (PendingExplosions.Count > 0)
-                {
-                    Brick exploding = PendingExplosions.Dequeue();
-                    // Use the dequeued brick's own ExplodingBrickType radius, not `this` one -
-                    // the queue can mix bricks from different exploding asset instances (e.g.
-                    // different radii per tier) once a chain is underway.
-                    float radius = exploding.BrickType is ExplodingBrickType explodingType
-                        ? explodingType.explosionRadius
-                        : explosionRadius;
-                    var nearby = exploding.Manager.GetBricksInRadius(exploding.WorldPosition, radius);
-                    foreach (var other in nearby)
-                    {
-                        if (other == exploding || other.IsDestroyed || VisitedThisChain.Contains(other)) continue;
-                        VisitedThisChain.Add(other);
-                        // ball is null: this hit came from an explosion, not a direct ball
-                        // strike - no current BrickTypeSO.OnHit override reads it.
-                        other.Hit(null);
-                    }
-                }
-            }
-            finally
-            {
-                _processingChain = false;
-                VisitedThisChain.Clear();
+                if (other == brick || other.IsDestroyed) continue;
+                // ball is null: this hit came from an explosion, not a direct ball strike - no
+                // current BrickTypeSO.OnHit override reads it.
+                other.Hit(null);
             }
         }
     }

@@ -45,5 +45,16 @@ namespace PolarBreakout
         public virtual void OnDestroyed(Brick brick)
         {
         }
+
+        /// <summary>
+        /// Called once, right before the brick's GameObject is actually destroyed - after its
+        /// hit-flash (see Brick.flashDuration) has finished playing. Distinct from OnDestroyed,
+        /// which fires immediately when the brick is hit. Override for effects that should be
+        /// visually delayed until the brick is about to disappear, like a chain-reacting
+        /// explosion's fuse (see ExplodingBrickType).
+        /// </summary>
+        public virtual void OnFlashComplete(Brick brick)
+        {
+        }
     }
 }

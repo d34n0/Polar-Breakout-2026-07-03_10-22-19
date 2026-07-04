@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PolarGridSettings
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.PolarGridSettings
   deathZoneRadius: 1
-  paddleOrbitRadius: 1.5
+  paddleOrbitRadius: 1.2
   firstRingRadius: 4
   ringSpacing: 0.5
   ringCount: 15
