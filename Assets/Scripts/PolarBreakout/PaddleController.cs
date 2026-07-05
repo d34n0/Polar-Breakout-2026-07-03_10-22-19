@@ -54,8 +54,14 @@ namespace PolarBreakout
                  "action (gamepad stick + keyboard) instead of polling Gamepad.current directly, " +
                  "which is what makes keyboard input and rebinding work. Leave unset - as every " +
                  "existing isolated test does - to fall back to the original raw Gamepad.current " +
-                 "read, so nothing about existing test behavior changes.")]
+                 "read, so nothing about existing test changes.")]
         public InputActionAsset actions;
+
+        [Header("Run Modifiers")]
+        [Tooltip("Optional. When set, angularWidthDegrees/turnSpeedDegreesPerSecond are boosted " +
+                 "by any Cards acquired this run. Leave unset to use both exactly as configured, " +
+                 "unaffected by the card system - every existing isolated test does this.")]
+        public RunModifiers runModifiers;
 
         public float CurrentAngleDegrees { get; private set; }
 
@@ -97,11 +103,13 @@ namespace PolarBreakout
         private void OnEnable()
         {
             CosmeticsManager.OnPaddleSkinChanged += ApplyCurrentSkin;
+            if (runModifiers != null) runModifiers.OnModifiersChanged += BuildShape;
         }
 
         private void OnDisable()
         {
             CosmeticsManager.OnPaddleSkinChanged -= ApplyCurrentSkin;
+            if (runModifiers != null) runModifiers.OnModifiersChanged -= BuildShape;
         }
 
         private void ApplyCurrentSkin()
@@ -117,11 +125,15 @@ namespace PolarBreakout
             OnSkinApplied?.Invoke();
         }
 
+        /// <summary>Also called whenever runModifiers reports an acquired-card change (e.g. a
+        /// "Wide Stance" card), not just once at Awake - safe to call repeatedly, it just
+        /// reassigns the mesh/collider each time.</summary>
         private void BuildShape()
         {
+            float bonus = runModifiers != null ? runModifiers.GetBonus(ModifierType.PaddleAngularWidthBonus) : 0f;
             float innerRadius = settings.paddleOrbitRadius - radialThickness / 2f;
             float outerRadius = settings.paddleOrbitRadius + radialThickness / 2f;
-            float halfWidth = angularWidthDegrees / 2f;
+            float halfWidth = (angularWidthDegrees + bonus) / 2f;
 
             var meshFilter = GetComponent<MeshFilter>();
             meshFilter.mesh = PolarMeshUtility.BuildArcSegmentMesh(
@@ -159,7 +171,8 @@ namespace PolarBreakout
 
             // Ease the visual angle toward that target at a capped speed instead of jumping
             // straight to it, so a sudden stick flick doesn't look like the paddle teleporting.
-            float maxDelta = turnSpeedDegreesPerSecond * Time.fixedDeltaTime;
+            float turnSpeedMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.PaddleTurnSpeedMultiplier) : 1f;
+            float maxDelta = turnSpeedDegreesPerSecond * turnSpeedMultiplier * Time.fixedDeltaTime;
             CurrentAngleDegrees = Mathf.MoveTowardsAngle(CurrentAngleDegrees, _targetAngleDegrees, maxDelta);
 
             AngularVelocityDegreesPerSecond = Mathf.DeltaAngle(_previousAngleDegrees, CurrentAngleDegrees) / Time.fixedDeltaTime;

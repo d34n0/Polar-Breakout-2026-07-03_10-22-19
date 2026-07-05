@@ -18,5 +18,9 @@ namespace PolarBreakout
                  "custom shader/effect instead of plain sprite rendering. Leave unset for " +
                  "standard sprite rendering.")]
         public Material materialOverride;
+        [Tooltip("Optional. Which kind of bullet this turret fires - lets each turret look have " +
+                 "its own bullet color/material/speed. Leave unset to use PaddleAbilities' " +
+                 "shared default bullet.")]
+        public BulletSkin bulletSkin;
     }
 }

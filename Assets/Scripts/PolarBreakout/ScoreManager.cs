@@ -25,6 +25,12 @@ namespace PolarBreakout
                  "in ascending order, e.g. {20000, 70000}.")]
         public int[] extraLifeScoreThresholds = { 20000, 70000 };
 
+        [Header("Run Modifiers")]
+        [Tooltip("Optional. When set, all scoring/capsule bonus/extra-life thresholds are " +
+                 "adjusted by any Cards acquired this run. Leave unset for all three exactly as " +
+                 "configured, unaffected by the card system.")]
+        public RunModifiers runModifiers;
+
         public int CurrentScore { get; private set; }
 
         /// <summary>What's actually shown on the HUD - lags behind CurrentScore, ticking up a
@@ -80,12 +86,18 @@ namespace PolarBreakout
 
         private void HandleCapsuleCollected()
         {
-            AddScore(capsuleBonusScore);
+            float capsuleMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.CapsuleBonusScoreMultiplier) : 1f;
+            AddScore(Mathf.RoundToInt(capsuleBonusScore * capsuleMultiplier));
         }
 
         public void AddScore(int amount)
         {
             if (amount == 0) return;
+
+            // Applied uniformly here so a general ScoreMultiplier card boosts everything routed
+            // through AddScore alike - bricks, capsules (already boosted by their own multiplier
+            // above, stacking with this one), and LevelManager's stage-clear bonus.
+            if (runModifiers != null) amount = Mathf.RoundToInt(amount * runModifiers.GetMultiplier(ModifierType.ScoreMultiplier));
 
             CurrentScore += amount;
             if (amount > 0) _pendingIncrements.Enqueue(amount);
@@ -98,8 +110,9 @@ namespace PolarBreakout
         {
             if (livesManager == null || extraLifeScoreThresholds == null) return;
 
+            float thresholdMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.ExtraLifeThresholdMultiplier) : 1f;
             while (_nextLifeThresholdIndex < extraLifeScoreThresholds.Length
-                && CurrentScore >= extraLifeScoreThresholds[_nextLifeThresholdIndex])
+                && CurrentScore >= Mathf.RoundToInt(extraLifeScoreThresholds[_nextLifeThresholdIndex] * thresholdMultiplier))
             {
                 livesManager.AddLife();
                 _nextLifeThresholdIndex++;

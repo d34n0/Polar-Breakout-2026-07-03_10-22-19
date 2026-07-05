@@ -45,6 +45,18 @@ namespace PolarBreakout
                  "powerUpDropChance is 0. Leave empty to never drop even with a nonzero chance.")]
         public PowerUpType[] possiblePowerUps = new PowerUpType[0];
 
+        [Header("Shard Drop")]
+        [Tooltip("Chance (0-1) that destroying a brick of this type drops crystal shards - the " +
+                 "in-round currency spent on rerolling CardOfferController's offered cards. " +
+                 "Independent of powerUpDropChance above - a brick can drop both, either, or " +
+                 "neither on the same destruction. 0 = never drops.")]
+        [Range(0f, 1f)]
+        public float shardDropChance = 0f;
+        [Tooltip("Shard amount is picked at random (inclusive) between these two each time the " +
+                 "chance above succeeds.")]
+        public int shardDropAmountMin = 1;
+        public int shardDropAmountMax = 3;
+
         /// <summary>
         /// Called whenever the ball hits a brick of this type.
         /// Return true if the brick should be destroyed as a result of this hit.
@@ -67,6 +79,7 @@ namespace PolarBreakout
         public virtual void OnDestroyed(Brick brick)
         {
             TryDropPowerUp(brick);
+            TryDropShards(brick);
         }
 
         /// <summary>Rolls powerUpDropChance and, on success, spawns a PowerUpCapsule at the
@@ -82,6 +95,22 @@ namespace PolarBreakout
             var capsuleObject = new GameObject($"PowerUpCapsule_{chosen}");
             var capsule = capsuleObject.AddComponent<PowerUpCapsule>();
             capsule.Initialize(brick.WorldPosition, chosen);
+        }
+
+        /// <summary>Rolls shardDropChance and, on success, spawns a ShardPickup worth a random
+        /// amount (shardDropAmountMin-Max inclusive) at the brick's position. Exposed as
+        /// protected for the same reason as TryDropPowerUp above.</summary>
+        protected void TryDropShards(Brick brick)
+        {
+            if (shardDropChance <= 0f) return;
+            if (Random.value > shardDropChance) return;
+
+            int amount = Random.Range(shardDropAmountMin, shardDropAmountMax + 1);
+            if (amount <= 0) return;
+
+            var shardObject = new GameObject("ShardPickup");
+            var shard = shardObject.AddComponent<ShardPickup>();
+            shard.Initialize(brick.WorldPosition, amount);
         }
 
         /// <summary>

@@ -15,3 +15,4 @@ MonoBehaviour:
   displayName: Default
   sprite: {fileID: 21300000, guid: f9f0e098f2808714ba3dab24290ad2d5, type: 3}
   materialOverride: {fileID: 0}
+  bulletSkin: {fileID: 11400000, guid: ae43f9520790e8b49966147d687538c8, type: 2}

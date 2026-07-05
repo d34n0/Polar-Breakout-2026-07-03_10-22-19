@@ -76,7 +76,12 @@ namespace PolarBreakout
         /// <param name="materialOverride">Optional. Overrides the default procedural material -
         /// applied here (rather than a field set before Awake) since BuildVisual() already runs
         /// during AddComponent, before a caller gets a chance to configure anything.</param>
-        public void Launch(Vector2 origin, float angleDegrees, float speed, PolarGridSettings settings, Material materialOverride = null)
+        /// <param name="colorOverride">Optional. Retints the default procedural bolt (via the
+        /// same MaterialPropertyBlock BuildVisual already set up) without needing a whole custom
+        /// material - ignored if materialOverride is also set, since a custom material's own
+        /// colors take precedence.</param>
+        public void Launch(Vector2 origin, float angleDegrees, float speed, PolarGridSettings settings,
+            Material materialOverride = null, Color? colorOverride = null)
         {
             _settings = settings;
             _rb.position = origin;
@@ -87,7 +92,18 @@ namespace PolarBreakout
             Vector2 direction = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
             _rb.linearVelocity = direction * speed;
 
-            if (materialOverride != null) GetComponent<MeshRenderer>().sharedMaterial = materialOverride;
+            var renderer = GetComponent<MeshRenderer>();
+            if (materialOverride != null)
+            {
+                renderer.sharedMaterial = materialOverride;
+            }
+            else if (colorOverride.HasValue)
+            {
+                var propBlock = new MaterialPropertyBlock();
+                propBlock.SetColor("_Color", colorOverride.Value);
+                propBlock.SetColor("_BaseColor", colorOverride.Value);
+                renderer.SetPropertyBlock(propBlock);
+            }
         }
 
         private void FixedUpdate()

@@ -41,6 +41,12 @@ namespace PolarBreakout
         [Header("Autopilot")]
         public float autopilotDuration = 5f;
 
+        [Header("Run Modifiers")]
+        [Tooltip("Optional. When set, cannon ammo/bullet speed/turret spacing/autopilot duration " +
+                 "are boosted by any Cards acquired this run. Leave unset to use all four exactly " +
+                 "as configured, unaffected by the card system.")]
+        public RunModifiers runModifiers;
+
         [Header("Power-Up Capsule Materials")]
         [Tooltip("Optional per-type material overrides for power-up capsules, read by " +
                  "PowerUpCapsule at spawn time - leave any of these unset to use the shared " +
@@ -61,11 +67,17 @@ namespace PolarBreakout
         private Coroutine _cannonRevealCoroutine;
         private InputAction _fireAction;
 
+        /// <summary>turretSpacing plus any TurretSpacingBonus from acquired Cards - both the
+        /// barrels' own built position and each shot's spawn/travel offset read this instead of
+        /// the raw field, so a "Twin Cannons" card widens the spread live.</summary>
+        private float EffectiveTurretSpacing => turretSpacing
+            + (runModifiers != null ? runModifiers.GetBonus(ModifierType.TurretSpacingBonus) : 0f);
+
         private void Awake()
         {
             _paddle = GetComponent<PaddleController>();
-            _cannonLeft = BuildCannonVisual(-turretSpacing / 2f, "Left");
-            _cannonRight = BuildCannonVisual(turretSpacing / 2f, "Right");
+            _cannonLeft = BuildCannonVisual(-EffectiveTurretSpacing / 2f, "Left");
+            _cannonRight = BuildCannonVisual(EffectiveTurretSpacing / 2f, "Right");
 
             // Reuses the same actions asset PaddleController already holds (same GameObject) -
             // leave unset, as every existing isolated test does, to fall back to the original
@@ -79,6 +91,7 @@ namespace PolarBreakout
 
             RefreshTurretSkin();
             CosmeticsManager.OnTurretSkinChanged += RefreshTurretSkin;
+            if (runModifiers != null) runModifiers.OnModifiersChanged += RefreshTurretSpacing;
         }
 
         private void OnFirePerformed(InputAction.CallbackContext context)
@@ -90,6 +103,22 @@ namespace PolarBreakout
         {
             if (_fireAction != null) _fireAction.performed -= OnFirePerformed;
             CosmeticsManager.OnTurretSkinChanged -= RefreshTurretSkin;
+            if (runModifiers != null) runModifiers.OnModifiersChanged -= RefreshTurretSpacing;
+        }
+
+        /// <summary>Repositions both already-built barrels to the current EffectiveTurretSpacing
+        /// - called whenever a Card changes TurretSpacingBonus, since BuildCannonVisual only
+        /// ever positions them once, at Awake.</summary>
+        private void RefreshTurretSpacing()
+        {
+            float half = EffectiveTurretSpacing / 2f;
+            var leftPos = _cannonLeft.transform.localPosition;
+            leftPos.y = -half;
+            _cannonLeft.transform.localPosition = leftPos;
+
+            var rightPos = _cannonRight.transform.localPosition;
+            rightPos.y = half;
+            _cannonRight.transform.localPosition = rightPos;
         }
 
         private void Update()
@@ -127,10 +156,12 @@ namespace PolarBreakout
                     if (ballManager != null) ballManager.ActivateMultiball();
                     break;
                 case PowerUpType.Autopilot:
-                    _autopilotTimeRemaining = autopilotDuration;
+                    float autopilotBonus = runModifiers != null ? runModifiers.GetBonus(ModifierType.AutopilotDurationBonus) : 0f;
+                    _autopilotTimeRemaining = autopilotDuration + autopilotBonus;
                     break;
                 case PowerUpType.Cannon:
-                    _cannonAmmo = cannonAmmoPerPickup;
+                    float ammoBonus = runModifiers != null ? runModifiers.GetBonus(ModifierType.CannonAmmoBonus) : 0f;
+                    _cannonAmmo = cannonAmmoPerPickup + Mathf.RoundToInt(ammoBonus);
                     if (_cannonRevealCoroutine != null) StopCoroutine(_cannonRevealCoroutine);
                     _cannonRevealCoroutine = StartCoroutine(RevealCannons());
                     break;
@@ -206,14 +237,22 @@ namespace PolarBreakout
         /// override) to both barrels.</summary>
         private void RefreshTurretSkin()
         {
-            if (availableTurretSkins == null || availableTurretSkins.Length == 0) return;
-
-            int index = Mathf.Clamp(CosmeticsManager.GetTurretSkinIndex(), 0, availableTurretSkins.Length - 1);
-            var skin = availableTurretSkins[index];
+            var skin = GetCurrentTurretSkin();
             if (skin == null) return;
 
             ApplyTurretSkin(_cannonLeft, skin);
             ApplyTurretSkin(_cannonRight, skin);
+        }
+
+        /// <summary>The currently equipped TurretSkin asset (not just its index) - read by
+        /// FireBarrel to look up that skin's own BulletSkin, so each turret look fires its own
+        /// kind of bullet.</summary>
+        private TurretSkin GetCurrentTurretSkin()
+        {
+            if (availableTurretSkins == null || availableTurretSkins.Length == 0) return null;
+
+            int index = Mathf.Clamp(CosmeticsManager.GetTurretSkinIndex(), 0, availableTurretSkins.Length - 1);
+            return availableTurretSkins[index];
         }
 
         private static void ApplyTurretSkin(GameObject cannon, TurretSkin skin)
@@ -240,8 +279,9 @@ namespace PolarBreakout
         /// from the paddle's center.</summary>
         private void FireCannon()
         {
-            FireBarrel(-turretSpacing / 2f);
-            FireBarrel(turretSpacing / 2f);
+            float half = EffectiveTurretSpacing / 2f;
+            FireBarrel(-half);
+            FireBarrel(half);
         }
 
         private void FireBarrel(float lateralOffset)
@@ -250,9 +290,18 @@ namespace PolarBreakout
             float spawnRadius = _paddle.settings.paddleOrbitRadius + _paddle.radialThickness / 2f + 0.3f;
             Vector2 spawnPos = transform.TransformPoint(new Vector3(spawnRadius, lateralOffset, 0f));
 
+            // The equipped turret's own BulletSkin (if any) overrides the shared defaults below,
+            // so each turret look can fire its own kind of bullet. The run-modifier multiplier
+            // stacks on top of (rather than replacing) that per-skin flavor.
+            var bulletSkin = GetCurrentTurretSkin()?.bulletSkin;
+            Material material = bulletSkin != null && bulletSkin.materialOverride != null ? bulletSkin.materialOverride : bulletMaterial;
+            Color? color = bulletSkin != null ? bulletSkin.color : (Color?)null;
+            float bulletSpeedMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.BulletSpeedMultiplier) : 1f;
+            float speed = bulletSpeed * bulletSpeedMultiplier * (bulletSkin != null ? bulletSkin.speedMultiplier : 1f);
+
             var bulletObject = new GameObject("Bullet");
             var bullet = bulletObject.AddComponent<Bullet>();
-            bullet.Launch(spawnPos, fireAngleDegrees, bulletSpeed, _paddle.settings, bulletMaterial);
+            bullet.Launch(spawnPos, fireAngleDegrees, speed, _paddle.settings, material, color);
 
             // Bullets shouldn't physically collide with any ball in play (primary or multiball
             // clones) - without this, the physics solver would bounce the bullet off (or nudge)

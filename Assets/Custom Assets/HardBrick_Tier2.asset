@@ -23,3 +23,6 @@ MonoBehaviour:
   materialOverride: {fileID: 0}
   powerUpDropChance: 0.15
   possiblePowerUps: 0200000000000000
+  shardDropChance: 0.2
+  shardDropAmountMin: 2
+  shardDropAmountMax: 3

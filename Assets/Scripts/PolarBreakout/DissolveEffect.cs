@@ -7,13 +7,16 @@ namespace PolarBreakout
     /// Drives a Dissolve shader graph material's exposed "_DissolveProgress" property (0 = fully
     /// visible, 1 = fully dissolved) over time via a MaterialPropertyBlock, so any object with a
     /// renderer can play a one-shot dissolve-out/dissolve-in transition on command - used by
-    /// BallManager to fade the paddle and ball out/in around a life-lost respawn. Uses the base
-    /// Renderer type rather than MeshRenderer specifically, since the ball renders via
-    /// SpriteRenderer while the paddle renders via MeshRenderer.
+    /// BallManager to fade the paddle and ball out/in around a life-lost respawn. Collects every
+    /// Renderer under this GameObject (self + children) rather than just its own, since the
+    /// paddle has cosmetic child parts (cannon turrets, a sprite-skinned paddle's own ship
+    /// sprite) that should fade in lockstep with the main body rather than popping in/out
+    /// mid-transition. Uses the base Renderer type rather than MeshRenderer specifically, since
+    /// the ball renders via SpriteRenderer while the paddle's arc mesh renders via MeshRenderer.
     ///
-    /// Temporarily swaps the renderer onto the Dissolve material only while a transition is
-    /// running (and while left fully dissolved), restoring the object's normal material once a
-    /// dissolve-in finishes, so gameplay rendering is unaffected the rest of the time.
+    /// Temporarily swaps each renderer onto the Dissolve material only while a transition is
+    /// running (and while left fully dissolved), restoring each renderer's own original material
+    /// once a dissolve-in finishes, so gameplay rendering is unaffected the rest of the time.
     /// </summary>
     public class DissolveEffect : MonoBehaviour
     {
@@ -21,28 +24,42 @@ namespace PolarBreakout
                  "_DissolveProgress property is what this component animates.")]
         public Material dissolveMaterial;
 
-        private Renderer _renderer;
-        private Material _originalMaterial;
+        private Renderer[] _renderers;
+        private Material[] _originalMaterials;
         private MaterialPropertyBlock _propBlock;
         private Coroutine _activeTransition;
 
         private void Awake()
         {
-            _renderer = GetComponent<Renderer>();
-            _originalMaterial = _renderer.sharedMaterial;
+            RefreshRenderers();
             _propBlock = new MaterialPropertyBlock();
+        }
+
+        /// <summary>Re-collects every child Renderer and its current material. Called from Awake
+        /// (so a simple, always-DissolveIn-first user like the ball never sees a null renderer
+        /// list) and again at the start of every DissolveOut (so a paddle's cosmetic children -
+        /// built by sibling components in their own Awake, which may run before or after this
+        /// one - are always included by the time a real dissolve cycle begins, and any skin
+        /// changed since the last cycle isn't reverted by the eventual restore).</summary>
+        private void RefreshRenderers()
+        {
+            _renderers = GetComponentsInChildren<Renderer>(true);
+            _originalMaterials = new Material[_renderers.Length];
+            for (int i = 0; i < _renderers.Length; i++)
+                _originalMaterials[i] = _renderers[i].sharedMaterial;
         }
 
         /// <summary>Animates from fully visible to fully dissolved over duration seconds.</summary>
         public Coroutine DissolveOut(float duration)
         {
             if (_activeTransition != null) StopCoroutine(_activeTransition);
+            RefreshRenderers();
             _activeTransition = StartCoroutine(AnimateProgress(0f, 1f, duration, restoreOriginalAtEnd: false));
             return _activeTransition;
         }
 
         /// <summary>Animates from fully dissolved back to fully visible over duration seconds,
-        /// then restores the object's original (non-Dissolve) material.</summary>
+        /// then restores each renderer's original (non-Dissolve) material.</summary>
         public Coroutine DissolveIn(float duration)
         {
             if (_activeTransition != null) StopCoroutine(_activeTransition);
@@ -52,7 +69,8 @@ namespace PolarBreakout
 
         private IEnumerator AnimateProgress(float from, float to, float duration, bool restoreOriginalAtEnd)
         {
-            if (dissolveMaterial != null) _renderer.sharedMaterial = dissolveMaterial;
+            if (dissolveMaterial != null)
+                foreach (var r in _renderers) r.sharedMaterial = dissolveMaterial;
 
             float elapsed = 0f;
             duration = Mathf.Max(0.0001f, duration);
@@ -66,15 +84,20 @@ namespace PolarBreakout
             }
             SetProgress(to);
 
-            if (restoreOriginalAtEnd) _renderer.sharedMaterial = _originalMaterial;
+            if (restoreOriginalAtEnd)
+                for (int i = 0; i < _renderers.Length; i++)
+                    _renderers[i].sharedMaterial = _originalMaterials[i];
             _activeTransition = null;
         }
 
         private void SetProgress(float value)
         {
-            _renderer.GetPropertyBlock(_propBlock);
-            _propBlock.SetFloat("_DissolveProgress", value);
-            _renderer.SetPropertyBlock(_propBlock);
+            foreach (var r in _renderers)
+            {
+                r.GetPropertyBlock(_propBlock);
+                _propBlock.SetFloat("_DissolveProgress", value);
+                r.SetPropertyBlock(_propBlock);
+            }
         }
     }
 }

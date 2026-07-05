@@ -24,6 +24,11 @@ namespace PolarBreakout
                  "stage 5 with the default 1000 awards 5000).")]
         public int levelClearBonusPerStage = 1000;
 
+        [Tooltip("Optional. When set, a mandatory 3-card choice is shown (and gameplay frozen) " +
+                 "between every stage, before the next level builds. Leave unset to advance " +
+                 "immediately, unaffected by the card system.")]
+        public CardOfferController cardOfferController;
+
         public int CurrentStage { get; private set; } = 1;
         public event Action<int> OnStageChanged;
 
@@ -52,6 +57,9 @@ namespace PolarBreakout
 
             CurrentStage++;
             OnStageChanged?.Invoke(CurrentStage);
+
+            if (cardOfferController != null)
+                yield return cardOfferController.ShowOffer();
 
             LevelSO nextLevel = GetLevelForStage(CurrentStage);
             if (brickGridManager != null && nextLevel != null)

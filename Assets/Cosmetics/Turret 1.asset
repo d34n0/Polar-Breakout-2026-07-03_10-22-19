@@ -15,3 +15,4 @@ MonoBehaviour:
   displayName: Turret 1
   sprite: {fileID: 21300000, guid: c044ac3b2f67a5745b122153de44f84e, type: 3}
   materialOverride: {fileID: 0}
+  bulletSkin: {fileID: 11400000, guid: 460141e2bbad5864a8616ca80c7f38f7, type: 2}

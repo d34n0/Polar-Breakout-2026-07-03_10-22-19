@@ -23,5 +23,8 @@ MonoBehaviour:
   materialOverride: {fileID: 0}
   powerUpDropChance: 0.15
   possiblePowerUps: 01000000
+  shardDropChance: 0.15
+  shardDropAmountMin: 1
+  shardDropAmountMax: 3
   explosionRadius: 1.5
   fuseDuration: 0.35

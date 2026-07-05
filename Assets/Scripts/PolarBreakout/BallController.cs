@@ -71,13 +71,29 @@ namespace PolarBreakout
                  "Gamepad.current read, so nothing about existing test behavior changes.")]
         public InputActionAsset actions;
 
+        [Header("Run Modifiers")]
+        [Tooltip("Optional. When set, speed/speedRampPerSecond/phaseSpinThreshold are adjusted " +
+                 "by any Cards acquired this run. Leave unset to use all three exactly as " +
+                 "configured, unaffected by the card system - every existing isolated test does " +
+                 "this.")]
+        public RunModifiers runModifiers;
+
         /// <summary>Signed current spin - sign is curve direction, magnitude decays over time
         /// (see spinDecayPerSecond) until it drops below phaseSpinThreshold.</summary>
         public float Spin { get; private set; }
 
-        /// <summary>True while |Spin| is above phaseSpinThreshold - while true, the ball
-        /// destroys bricks it touches without bouncing off them (see OnCollisionEnter2D).</summary>
-        public bool IsPhasing => Mathf.Abs(Spin) >= phaseSpinThreshold;
+        /// <summary>True while |Spin| is above the effective phase threshold - while true, the
+        /// ball destroys bricks it touches without bouncing off them (see OnCollisionEnter2D). A
+        /// PhaseThresholdReduction card can push the effective threshold down to 0, making this
+        /// permanently true regardless of Spin (the "always phasing" Legendary card).</summary>
+        public bool IsPhasing => Mathf.Abs(Spin) >= EffectivePhaseThreshold;
+
+        private float EffectivePhaseThreshold => Mathf.Max(0f, phaseSpinThreshold
+            - (runModifiers != null ? runModifiers.GetBonus(ModifierType.PhaseThresholdReduction) : 0f));
+
+        private float EffectiveSpeedMultiplier => runModifiers != null ? runModifiers.GetMultiplier(ModifierType.BallSpeedMultiplier) : 1f;
+
+        private float EffectiveRampMultiplier => runModifiers != null ? runModifiers.GetMultiplier(ModifierType.BallSpeedRampMultiplier) : 1f;
 
         public BallState State { get; private set; } = BallState.Docked;
 
@@ -111,7 +127,11 @@ namespace PolarBreakout
 
         private void Awake()
         {
+            // _initialSpeed is the pure configured base, captured once and never touched again -
+            // ResetToDocked recomputes the effective reset speed from it fresh every time, so a
+            // card acquired mid-run is picked up on the next life without double-applying.
             _initialSpeed = speed;
+            speed = _initialSpeed * EffectiveSpeedMultiplier;
             _arenaCamera = Camera.main;
 
             _rb = GetComponent<Rigidbody2D>();
@@ -208,7 +228,7 @@ namespace PolarBreakout
                 Spin = Mathf.MoveTowards(Spin, 0f, spinDecayPerSecond * Time.fixedDeltaTime);
             }
 
-            speed = Mathf.Min(maxSpeed, speed + speedRampPerSecond * Time.fixedDeltaTime);
+            speed = Mathf.Min(maxSpeed, speed + speedRampPerSecond * EffectiveRampMultiplier * Time.fixedDeltaTime);
 
             MaintainConstantSpeed();
             HandleOuterWallAndDeathZone();
@@ -417,7 +437,7 @@ namespace PolarBreakout
             _rb.linearVelocity = Vector2.zero;
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _reportedLost = false;
-            speed = _initialSpeed;
+            speed = _initialSpeed * EffectiveSpeedMultiplier;
             Spin = 0f;
 
             // Discards any launch request that arrived while this ball's GameObject was

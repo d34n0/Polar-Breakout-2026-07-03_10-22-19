@@ -15,16 +15,19 @@ namespace PolarBreakout
         public ScoreManager scoreManager;
         public LivesManager livesManager;
         public LevelManager levelManager;
+        public CurrencyManager currencyManager;
 
         public TextMeshProUGUI scoreText;
         public TextMeshProUGUI livesText;
         public TextMeshProUGUI stageText;
+        public TextMeshProUGUI shardsText;
 
         private void OnEnable()
         {
             if (scoreManager != null) scoreManager.OnDisplayedScoreChanged += HandleScoreChanged;
             if (livesManager != null) livesManager.OnLivesChanged += HandleLivesChanged;
             if (levelManager != null) levelManager.OnStageChanged += HandleStageChanged;
+            if (currencyManager != null) currencyManager.OnShardsChanged += HandleShardsChanged;
         }
 
         private void OnDisable()
@@ -32,6 +35,7 @@ namespace PolarBreakout
             if (scoreManager != null) scoreManager.OnDisplayedScoreChanged -= HandleScoreChanged;
             if (livesManager != null) livesManager.OnLivesChanged -= HandleLivesChanged;
             if (levelManager != null) levelManager.OnStageChanged -= HandleStageChanged;
+            if (currencyManager != null) currencyManager.OnShardsChanged -= HandleShardsChanged;
         }
 
         private void Start()
@@ -40,6 +44,7 @@ namespace PolarBreakout
             if (scoreManager != null) HandleScoreChanged(scoreManager.DisplayedScore);
             if (livesManager != null) HandleLivesChanged(livesManager.CurrentLives);
             if (levelManager != null) HandleStageChanged(levelManager.CurrentStage);
+            if (currencyManager != null) HandleShardsChanged(currencyManager.CurrentShards);
         }
 
         private void HandleScoreChanged(int score)
@@ -55,6 +60,11 @@ namespace PolarBreakout
         private void HandleStageChanged(int stage)
         {
             if (stageText != null) stageText.text = "Stage: " + stage;
+        }
+
+        private void HandleShardsChanged(int shards)
+        {
+            if (shardsText != null) shardsText.text = "Shards: " + shards;
         }
     }
 }
