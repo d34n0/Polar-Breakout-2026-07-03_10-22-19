@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -58,19 +59,10 @@ namespace PolarBreakout
                  "bouncing) instead of bouncing off them normally.")]
         public float phaseSpinThreshold = 0.25f;
 
-        [Header("Spin Trail")]
-        [Tooltip("How long (seconds) the glowing spin trail persists before fading - independent " +
-                 "of the normal trail's own Time setting.")]
-        public float spinTrailTime = 0.5f;
-        [Tooltip("Width of the spin trail where it meets the ball.")]
-        public float spinTrailStartWidth = 0.22f;
-        [Tooltip("Width of the spin trail at its fading tail end.")]
-        public float spinTrailEndWidth = 0f;
-        [Tooltip("Color at the ball end of the spin trail - components above 1 push it into HDR " +
-                 "so it actually blooms/glows if the scene's post-processing has Bloom enabled.")]
-        public Color spinTrailStartColor = new Color(0.5f, 1.2f, 3f, 1f);
-        [Tooltip("Color at the fading tail end of the spin trail.")]
-        public Color spinTrailEndColor = new Color(0.1f, 0.3f, 1f, 0f);
+        [Header("Trail Crossfade")]
+        [Tooltip("How long (seconds) it takes to cross-fade between trails - covers docked<->" +
+                 "flying and normal<->spin transitions alike.")]
+        public float trailCrossfadeDuration = 0.2f;
 
         /// <summary>Signed current spin - sign is curve direction, magnitude decays over time
         /// (see spinDecayPerSecond) until it drops below phaseSpinThreshold.</summary>
@@ -93,8 +85,16 @@ namespace PolarBreakout
         private float _initialSpeed;
         private Camera _arenaCamera;
         private Vector2 _lastStableVelocity;
+        // Normal (non-spin) trail lives on a separate "TrailNormal" child so its look can be
+        // authored/tweaked independently in the Editor; the spin trail is whatever TrailRenderer
+        // is directly on the ball itself (e.g. a custom energy-glow shader), swapped in only
+        // while phasing - see UpdateTrailEmission.
         private TrailRenderer _trail;
         private TrailRenderer _spinTrail;
+        private TrailMode _currentTrailMode = TrailMode.None;
+        private Coroutine _trailCrossfadeCoroutine;
+
+        private enum TrailMode { None, Normal, Spin }
 
         // CircleCollider2D.radius is in local space; the ball's transform is scaled down
         // (e.g. 0.5 with a 0.2 scale is really only 0.1 in world space), so any positioning
@@ -110,9 +110,16 @@ namespace PolarBreakout
             _rb.gravityScale = 0f;
             _rb.freezeRotation = true;
             _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            _trail = GetComponent<TrailRenderer>();
+            _trail = transform.Find("TrailNormal")?.GetComponent<TrailRenderer>();
+            _spinTrail = GetComponent<TrailRenderer>();
 
-            _spinTrail = BuildSpinTrail();
+            // Force both off immediately rather than waiting for the first FixedUpdate's
+            // UpdateTrailEmission() to catch up - TrailRenderer defaults to emitting=true in the
+            // Editor and starts recording points the instant the object exists, so without this
+            // the ball's very first jump from its raw placed position to the paddle's dock spot
+            // (before DockToPaddle() has run even once) gets drawn as a trail streak.
+            if (_trail != null) _trail.emitting = false;
+            if (_spinTrail != null) _spinTrail.emitting = false;
 
             _collider = GetComponent<CircleCollider2D>();
             _collider.sharedMaterial = new PhysicsMaterial2D("BallBounce") { bounciness = 1f, friction = 0f };
@@ -183,69 +190,73 @@ namespace PolarBreakout
             _lastStableVelocity = _rb.linearVelocity;
         }
 
-        /// <summary>Switches between the normal white trail and the glowing blue spin trail
-        /// based on the current spin state - only one emits at a time, so the trail visibly
-        /// changes character the instant the ball crosses into (and back out of) phasing/spin
-        /// mode, rather than blending or overlapping both. Explicitly Clear()s whichever trail
-        /// just turned off - TrailRenderer.emitting=false only stops adding new points, it
-        /// doesn't erase what's already drawn, so without this the outgoing trail's existing
-        /// tail keeps fading out on its own for its own Time duration after the switch, making
-        /// it look like the wrong trail is showing right at the transition (e.g. the spin trail's
-        /// leftover glow still visible for a moment after the ball redocks mid-spin).</summary>
+        /// <summary>Decides which trail (none/normal/spin) should be showing right now and, on
+        /// change, kicks off a cross-fade between whatever was showing before and the new one -
+        /// see CrossfadeTrails.</summary>
         private void UpdateTrailEmission()
         {
             bool launched = State == BallState.Launched;
-            bool useSpinTrail = launched && IsPhasing;
-            bool trailShouldEmit = launched && !useSpinTrail;
+            TrailMode desired = !launched ? TrailMode.None : (IsPhasing ? TrailMode.Spin : TrailMode.Normal);
+            if (desired == _currentTrailMode) return;
 
-            if (_trail != null && _trail.emitting != trailShouldEmit)
-            {
-                _trail.emitting = trailShouldEmit;
-                if (!trailShouldEmit) _trail.Clear();
-            }
+            TrailMode previous = _currentTrailMode;
+            _currentTrailMode = desired;
 
-            if (_spinTrail.emitting != useSpinTrail)
+            if (_trailCrossfadeCoroutine != null) StopCoroutine(_trailCrossfadeCoroutine);
+            _trailCrossfadeCoroutine = StartCoroutine(CrossfadeTrails(previous, desired));
+        }
+
+        private TrailRenderer GetTrail(TrailMode mode)
+        {
+            switch (mode)
             {
-                _spinTrail.emitting = useSpinTrail;
-                if (!useSpinTrail) _spinTrail.Clear();
+                case TrailMode.Normal: return _trail;
+                case TrailMode.Spin: return _spinTrail;
+                default: return null;
             }
         }
 
-        /// <summary>Builds the glowing blue spin trail as a separate child TrailRenderer rather
-        /// than just recoloring the existing one, so both trails can keep entirely independent
-        /// widths/lengths/materials - the "spiral" look isn't a separate procedural shape, it's
-        /// this trail simply following the ball's own path, which already curves/spirals from
-        /// spinCurveStrength bending velocity while Spin is nonzero (see FixedUpdate).</summary>
-        private TrailRenderer BuildSpinTrail()
+        /// <summary>Ramps the outgoing trail's widthMultiplier down to 0 while ramping the
+        /// incoming trail's up to 1, so the switch reads as a smooth cross-fade instead of an
+        /// instant cut - both trails briefly overlap and blend mid-transition. Driven via
+        /// widthMultiplier (a plain TrailRenderer property) rather than a shader-specific alpha,
+        /// since it works regardless of what material/shader either trail uses - important here
+        /// since TrailNormal and the ball's own trail can be completely different custom shaders.
+        /// Once the outgoing trail has fully faded, it's set back to non-emitting and Clear()ed
+        /// (same reasoning as before: emitting=false alone leaves its existing tail lingering).</summary>
+        private IEnumerator CrossfadeTrails(TrailMode from, TrailMode to)
         {
-            var go = new GameObject("SpinTrail");
-            go.transform.SetParent(transform, worldPositionStays: false);
-            go.transform.localPosition = Vector3.zero;
+            var fadeOutTrail = GetTrail(from);
+            var fadeInTrail = GetTrail(to);
 
-            var trail = go.AddComponent<TrailRenderer>();
-            trail.time = spinTrailTime;
-            trail.startWidth = spinTrailStartWidth;
-            trail.endWidth = spinTrailEndWidth;
-            trail.minVertexDistance = 0.01f;
-            trail.emitting = false;
-            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            trail.sharedMaterial = PolarMeshUtility.CreateAdditiveUnlitMaterial();
+            // Captured rather than assumed to be 1/0 - if this fade interrupts an in-flight one
+            // (e.g. spin flickers on and off faster than trailCrossfadeDuration), starting from
+            // wherever the width actually is right now avoids a visible snap before re-fading.
+            float fadeOutStartWidth = fadeOutTrail != null ? fadeOutTrail.widthMultiplier : 0f;
+            float fadeInStartWidth = fadeInTrail != null ? fadeInTrail.widthMultiplier : 0f;
 
-            var gradient = new Gradient();
-            gradient.SetKeys(
-                new[]
-                {
-                    new GradientColorKey(spinTrailStartColor, 0f),
-                    new GradientColorKey(spinTrailEndColor, 1f),
-                },
-                new[]
-                {
-                    new GradientAlphaKey(spinTrailStartColor.a, 0f),
-                    new GradientAlphaKey(spinTrailEndColor.a, 1f),
-                });
-            trail.colorGradient = gradient;
+            if (fadeInTrail != null) fadeInTrail.emitting = true;
 
-            return trail;
+            float elapsed = 0f;
+            float duration = Mathf.Max(0.0001f, trailCrossfadeDuration);
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                if (fadeOutTrail != null) fadeOutTrail.widthMultiplier = Mathf.Lerp(fadeOutStartWidth, 0f, t);
+                if (fadeInTrail != null) fadeInTrail.widthMultiplier = Mathf.Lerp(fadeInStartWidth, 1f, t);
+                yield return null;
+            }
+
+            if (fadeOutTrail != null)
+            {
+                fadeOutTrail.emitting = false;
+                fadeOutTrail.widthMultiplier = 1f;
+                fadeOutTrail.Clear();
+            }
+            if (fadeInTrail != null) fadeInTrail.widthMultiplier = 1f;
+
+            _trailCrossfadeCoroutine = null;
         }
 
         private static Vector2 RotateVector(Vector2 v, float degrees)

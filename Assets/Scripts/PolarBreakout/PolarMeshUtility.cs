@@ -72,41 +72,6 @@ namespace PolarBreakout
             return material;
         }
 
-        /// <summary>
-        /// Builds a fresh additive-blend unlit Material with a plain white tint, intended for
-        /// TrailRenderer-style effects that get their actual color from a per-vertex color
-        /// gradient rather than the material itself - additive blending is what makes bright
-        /// (including HDR, above 1.0) gradient colors read as "glowing" against the arena rather
-        /// than a plain flat-colored ribbon, and lets Bloom pick them up if the scene's
-        /// post-processing volume has it enabled.
-        /// </summary>
-        public static Material CreateAdditiveUnlitMaterial()
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit")
-                ?? Shader.Find("Sprites/Default")
-                ?? Shader.Find("Standard");
-            var material = new Material(shader);
-
-            if (material.HasProperty("_Surface"))
-            {
-                material.SetFloat("_Surface", 1f); // Transparent
-                material.SetFloat("_Blend", 2f);   // Additive
-                material.SetOverrideTag("RenderType", "Transparent");
-                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
-                material.SetInt("_ZWrite", 0);
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-            }
-            if (material.HasProperty("_Cull"))
-                material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
-
-            material.SetColor("_Color", Color.white);
-            material.SetColor("_BaseColor", Color.white);
-            return material;
-        }
-
         /// <summary>Simple filled disc (triangle fan from the center), used for the death zone
         /// warning visual - not curved-brick-specific like the rest of this class, but this is
         /// the shared home for procedural mesh building in this project.</summary>
