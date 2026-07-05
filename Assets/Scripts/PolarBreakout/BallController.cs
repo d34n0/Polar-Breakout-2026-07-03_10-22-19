@@ -58,6 +58,20 @@ namespace PolarBreakout
                  "bouncing) instead of bouncing off them normally.")]
         public float phaseSpinThreshold = 0.25f;
 
+        [Header("Spin Trail")]
+        [Tooltip("How long (seconds) the glowing spin trail persists before fading - independent " +
+                 "of the normal trail's own Time setting.")]
+        public float spinTrailTime = 0.5f;
+        [Tooltip("Width of the spin trail where it meets the ball.")]
+        public float spinTrailStartWidth = 0.22f;
+        [Tooltip("Width of the spin trail at its fading tail end.")]
+        public float spinTrailEndWidth = 0f;
+        [Tooltip("Color at the ball end of the spin trail - components above 1 push it into HDR " +
+                 "so it actually blooms/glows if the scene's post-processing has Bloom enabled.")]
+        public Color spinTrailStartColor = new Color(0.5f, 1.2f, 3f, 1f);
+        [Tooltip("Color at the fading tail end of the spin trail.")]
+        public Color spinTrailEndColor = new Color(0.1f, 0.3f, 1f, 0f);
+
         /// <summary>Signed current spin - sign is curve direction, magnitude decays over time
         /// (see spinDecayPerSecond) until it drops below phaseSpinThreshold.</summary>
         public float Spin { get; private set; }
@@ -80,6 +94,7 @@ namespace PolarBreakout
         private Camera _arenaCamera;
         private Vector2 _lastStableVelocity;
         private TrailRenderer _trail;
+        private TrailRenderer _spinTrail;
 
         // CircleCollider2D.radius is in local space; the ball's transform is scaled down
         // (e.g. 0.5 with a 0.2 scale is really only 0.1 in world space), so any positioning
@@ -96,6 +111,8 @@ namespace PolarBreakout
             _rb.freezeRotation = true;
             _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             _trail = GetComponent<TrailRenderer>();
+
+            _spinTrail = BuildSpinTrail();
 
             _collider = GetComponent<CircleCollider2D>();
             _collider.sharedMaterial = new PhysicsMaterial2D("BallBounce") { bounciness = 1f, friction = 0f };
@@ -133,6 +150,7 @@ namespace PolarBreakout
 
                 _launchRequested = false;
                 _bounceOccurred = false;
+                UpdateTrailEmission();
                 return;
             }
 
@@ -160,8 +178,74 @@ namespace PolarBreakout
 
             MaintainConstantSpeed();
             HandleOuterWallAndDeathZone();
+            UpdateTrailEmission();
 
             _lastStableVelocity = _rb.linearVelocity;
+        }
+
+        /// <summary>Switches between the normal white trail and the glowing blue spin trail
+        /// based on the current spin state - only one emits at a time, so the trail visibly
+        /// changes character the instant the ball crosses into (and back out of) phasing/spin
+        /// mode, rather than blending or overlapping both. Explicitly Clear()s whichever trail
+        /// just turned off - TrailRenderer.emitting=false only stops adding new points, it
+        /// doesn't erase what's already drawn, so without this the outgoing trail's existing
+        /// tail keeps fading out on its own for its own Time duration after the switch, making
+        /// it look like the wrong trail is showing right at the transition (e.g. the spin trail's
+        /// leftover glow still visible for a moment after the ball redocks mid-spin).</summary>
+        private void UpdateTrailEmission()
+        {
+            bool launched = State == BallState.Launched;
+            bool useSpinTrail = launched && IsPhasing;
+            bool trailShouldEmit = launched && !useSpinTrail;
+
+            if (_trail != null && _trail.emitting != trailShouldEmit)
+            {
+                _trail.emitting = trailShouldEmit;
+                if (!trailShouldEmit) _trail.Clear();
+            }
+
+            if (_spinTrail.emitting != useSpinTrail)
+            {
+                _spinTrail.emitting = useSpinTrail;
+                if (!useSpinTrail) _spinTrail.Clear();
+            }
+        }
+
+        /// <summary>Builds the glowing blue spin trail as a separate child TrailRenderer rather
+        /// than just recoloring the existing one, so both trails can keep entirely independent
+        /// widths/lengths/materials - the "spiral" look isn't a separate procedural shape, it's
+        /// this trail simply following the ball's own path, which already curves/spirals from
+        /// spinCurveStrength bending velocity while Spin is nonzero (see FixedUpdate).</summary>
+        private TrailRenderer BuildSpinTrail()
+        {
+            var go = new GameObject("SpinTrail");
+            go.transform.SetParent(transform, worldPositionStays: false);
+            go.transform.localPosition = Vector3.zero;
+
+            var trail = go.AddComponent<TrailRenderer>();
+            trail.time = spinTrailTime;
+            trail.startWidth = spinTrailStartWidth;
+            trail.endWidth = spinTrailEndWidth;
+            trail.minVertexDistance = 0.01f;
+            trail.emitting = false;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trail.sharedMaterial = PolarMeshUtility.CreateAdditiveUnlitMaterial();
+
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(spinTrailStartColor, 0f),
+                    new GradientColorKey(spinTrailEndColor, 1f),
+                },
+                new[]
+                {
+                    new GradientAlphaKey(spinTrailStartColor.a, 0f),
+                    new GradientAlphaKey(spinTrailEndColor.a, 1f),
+                });
+            trail.colorGradient = gradient;
+
+            return trail;
         }
 
         private static Vector2 RotateVector(Vector2 v, float degrees)
@@ -178,7 +262,6 @@ namespace PolarBreakout
             float rad = paddle.CurrentAngleDegrees * Mathf.Deg2Rad;
             _rb.position = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * dockRadius;
             _rb.linearVelocity = Vector2.zero;
-            if (_trail != null) _trail.emitting = false;
         }
 
         private void Launch()
@@ -189,7 +272,6 @@ namespace PolarBreakout
             _rb.linearVelocity = direction * speed;
             _lastStableVelocity = _rb.linearVelocity;
             State = BallState.Launched;
-            if (_trail != null) _trail.emitting = true;
         }
 
         /// <summary>Used by BallManager to bring a freshly spawned multiball clone straight

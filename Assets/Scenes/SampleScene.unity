@@ -1504,6 +1504,11 @@ MonoBehaviour:
   spinDecayPerSecond: 0.6
   spinCurveStrength: 140
   phaseSpinThreshold: 0.25
+  spinTrailTime: 0.5
+  spinTrailStartWidth: 0.22
+  spinTrailEndWidth: 0
+  spinTrailStartColor: {r: 0.33270267, g: 0.7490196, b: 0.12549017, a: 1}
+  spinTrailEndColor: {r: 0.40350613, g: 1, b: 0.10196078, a: 0}
 --- !u!58 &1426727419
 CircleCollider2D:
   m_ObjectHideFlags: 0
