@@ -64,6 +64,13 @@ namespace PolarBreakout
                  "flying and normal<->spin transitions alike.")]
         public float trailCrossfadeDuration = 0.2f;
 
+        [Header("Input")]
+        [Tooltip("Optional. When set, launching reads from this asset's Player/Fire action " +
+                 "(gamepad + keyboard) instead of polling Gamepad.current directly. Leave unset " +
+                 "- as every existing isolated test does - to fall back to the original raw " +
+                 "Gamepad.current read, so nothing about existing test behavior changes.")]
+        public InputActionAsset actions;
+
         /// <summary>Signed current spin - sign is curve direction, magnitude decays over time
         /// (see spinDecayPerSecond) until it drops below phaseSpinThreshold.</summary>
         public float Spin { get; private set; }
@@ -93,6 +100,7 @@ namespace PolarBreakout
         private TrailRenderer _spinTrail;
         private TrailMode _currentTrailMode = TrailMode.None;
         private Coroutine _trailCrossfadeCoroutine;
+        private InputAction _fireAction;
 
         private enum TrailMode { None, Normal, Spin }
 
@@ -121,6 +129,13 @@ namespace PolarBreakout
             if (_trail != null) _trail.emitting = false;
             if (_spinTrail != null) _spinTrail.emitting = false;
 
+            if (actions != null)
+            {
+                _fireAction = actions.FindActionMap("Player").FindAction("Fire");
+                _fireAction.performed += OnFirePerformed;
+                _fireAction.Enable();
+            }
+
             _collider = GetComponent<CircleCollider2D>();
             _collider.sharedMaterial = new PhysicsMaterial2D("BallBounce") { bounciness = 1f, friction = 0f };
 
@@ -138,11 +153,23 @@ namespace PolarBreakout
 
         private void Update()
         {
-            // wasPressedThisFrame is only guaranteed valid for the Update this frame's input
-            // was processed in, so it's latched here and consumed in FixedUpdate rather than
-            // read directly there - reading it in FixedUpdate can miss the press entirely.
-            if (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)
+            // Fallback path only - when an actions asset is assigned, OnFirePerformed (an
+            // edge-triggered callback registered once in Awake) handles this instead, and is
+            // strictly more robust than polling wasPressedThisFrame's single-Update validity
+            // window. This raw poll only runs for objects with no actions assigned, e.g. every
+            // existing isolated test, so their behavior is unchanged.
+            if (_fireAction == null && Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)
                 _launchRequested = true;
+        }
+
+        private void OnFirePerformed(InputAction.CallbackContext context)
+        {
+            _launchRequested = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (_fireAction != null) _fireAction.performed -= OnFirePerformed;
         }
 
         private void FixedUpdate()
@@ -392,6 +419,15 @@ namespace PolarBreakout
             _reportedLost = false;
             speed = _initialSpeed;
             Spin = 0f;
+
+            // Discards any launch request that arrived while this ball's GameObject was
+            // deactivated (BallManager.RespawnSequence deactivates it for the explosion/dissolve/
+            // delay window before redocking). OnFirePerformed's event subscription stays live the
+            // whole time regardless of GameObject.activeSelf, but FixedUpdate - the only place
+            // that normally resets this flag - doesn't run while inactive, so an eager Fire press
+            // during that window would otherwise sit pending and fire the instant the ball
+            // reappears, launching it without an actual press after respawn.
+            _launchRequested = false;
         }
 
         /// <summary>Public entry point for BallManager to bring the primary ball back into

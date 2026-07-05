@@ -56,20 +56,39 @@ namespace PolarBreakout
         private GameObject _cannonLeft;
         private GameObject _cannonRight;
         private Coroutine _cannonRevealCoroutine;
+        private InputAction _fireAction;
 
         private void Awake()
         {
             _paddle = GetComponent<PaddleController>();
             _cannonLeft = BuildCannonVisual(-cannonOffsetDegrees, "Left");
             _cannonRight = BuildCannonVisual(cannonOffsetDegrees, "Right");
+
+            // Reuses the same actions asset PaddleController already holds (same GameObject) -
+            // leave unset, as every existing isolated test does, to fall back to the original
+            // raw Gamepad.current poll below, unchanged.
+            if (_paddle.actions != null)
+            {
+                _fireAction = _paddle.actions.FindActionMap("Player").FindAction("Fire");
+                _fireAction.performed += OnFirePerformed;
+                _fireAction.Enable();
+            }
+        }
+
+        private void OnFirePerformed(InputAction.CallbackContext context)
+        {
+            _firePressed = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (_fireAction != null) _fireAction.performed -= OnFirePerformed;
         }
 
         private void Update()
         {
-            // Same latch-in-Update/consume-in-FixedUpdate pattern BallController uses for the
-            // same button, for the same reason (wasPressedThisFrame isn't reliably readable
-            // from FixedUpdate directly).
-            if (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)
+            // Fallback path only - see OnFirePerformed/OnDestroy above for the actions-driven path.
+            if (_fireAction == null && Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)
                 _firePressed = true;
         }
 

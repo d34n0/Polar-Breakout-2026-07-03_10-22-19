@@ -14,6 +14,10 @@ namespace PolarBreakout
         public float maxOffset = 0.3f;
         [Tooltip("How quickly trauma drains back to zero, in trauma/second.")]
         public float traumaDecayPerSecond = 1.5f;
+        [Tooltip("Accessibility multiplier applied to the final shake offset - set to 0 via " +
+                 "GameSettings.ApplyAccessibility() (Reduce Motion) to fully disable shake " +
+                 "without touching the trauma/decay math itself, or partway down to just tone it down.")]
+        public float shakeMultiplier = 1f;
 
         private float _trauma;
         private Vector3 _restPosition;
@@ -39,7 +43,7 @@ namespace PolarBreakout
 
             // Square the trauma so weak shakes fall off fast but strong ones still feel punchy.
             float shake = _trauma * _trauma;
-            Vector2 offset = Random.insideUnitCircle * (maxOffset * shake);
+            Vector2 offset = Random.insideUnitCircle * (maxOffset * shake * shakeMultiplier);
             transform.localPosition = _restPosition + new Vector3(offset.x, offset.y, 0f);
 
             _trauma = Mathf.Max(0f, _trauma - traumaDecayPerSecond * Time.deltaTime);

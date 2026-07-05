@@ -36,6 +36,14 @@ namespace PolarBreakout
         [Tooltip("How fast the paddle eases toward the stick's target angle, in degrees per second. Higher = snappier.")]
         public float turnSpeedDegreesPerSecond = 720f;
 
+        [Header("Input")]
+        [Tooltip("Optional. When set, paddle steering reads from this asset's Player/Move " +
+                 "action (gamepad stick + keyboard) instead of polling Gamepad.current directly, " +
+                 "which is what makes keyboard input and rebinding work. Leave unset - as every " +
+                 "existing isolated test does - to fall back to the original raw Gamepad.current " +
+                 "read, so nothing about existing test behavior changes.")]
+        public InputActionAsset actions;
+
         public float CurrentAngleDegrees { get; private set; }
 
         /// <summary>How fast the paddle's angle is currently changing, in degrees/second
@@ -53,6 +61,7 @@ namespace PolarBreakout
         private float _targetAngleDegrees;
         private float _previousAngleDegrees;
         private Rigidbody2D _rb;
+        private InputAction _moveAction;
 
         private void Awake()
         {
@@ -61,6 +70,12 @@ namespace PolarBreakout
             _rb = GetComponent<Rigidbody2D>();
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _rb.gravityScale = 0f;
+
+            if (actions != null)
+            {
+                _moveAction = actions.FindActionMap("Player").FindAction("Move");
+                _moveAction.Enable();
+            }
 
             BuildShape();
         }
@@ -92,7 +107,11 @@ namespace PolarBreakout
             }
             else
             {
-                Vector2 stick = Gamepad.current != null ? Gamepad.current.leftStick.ReadValue() : Vector2.zero;
+                Vector2 stick = _moveAction != null
+                    ? _moveAction.ReadValue<Vector2>()
+                    : (Gamepad.current != null ? Gamepad.current.leftStick.ReadValue() : Vector2.zero);
+
+                if (GameSettings.InvertPaddleAxis) stick.y = -stick.y;
 
                 // Direct position mapping: the target angle always matches the stick's direction
                 // (stick up -> paddle at top), not a steering rate. Below the deadzone, hold the

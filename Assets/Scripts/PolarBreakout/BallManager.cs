@@ -18,6 +18,12 @@ namespace PolarBreakout
     {
         public BallController primaryBall;
 
+        [Tooltip("Optional. When set, RespawnSequence checks IsGameOver right after the losing-" +
+                 "the-ball dissolve plays and skips the actual respawn if the game is over - the " +
+                 "paddle/ball stay gone and GameOverController's Retry/Quit panel takes over " +
+                 "instead. Leave unset to always respawn (e.g. in isolated tests).")]
+        public LivesManager livesManager;
+
         [Header("Respawn")]
         [Tooltip("Played at the arena center (the death zone) the moment every ball is lost. " +
                  "Leave unset to skip the effect.")]
@@ -130,7 +136,14 @@ namespace PolarBreakout
             if (paddleDissolve != null)
                 yield return paddleDissolve.DissolveOut(paddleDissolveOutDuration);
 
-            yield return new WaitForSeconds(respawnDelay);
+            // Game over: that was the player's last life, so there's no respawn - the paddle/ball
+            // stay dissolved out and GameOverController's Retry/Quit panel takes over from here.
+            if (livesManager != null && livesManager.IsGameOver) yield break;
+
+            // Realtime rather than WaitForSeconds: if the player pauses (Time.timeScale = 0)
+            // during this window, the respawn shouldn't stall until they happen to unpause -
+            // it should just keep counting down in the background.
+            yield return new WaitForSecondsRealtime(respawnDelay);
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();

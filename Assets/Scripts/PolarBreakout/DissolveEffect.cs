@@ -58,7 +58,9 @@ namespace PolarBreakout
             duration = Mathf.Max(0.0001f, duration);
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                // Unscaled so a pause (Time.timeScale = 0) mid-transition doesn't leave the
+                // paddle/ball stuck partway dissolved until the player happens to unpause.
+                elapsed += Time.unscaledDeltaTime;
                 SetProgress(Mathf.Lerp(from, to, elapsed / duration));
                 yield return null;
             }

@@ -15,26 +15,17 @@ namespace PolarBreakout
 
         public TextMeshProUGUI scoreText;
         public TextMeshProUGUI livesText;
-        public TextMeshProUGUI gameOverText;
 
         private void OnEnable()
         {
             if (scoreManager != null) scoreManager.OnScoreChanged += HandleScoreChanged;
-            if (livesManager != null)
-            {
-                livesManager.OnLivesChanged += HandleLivesChanged;
-                livesManager.OnGameOver += HandleGameOver;
-            }
+            if (livesManager != null) livesManager.OnLivesChanged += HandleLivesChanged;
         }
 
         private void OnDisable()
         {
             if (scoreManager != null) scoreManager.OnScoreChanged -= HandleScoreChanged;
-            if (livesManager != null)
-            {
-                livesManager.OnLivesChanged -= HandleLivesChanged;
-                livesManager.OnGameOver -= HandleGameOver;
-            }
+            if (livesManager != null) livesManager.OnLivesChanged -= HandleLivesChanged;
         }
 
         private void Start()
@@ -42,7 +33,6 @@ namespace PolarBreakout
             // Show correct starting values immediately instead of waiting for the first change.
             if (scoreManager != null) HandleScoreChanged(scoreManager.CurrentScore);
             if (livesManager != null) HandleLivesChanged(livesManager.CurrentLives);
-            if (gameOverText != null) gameOverText.gameObject.SetActive(false);
         }
 
         private void HandleScoreChanged(int score)
@@ -53,11 +43,6 @@ namespace PolarBreakout
         private void HandleLivesChanged(int lives)
         {
             if (livesText != null) livesText.text = "Lives: " + lives;
-        }
-
-        private void HandleGameOver()
-        {
-            if (gameOverText != null) gameOverText.gameObject.SetActive(true);
         }
     }
 }
