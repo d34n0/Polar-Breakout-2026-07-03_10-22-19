@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Exploding Brick
   maxHealth: 1
   scoreValue: 10
+  scoreMultiplier: 1
   isIndestructible: 0
   color: {r: 1, g: 0.4, b: 0, a: 1}
   sprite: {fileID: 0}

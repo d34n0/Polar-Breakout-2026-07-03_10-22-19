@@ -27,8 +27,21 @@ namespace PolarBreakout
         [Header("Visuals")]
         [Tooltip("Optional. Overrides whatever material is already on this GameObject's " +
                  "MeshRenderer, so the paddle can use a custom shader without editing this " +
-                 "script. Leave unset to keep the material assigned in the Inspector.")]
+                 "script. Leave unset to keep the material assigned in the Inspector. Applied " +
+                 "before availableSkins, which takes precedence if set.")]
         public Material materialOverride;
+
+        [Tooltip("Optional. Selectable skins for this paddle - if set, the currently chosen one " +
+                 "(CosmeticsManager.PaddleSkinIndex) overrides materialOverride and is re-applied " +
+                 "live whenever the player changes skin. Leave empty/unset to just use " +
+                 "materialOverride or whatever's already on the MeshRenderer.")]
+        public PaddleSkin[] availableSkins;
+
+        /// <summary>Fired every time this paddle's material is (re-)applied - PaddleAbilities'
+        /// cannon barrels listen to this rather than CosmeticsManager.OnPaddleSkinChanged
+        /// directly, so they always read the paddle's material after it's actually been updated
+        /// rather than racing it.</summary>
+        public event System.Action OnSkinApplied;
 
         [Header("Movement")]
         [Tooltip("Below this stick magnitude, the paddle holds its last angle instead of snapping to 0.")]
@@ -78,6 +91,30 @@ namespace PolarBreakout
             }
 
             BuildShape();
+            ApplyCurrentSkin();
+        }
+
+        private void OnEnable()
+        {
+            CosmeticsManager.OnPaddleSkinChanged += ApplyCurrentSkin;
+        }
+
+        private void OnDisable()
+        {
+            CosmeticsManager.OnPaddleSkinChanged -= ApplyCurrentSkin;
+        }
+
+        private void ApplyCurrentSkin()
+        {
+            if (availableSkins != null && availableSkins.Length > 0)
+            {
+                int index = Mathf.Clamp(CosmeticsManager.GetPaddleSkinIndex(), 0, availableSkins.Length - 1);
+                var skin = availableSkins[index];
+                if (skin != null && skin.material != null)
+                    GetComponent<MeshRenderer>().sharedMaterial = skin.material;
+            }
+
+            OnSkinApplied?.Invoke();
         }
 
         private void BuildShape()

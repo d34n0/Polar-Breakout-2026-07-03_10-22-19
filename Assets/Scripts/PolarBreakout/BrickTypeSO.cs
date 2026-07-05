@@ -15,7 +15,15 @@ namespace PolarBreakout
         [Header("Stats")]
         public int maxHealth = 1;
         public int scoreValue = 10;
+        [Tooltip("Multiplies scoreValue to get the actual points awarded - lets a multi-hit " +
+                 "tier's base points and its multiplier be tuned independently rather than " +
+                 "hand-computing one flat total (e.g. scoreValue=10, scoreMultiplier=3 for a " +
+                 "3-hit brick awards 30). Leave at 1 for a plain flat scoreValue.")]
+        public float scoreMultiplier = 1f;
         public bool isIndestructible = false;
+
+        /// <summary>Actual points awarded on destruction - scoreValue * scoreMultiplier, rounded.</summary>
+        public int EffectiveScoreValue => Mathf.RoundToInt(scoreValue * scoreMultiplier);
 
         [Header("Visuals")]
         public Color color = Color.white;

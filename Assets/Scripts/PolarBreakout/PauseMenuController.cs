@@ -28,6 +28,7 @@ namespace PolarBreakout
 
         private InputAction _pauseAction;
         private bool _isPaused;
+        private OptionsMenuController _optionsController;
 
         private void Awake()
         {
@@ -48,11 +49,42 @@ namespace PolarBreakout
             resumeButton.onClick.AddListener(Resume);
             optionsButton.onClick.AddListener(OpenOptions);
             quitToTitleButton.onClick.AddListener(QuitToTitle);
+
+            // Disabled while Options is open so automatic UI navigation can't escape onto them
+            // from Back - they'd otherwise stay fully interactable underneath the overlay.
+            if (optionsMenuPanelRoot != null)
+            {
+                _optionsController = optionsMenuPanelRoot.GetComponent<OptionsMenuController>();
+                if (_optionsController != null)
+                {
+                    _optionsController.OnOpened += DisablePauseMenuButtons;
+                    _optionsController.OnClosed += EnablePauseMenuButtons;
+                }
+            }
         }
 
         private void OnDestroy()
         {
             if (_pauseAction != null) _pauseAction.performed -= OnPausePerformed;
+            if (_optionsController != null)
+            {
+                _optionsController.OnOpened -= DisablePauseMenuButtons;
+                _optionsController.OnClosed -= EnablePauseMenuButtons;
+            }
+        }
+
+        private void DisablePauseMenuButtons()
+        {
+            resumeButton.interactable = false;
+            optionsButton.interactable = false;
+            quitToTitleButton.interactable = false;
+        }
+
+        private void EnablePauseMenuButtons()
+        {
+            resumeButton.interactable = true;
+            optionsButton.interactable = true;
+            quitToTitleButton.interactable = true;
         }
 
         private void OnPausePerformed(InputAction.CallbackContext context)

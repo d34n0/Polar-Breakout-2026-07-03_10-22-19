@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace PolarBreakout
 {
@@ -20,6 +21,13 @@ namespace PolarBreakout
         [Tooltip("Restored as the selected object when the Options panel closes.")]
         public GameObject optionsButton;
 
+        [Tooltip("Start/Options/Exit - disabled while the Options panel is open so automatic UI " +
+                 "navigation can't escape onto them from underneath it (they'd otherwise stay " +
+                 "fully interactable behind the overlay), and re-enabled once it closes.")]
+        public Button[] mainMenuButtons;
+
+        private OptionsMenuController _optionsController;
+
         private void Awake()
         {
             GameSettings.Load();
@@ -28,6 +36,37 @@ namespace PolarBreakout
 
             if (startButton != null && EventSystem.current != null)
                 EventSystem.current.SetSelectedGameObject(startButton);
+
+            if (optionsMenuPanel != null)
+            {
+                _optionsController = optionsMenuPanel.GetComponent<OptionsMenuController>();
+                if (_optionsController != null)
+                {
+                    _optionsController.OnOpened += DisableMainMenuButtons;
+                    _optionsController.OnClosed += EnableMainMenuButtons;
+                }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_optionsController != null)
+            {
+                _optionsController.OnOpened -= DisableMainMenuButtons;
+                _optionsController.OnClosed -= EnableMainMenuButtons;
+            }
+        }
+
+        private void DisableMainMenuButtons()
+        {
+            if (mainMenuButtons == null) return;
+            foreach (var button in mainMenuButtons) button.interactable = false;
+        }
+
+        private void EnableMainMenuButtons()
+        {
+            if (mainMenuButtons == null) return;
+            foreach (var button in mainMenuButtons) button.interactable = true;
         }
 
         public void OnStartPressed()

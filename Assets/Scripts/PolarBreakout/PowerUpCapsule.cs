@@ -37,6 +37,11 @@ namespace PolarBreakout
 
         public PowerUpType Type { get; private set; }
 
+        /// <summary>Fired the instant any capsule (of any type) is actually caught by the paddle -
+        /// ScoreManager listens for this to award its capsule bonus, decoupled from needing a
+        /// direct reference to every capsule instance (they're spawned dynamically at runtime).</summary>
+        public static event System.Action OnAnyCapsuleCollected;
+
         private PaddleController _paddle;
         private float _spawnAngleDegrees;
         private float _currentAngleDegrees;
@@ -201,6 +206,7 @@ namespace PolarBreakout
             {
                 var abilities = _paddle.GetComponent<PaddleAbilities>();
                 if (abilities != null) abilities.CollectPowerUp(Type);
+                OnAnyCapsuleCollected?.Invoke();
                 Destroy(gameObject);
             }
         }

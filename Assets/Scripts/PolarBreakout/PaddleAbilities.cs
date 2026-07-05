@@ -73,6 +73,12 @@ namespace PolarBreakout
                 _fireAction.performed += OnFirePerformed;
                 _fireAction.Enable();
             }
+
+            // Listens to the paddle's own OnSkinApplied rather than CosmeticsManager.
+            // OnPaddleSkinChanged directly, so the paddle's material has already been updated by
+            // the time this runs - both would otherwise be racing the same external event with
+            // no guaranteed order between two different components on the same GameObject.
+            _paddle.OnSkinApplied += RefreshCannonMaterial;
         }
 
         private void OnFirePerformed(InputAction.CallbackContext context)
@@ -83,6 +89,7 @@ namespace PolarBreakout
         private void OnDestroy()
         {
             if (_fireAction != null) _fireAction.performed -= OnFirePerformed;
+            _paddle.OnSkinApplied -= RefreshCannonMaterial;
         }
 
         private void Update()

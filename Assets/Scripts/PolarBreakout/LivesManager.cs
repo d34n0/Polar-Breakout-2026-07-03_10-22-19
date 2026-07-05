@@ -52,5 +52,14 @@ namespace PolarBreakout
                 OnGameOver?.Invoke();
             }
         }
+
+        /// <summary>Grants one extra life - used by ScoreManager's score-threshold bonuses.</summary>
+        public void AddLife()
+        {
+            if (IsGameOver) return;
+
+            CurrentLives++;
+            OnLivesChanged?.Invoke(CurrentLives);
+        }
     }
 }

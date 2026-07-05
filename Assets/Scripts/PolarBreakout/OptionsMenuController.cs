@@ -36,6 +36,14 @@ namespace PolarBreakout
         private InputAction _cancelAction;
         private int _currentCategoryIndex;
 
+        /// <summary>Fired when this panel opens/closes (tied to panelRoot's own active state) -
+        /// whichever menu is showing behind this one (Title Screen, pause menu) uses these to
+        /// disable/re-enable its own buttons for the duration, since they'd otherwise still sit
+        /// there fully interactable underneath the overlay and Unity's automatic UI navigation
+        /// can "escape" onto them from Back (a Selectable with no on-screen occluder to stop it).</summary>
+        public event System.Action OnOpened;
+        public event System.Action OnClosed;
+
         private void OnEnable()
         {
             if (categoryPanels != null && categoryPanels.Length > 0) ShowCategory(0);
@@ -48,12 +56,16 @@ namespace PolarBreakout
                 : null;
             _cancelAction = uiModule != null ? uiModule.cancel.action : null;
             if (_cancelAction != null) _cancelAction.performed += OnCancelPerformed;
+
+            OnOpened?.Invoke();
         }
 
         private void OnDisable()
         {
             if (_cancelAction != null) _cancelAction.performed -= OnCancelPerformed;
             _cancelAction = null;
+
+            OnClosed?.Invoke();
         }
 
         // Two-level back: from inside a category's own controls (sliders/toggles/buttons),
