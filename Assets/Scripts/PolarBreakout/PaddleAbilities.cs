@@ -30,6 +30,11 @@ namespace PolarBreakout
         [Tooltip("Optional. Overrides a fired bullet's default procedural material. Leave unset " +
                  "to use the shared default.")]
         public Material bulletMaterial;
+        [Tooltip("Angle (degrees) between adjacent bullets when a barrel fires more than one per " +
+                 "shot (see ModifierType.ExtraBulletsPerBarrel) - extras fan out symmetrically " +
+                 "around the barrel's own aim direction (averaged/centered on it) rather than " +
+                 "all firing dead ahead.")]
+        public float bulletSpreadDegrees = 5f;
 
         [Header("Turret Skin")]
         [Tooltip("Selectable turret sprites - the currently chosen one (CosmeticsManager." +
@@ -284,9 +289,14 @@ namespace PolarBreakout
             FireBarrel(half);
         }
 
+        /// <summary>Fires one barrel's shot - normally a single bullet, but a
+        /// ModifierType.ExtraBulletsPerBarrel card fans out extra bullets around the barrel's own
+        /// aim direction without costing any extra ammo (a shot is still a shot), and a
+        /// ModifierType.LaserBeamEnabled card turns every bullet fired into a piercing laser -
+        /// the two stack, so a fully-decked cannon can fan out several piercing beams at once.</summary>
         private void FireBarrel(float lateralOffset)
         {
-            float fireAngleDegrees = _paddle.CurrentAngleDegrees;
+            float baseFireAngleDegrees = _paddle.CurrentAngleDegrees;
             float spawnRadius = _paddle.settings.paddleOrbitRadius + _paddle.radialThickness / 2f + 0.3f;
             Vector2 spawnPos = transform.TransformPoint(new Vector3(spawnRadius, lateralOffset, 0f));
 
@@ -299,19 +309,29 @@ namespace PolarBreakout
             float bulletSpeedMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.BulletSpeedMultiplier) : 1f;
             float speed = bulletSpeed * bulletSpeedMultiplier * (bulletSkin != null ? bulletSkin.speedMultiplier : 1f);
 
-            var bulletObject = new GameObject("Bullet");
-            var bullet = bulletObject.AddComponent<Bullet>();
-            bullet.Launch(spawnPos, fireAngleDegrees, speed, _paddle.settings, material, color);
+            bool laserEnabled = runModifiers != null && runModifiers.GetBonus(ModifierType.LaserBeamEnabled) > 0f;
+            int extraBullets = runModifiers != null ? Mathf.RoundToInt(runModifiers.GetBonus(ModifierType.ExtraBulletsPerBarrel)) : 0;
+            int bulletCount = Mathf.Max(1, 1 + extraBullets);
 
-            // Bullets shouldn't physically collide with any ball in play (primary or multiball
-            // clones) - without this, the physics solver would bounce the bullet off (or nudge)
-            // the ball on contact, which reads as an unintended bug rather than a shot cleanly
-            // passing through toward the bricks it's actually meant to hit.
-            var bulletCollider = bulletObject.GetComponent<Collider2D>();
-            foreach (var ball in Object.FindObjectsByType<BallController>(FindObjectsSortMode.None))
+            for (int i = 0; i < bulletCount; i++)
             {
-                var ballCollider = ball.GetComponent<Collider2D>();
-                if (ballCollider != null) Physics2D.IgnoreCollision(bulletCollider, ballCollider, true);
+                float offsetDegrees = bulletCount > 1 ? (i - (bulletCount - 1) / 2f) * bulletSpreadDegrees : 0f;
+                float fireAngleDegrees = baseFireAngleDegrees + offsetDegrees;
+
+                var bulletObject = new GameObject("Bullet");
+                var bullet = bulletObject.AddComponent<Bullet>();
+                bullet.Launch(spawnPos, fireAngleDegrees, speed, _paddle.settings, material, color, laserEnabled);
+
+                // Bullets shouldn't physically collide with any ball in play (primary or
+                // multiball clones) - without this, the physics solver would bounce the bullet
+                // off (or nudge) the ball on contact, which reads as an unintended bug rather
+                // than a shot cleanly passing through toward the bricks it's actually meant to hit.
+                var bulletCollider = bulletObject.GetComponent<Collider2D>();
+                foreach (var ball in Object.FindObjectsByType<BallController>(FindObjectsSortMode.None))
+                {
+                    var ballCollider = ball.GetComponent<Collider2D>();
+                    if (ballCollider != null) Physics2D.IgnoreCollision(bulletCollider, ballCollider, true);
+                }
             }
         }
 

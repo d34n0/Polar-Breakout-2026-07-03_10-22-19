@@ -5,7 +5,14 @@ namespace PolarBreakout
     /// <summary>
     /// Cannon-ability projectile. Flies outward in a straight radial line from where it was
     /// fired, destroys the first brick it touches, and despawns if it reaches the outer wall
-    /// without hitting anything.
+    /// without hitting anything. A "pierce" (laser) bullet instead flies straight through every
+    /// brick it touches rather than stopping at the first one - see Launch's pierce parameter.
+    ///
+    /// The collider is always a trigger, never a physical one - with lots of bullets in flight
+    /// at once, a physical collider let bullets collide with each other (and occasionally wedge
+    /// against overlapping brick edges), bouncing off and losing velocity instead of flying
+    /// straight like they're supposed to. A trigger only ever reports the overlap - see
+    /// OnTriggerEnter2D - with no physics response at all, so that can't happen.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(CircleCollider2D))]
@@ -17,10 +24,16 @@ namespace PolarBreakout
         public float visualLength = 0.2f;
         [Tooltip("Half-width of the visual bolt, world units.")]
         public float visualWidth = 0.05f;
+        [Tooltip("Multiplies visualLength for the trailing edge only when piercing, so a laser " +
+                 "bullet reads as a long streak behind its actual point of impact rather than a " +
+                 "short bolt - the leading edge (where hits actually register) stays the same " +
+                 "size as a normal bullet's.")]
+        public float pierceTrailLengthMultiplier = 4f;
 
         private Rigidbody2D _rb;
         private PolarGridSettings _settings;
         private Camera _arenaCamera;
+        private bool _pierce;
 
         private void Awake()
         {
@@ -33,29 +46,14 @@ namespace PolarBreakout
 
             var collider = GetComponent<CircleCollider2D>();
             collider.radius = 0.1f;
+            collider.isTrigger = true;
 
             BuildVisual();
         }
 
         private void BuildVisual()
         {
-            var mesh = new Mesh { name = "Bullet" };
-            mesh.vertices = new Vector3[]
-            {
-                new Vector3(-visualLength, -visualWidth, 0f),
-                new Vector3(visualLength, -visualWidth, 0f),
-                new Vector3(visualLength, visualWidth, 0f),
-                new Vector3(-visualLength, visualWidth, 0f),
-            };
-            mesh.uv = new Vector2[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
-            // Wound so the computed normal faces -Z (toward the camera), matching the convention
-            // used elsewhere in PolarMeshUtility - only ever looked right because
-            // GetProceduralUnlitMaterial() explicitly disables culling; a custom material with
-            // normal back-face culling would make this bolt invisible.
-            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            GetComponent<MeshFilter>().mesh = mesh;
+            RebuildMesh(visualLength, visualLength);
 
             // Same reasoning as PowerUpCapsule: this is built entirely at runtime, so the
             // MeshRenderer has no material to draw with until one is explicitly assigned.
@@ -69,6 +67,32 @@ namespace PolarBreakout
             renderer.SetPropertyBlock(propBlock);
         }
 
+        /// <summary>Rebuilds the bolt's quad mesh with independent front/back extents along its
+        /// direction of travel (local +X) - a plain bullet is symmetric (frontLength ==
+        /// backLength), a piercing one keeps the same frontLength (so its leading tip still lines
+        /// up with where the small collider actually registers hits) but a much longer backLength
+        /// trailing behind it.</summary>
+        private void RebuildMesh(float frontLength, float backLength)
+        {
+            var mesh = new Mesh { name = "Bullet" };
+            mesh.vertices = new Vector3[]
+            {
+                new Vector3(-backLength, -visualWidth, 0f),
+                new Vector3(frontLength, -visualWidth, 0f),
+                new Vector3(frontLength, visualWidth, 0f),
+                new Vector3(-backLength, visualWidth, 0f),
+            };
+            mesh.uv = new Vector2[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
+            // Wound so the computed normal faces -Z (toward the camera), matching the convention
+            // used elsewhere in PolarMeshUtility - only ever looked right because
+            // GetProceduralUnlitMaterial() explicitly disables culling; a custom material with
+            // normal back-face culling would make this bolt invisible.
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            GetComponent<MeshFilter>().mesh = mesh;
+        }
+
         /// <param name="origin">World position to spawn at - should already be clear of the
         /// paddle's own collider to avoid an immediate spurious collision.</param>
         /// <param name="angleDegrees">Direction to fly, in the same polar convention as the
@@ -80,10 +104,14 @@ namespace PolarBreakout
         /// same MaterialPropertyBlock BuildVisual already set up) without needing a whole custom
         /// material - ignored if materialOverride is also set, since a custom material's own
         /// colors take precedence.</param>
+        /// <param name="pierce">When true, this becomes a laser bullet: it flies straight through
+        /// every brick it touches (still damaging each one via Brick.Hit) instead of stopping at
+        /// the first, and gets a long trailing visual streak.</param>
         public void Launch(Vector2 origin, float angleDegrees, float speed, PolarGridSettings settings,
-            Material materialOverride = null, Color? colorOverride = null)
+            Material materialOverride = null, Color? colorOverride = null, bool pierce = false)
         {
             _settings = settings;
+            _pierce = pierce;
             _rb.position = origin;
             _rb.rotation = angleDegrees;
             transform.rotation = Quaternion.Euler(0f, 0f, angleDegrees);
@@ -104,6 +132,8 @@ namespace PolarBreakout
                 propBlock.SetColor("_BaseColor", colorOverride.Value);
                 renderer.SetPropertyBlock(propBlock);
             }
+
+            if (pierce) RebuildMesh(visualLength, visualLength * pierceTrailLengthMultiplier);
         }
 
         private void FixedUpdate()
@@ -122,13 +152,16 @@ namespace PolarBreakout
             }
         }
 
-        private void OnCollisionEnter2D(Collision2D collision)
+        /// <summary>A plain bullet destroys itself after damaging the first brick it touches; a
+        /// piercing one (see Launch's pierce parameter) doesn't - it keeps flying straight
+        /// through every brick in its path instead of stopping at the first.</summary>
+        private void OnTriggerEnter2D(Collider2D other)
         {
-            var brick = collision.collider.GetComponent<Brick>();
+            var brick = other.GetComponent<Brick>();
             if (brick == null) return;
 
             brick.Hit(gameObject);
-            Destroy(gameObject);
+            if (!_pierce) Destroy(gameObject);
         }
     }
 }

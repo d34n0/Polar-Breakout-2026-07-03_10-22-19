@@ -10,13 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 395b2129749642a41b7aef697ce7a777, type: 3}
-  m_Name: Card_Sharpshooter
+  m_Name: Card_LaserCannon
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.CardSO
-  displayName: Sharpshooter
-  description: Bullets fly 50% faster and each barrel fires an extra bullet.
-  rarity: 2
+  displayName: Laser Cannon
+  description: Cannon bullets become piercing laser beams, blasting straight through
+    every brick in their path instead of stopping at the first.
+  rarity: 3
   effects:
-  - type: 10
-    value: 0.5
-  - type: 5
+  - type: 6
     value: 1

@@ -16,6 +16,15 @@ namespace PolarBreakout
         TurretSpacingBonus,
         AutopilotDurationBonus,
         PhaseThresholdReduction,
+        /// <summary>Extra bullets fired per barrel per shot (beyond the base 1), fanned out
+        /// symmetrically around the barrel's own aim direction - doesn't cost any extra ammo,
+        /// a shot is still a shot regardless of how many bullets it actually fires.</summary>
+        ExtraBulletsPerBarrel,
+        /// <summary>Not a count - any nonzero total means the cannon fires piercing laser
+        /// bullets instead of normal ones (see PaddleAbilities.FireBarrel/Bullet.Launch's pierce
+        /// parameter). Same "big value flips a threshold-based bool" convention as
+        /// PhaseThresholdReduction.</summary>
+        LaserBeamEnabled,
 
         // Multiplicative (1 + sum of values)
         PaddleTurnSpeedMultiplier,

@@ -2179,6 +2179,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 513d957954ef36b4ca3d1050a8a36434, type: 2}
   - {fileID: 11400000, guid: ce9afd342d796c243b16a54d5caf4ab7, type: 2}
   - {fileID: 11400000, guid: 33dc9e3965f11c441a78c6c551304477, type: 2}
+  - {fileID: 11400000, guid: 0fb36e2d354e2ea4589c88eb5080f880, type: 2}
   - {fileID: 11400000, guid: 037ae176504a34140b8a1aa1cdbfbfe5, type: 2}
   - {fileID: 11400000, guid: 5a81f4ebc4aaa924ab4fb9255825d51a, type: 2}
   - {fileID: 11400000, guid: 970250baad377a140be03ac23bca0111, type: 2}
@@ -3203,6 +3204,7 @@ MonoBehaviour:
   turretSpacing: 0.5
   cannonRevealDuration: 0.25
   bulletMaterial: {fileID: 2100000, guid: 641f3796aa3b96b458408c51b8691ef6, type: 2}
+  bulletSpreadDegrees: 5
   availableTurretSkins:
   - {fileID: 11400000, guid: 96b9cab78fc913743823d773a38c0518, type: 2}
   autopilotDuration: 5
