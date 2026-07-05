@@ -885,7 +885,11 @@ MonoBehaviour:
   cannonBarrelLength: 0.18
   cannonBarrelWidth: 0.05
   cannonRevealDuration: 0.25
+  bulletMaterial: {fileID: 2100000, guid: 641f3796aa3b96b458408c51b8691ef6, type: 2}
   autopilotDuration: 5
+  multiballCapsuleMaterial: {fileID: 0}
+  autopilotCapsuleMaterial: {fileID: 0}
+  cannonCapsuleMaterial: {fileID: 0}
 --- !u!114 &674392003
 MonoBehaviour:
   m_ObjectHideFlags: 0
