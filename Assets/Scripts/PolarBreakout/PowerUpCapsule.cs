@@ -63,6 +63,16 @@ namespace PolarBreakout
             GetComponent<MeshFilter>().mesh = BuildCapsuleMesh(capsuleLength, capsuleRadius, capEndSegments);
 
             var renderer = GetComponent<MeshRenderer>();
+            var materialOverride = GetMaterialOverride(Type);
+            if (materialOverride != null)
+            {
+                // A custom material presumably already has its own authored look, so it's used
+                // as-is rather than also having the hardcoded per-type property-block tint below
+                // forced on top of it.
+                renderer.sharedMaterial = materialOverride;
+                return;
+            }
+
             // Bricks get away without ever assigning a Material because Brick.prefab already has
             // one serialized on its MeshRenderer from being set up in the Editor. This capsule is
             // built entirely at runtime via AddComponent<MeshRenderer>(), which - unlike adding
@@ -75,6 +85,23 @@ namespace PolarBreakout
             propBlock.SetColor("_Color", color);
             propBlock.SetColor("_BaseColor", color);
             renderer.SetPropertyBlock(propBlock);
+        }
+
+        /// <summary>Reads the matching per-type material override off PaddleAbilities (the
+        /// already-existing central home for power-up configuration), if the paddle and that
+        /// component can be found and a material was actually assigned there.</summary>
+        private Material GetMaterialOverride(PowerUpType type)
+        {
+            var abilities = _paddle != null ? _paddle.GetComponent<PaddleAbilities>() : null;
+            if (abilities == null) return null;
+
+            switch (type)
+            {
+                case PowerUpType.Multiball: return abilities.multiballCapsuleMaterial;
+                case PowerUpType.Autopilot: return abilities.autopilotCapsuleMaterial;
+                case PowerUpType.Cannon: return abilities.cannonCapsuleMaterial;
+                default: return null;
+            }
         }
 
         /// <summary>Builds a "stadium" shape (two rounded end caps joined by a straight middle

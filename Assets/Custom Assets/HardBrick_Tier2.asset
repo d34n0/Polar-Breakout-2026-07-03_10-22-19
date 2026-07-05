@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ce312cc542593f24eac80a7531940c81, type: 3}
-  m_Name: StandardBrickType
-  m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.StandardBrickType
-  brickId: brick_default
-  displayName: Sapphire Brick
-  maxHealth: 1
-  scoreValue: 10
+  m_Name: HardBrick_Tier2
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.StandardBrickType
+  brickId: hard_brick_tier2
+  displayName: Ruby Brick
+  maxHealth: 2
+  scoreValue: 20
   isIndestructible: 0
-  color: {r: 0.1, g: 0.3, b: 0.85, a: 1}
+  color: {r: 1, g: 0, b: 0, a: 1}
   sprite: {fileID: 21300000, guid: fbe72a9a23f83d443985192e13cee403, type: 3}
-  materialOverride: {fileID: 2100000, guid: 47401843391fe5049ab59c6a72709a28, type: 2}
-  powerUpDropChance: 0.1
-  possiblePowerUps: 00000000
+  materialOverride: {fileID: 0}
+  powerUpDropChance: 0.15
+  possiblePowerUps: 0200000000000000

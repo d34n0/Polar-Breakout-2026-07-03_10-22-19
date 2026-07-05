@@ -73,7 +73,10 @@ namespace PolarBreakout
         /// paddle's own collider to avoid an immediate spurious collision.</param>
         /// <param name="angleDegrees">Direction to fly, in the same polar convention as the
         /// rest of the arena (0 = +X axis).</param>
-        public void Launch(Vector2 origin, float angleDegrees, float speed, PolarGridSettings settings)
+        /// <param name="materialOverride">Optional. Overrides the default procedural material -
+        /// applied here (rather than a field set before Awake) since BuildVisual() already runs
+        /// during AddComponent, before a caller gets a chance to configure anything.</param>
+        public void Launch(Vector2 origin, float angleDegrees, float speed, PolarGridSettings settings, Material materialOverride = null)
         {
             _settings = settings;
             _rb.position = origin;
@@ -83,6 +86,8 @@ namespace PolarBreakout
             float rad = angleDegrees * Mathf.Deg2Rad;
             Vector2 direction = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
             _rb.linearVelocity = direction * speed;
+
+            if (materialOverride != null) GetComponent<MeshRenderer>().sharedMaterial = materialOverride;
         }
 
         private void FixedUpdate()

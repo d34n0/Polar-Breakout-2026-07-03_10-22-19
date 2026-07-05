@@ -364,9 +364,9 @@ namespace PolarBreakout.Tests
             // spawning path, not a synthetic replica, to catch anything that only shows up
             // with the real asset (segment counts, gaps, brick health, etc).
             var realSettings = AssetDatabase.LoadAssetAtPath<PolarGridSettings>(
-                "Assets/Scripts/PolarBreakout/Editor/PolarGridSettings.asset");
+                "Assets/Custom Assets/PolarGridSettings.asset");
             var realLevel = AssetDatabase.LoadAssetAtPath<LevelSO>(
-                "Assets/Scripts/PolarBreakout/Editor/Level0.asset");
+                "Assets/Custom Assets/LevelDesigner.asset");
             var realBrickPrefab = AssetDatabase.LoadAssetAtPath<Brick>("Assets/Prefabs/Brick.prefab");
             Assert.IsNotNull(realSettings, "Real PolarGridSettings asset should load.");
             Assert.IsNotNull(realLevel, "Real Level0 asset should load.");
