@@ -2005,7 +2005,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2276,11 +2276,11 @@ MonoBehaviour:
   ballManager: {fileID: 1973265797}
   cannonAmmoPerPickup: 10
   bulletSpeed: 12
-  cannonOffsetDegrees: 8
-  cannonBarrelLength: 0.18
-  cannonBarrelWidth: 0.05
+  turretSpacing: 0.5
   cannonRevealDuration: 0.25
   bulletMaterial: {fileID: 2100000, guid: 641f3796aa3b96b458408c51b8691ef6, type: 2}
+  availableTurretSkins:
+  - {fileID: 11400000, guid: 96b9cab78fc913743823d773a38c0518, type: 2}
   autopilotDuration: 5
   multiballCapsuleMaterial: {fileID: 0}
   autopilotCapsuleMaterial: {fileID: 0}

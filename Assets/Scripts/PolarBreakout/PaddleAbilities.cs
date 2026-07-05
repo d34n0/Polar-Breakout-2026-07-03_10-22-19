@@ -19,21 +19,24 @@ namespace PolarBreakout
                  "barrels at once, so total bullets fired is double this.")]
         public int cannonAmmoPerPickup = 5;
         public float bulletSpeed = 12f;
-        [Tooltip("Angular offset (degrees) of each cannon barrel from the paddle's center, " +
-                 "mirrored left/right - also where each barrel's bullet fires from/toward. " +
-                 "Keep at or below half the paddle's angularWidthDegrees so the barrels stay " +
-                 "anchored on the paddle's surface instead of floating past its tips.")]
-        public float cannonOffsetDegrees = 12f;
-        [Tooltip("How far each cannon barrel's visual sticks out beyond the paddle's outer edge, world units.")]
-        public float cannonBarrelLength = 0.18f;
-        [Tooltip("Half-width of each cannon barrel's visual, world units.")]
-        public float cannonBarrelWidth = 0.05f;
+        [Tooltip("How far apart (world units) the two cannon barrels sit, offset sideways from " +
+                 "the paddle's center - each barrel's bullet also spawns from that same offset " +
+                 "position. Both barrels point straight out, parallel to each other and to the " +
+                 "paddle's own facing direction, rather than fanning outward at an angle.")]
+        public float turretSpacing = 0.5f;
         [Tooltip("How long the grow-out-of-the-paddle reveal animation takes when a Cannon " +
                  "capsule is collected, seconds.")]
         public float cannonRevealDuration = 0.25f;
         [Tooltip("Optional. Overrides a fired bullet's default procedural material. Leave unset " +
                  "to use the shared default.")]
         public Material bulletMaterial;
+
+        [Header("Turret Skin")]
+        [Tooltip("Selectable turret sprites - the currently chosen one (CosmeticsManager." +
+                 "TurretSkinIndex) is applied to both barrels and re-applied live whenever the " +
+                 "player changes turret skin. Turrets are purely cosmetic (no collider), so " +
+                 "unlike the paddle itself they render as sprites rather than a procedural mesh.")]
+        public TurretSkin[] availableTurretSkins;
 
         [Header("Autopilot")]
         public float autopilotDuration = 5f;
@@ -61,8 +64,8 @@ namespace PolarBreakout
         private void Awake()
         {
             _paddle = GetComponent<PaddleController>();
-            _cannonLeft = BuildCannonVisual(-cannonOffsetDegrees, "Left");
-            _cannonRight = BuildCannonVisual(cannonOffsetDegrees, "Right");
+            _cannonLeft = BuildCannonVisual(-turretSpacing / 2f, "Left");
+            _cannonRight = BuildCannonVisual(turretSpacing / 2f, "Right");
 
             // Reuses the same actions asset PaddleController already holds (same GameObject) -
             // leave unset, as every existing isolated test does, to fall back to the original
@@ -74,11 +77,8 @@ namespace PolarBreakout
                 _fireAction.Enable();
             }
 
-            // Listens to the paddle's own OnSkinApplied rather than CosmeticsManager.
-            // OnPaddleSkinChanged directly, so the paddle's material has already been updated by
-            // the time this runs - both would otherwise be racing the same external event with
-            // no guaranteed order between two different components on the same GameObject.
-            _paddle.OnSkinApplied += RefreshCannonMaterial;
+            RefreshTurretSkin();
+            CosmeticsManager.OnTurretSkinChanged += RefreshTurretSkin;
         }
 
         private void OnFirePerformed(InputAction.CallbackContext context)
@@ -89,7 +89,7 @@ namespace PolarBreakout
         private void OnDestroy()
         {
             if (_fireAction != null) _fireAction.performed -= OnFirePerformed;
-            _paddle.OnSkinApplied -= RefreshCannonMaterial;
+            CosmeticsManager.OnTurretSkinChanged -= RefreshTurretSkin;
         }
 
         private void Update()
@@ -172,15 +172,15 @@ namespace PolarBreakout
             }
         }
 
-        /// <summary>Animates both barrels scaling up from nothing along their own length (local
-        /// +X, the same axis BuildBarrelMesh extends along from the paddle's surface outward),
-        /// so they visibly grow out of the paddle rather than just popping into existence.</summary>
+        /// <summary>Animates both barrels scaling up from nothing along local +X (the direction
+        /// each sprite should extend away from the paddle's surface, per its own pivot), so they
+        /// visibly grow out of the paddle rather than just popping into existence.</summary>
         private IEnumerator RevealCannons()
         {
             // Re-synced on every reveal (not just once at Awake) so the barrels always match
-            // whatever material/shader is currently on the paddle - handy while iterating on the
-            // paddle's look, since a freshly caught Cannon capsule always picks up the latest one.
-            RefreshCannonMaterial();
+            // whatever turret skin is currently selected - handy while iterating, since a freshly
+            // caught Cannon capsule always picks up the latest choice.
+            RefreshTurretSkin();
             _cannonLeft.SetActive(true);
             _cannonRight.SetActive(true);
 
@@ -202,15 +202,25 @@ namespace PolarBreakout
             _cannonRight.transform.localScale = new Vector3(t, 1f, 1f);
         }
 
-        /// <summary>Copies whatever material is currently on the paddle's own MeshRenderer onto
-        /// both barrels, so they always render with the same shader/look as the paddle rather
-        /// than a fixed placeholder color - useful while still iterating on the paddle's final
-        /// material rather than needing to keep two places in sync by hand.</summary>
-        private void RefreshCannonMaterial()
+        /// <summary>Applies the currently selected TurretSkin's sprite (and optional material
+        /// override) to both barrels.</summary>
+        private void RefreshTurretSkin()
         {
-            var paddleMaterial = _paddle.GetComponent<MeshRenderer>().sharedMaterial;
-            _cannonLeft.GetComponent<MeshRenderer>().sharedMaterial = paddleMaterial;
-            _cannonRight.GetComponent<MeshRenderer>().sharedMaterial = paddleMaterial;
+            if (availableTurretSkins == null || availableTurretSkins.Length == 0) return;
+
+            int index = Mathf.Clamp(CosmeticsManager.GetTurretSkinIndex(), 0, availableTurretSkins.Length - 1);
+            var skin = availableTurretSkins[index];
+            if (skin == null) return;
+
+            ApplyTurretSkin(_cannonLeft, skin);
+            ApplyTurretSkin(_cannonRight, skin);
+        }
+
+        private static void ApplyTurretSkin(GameObject cannon, TurretSkin skin)
+        {
+            var spriteRenderer = cannon.GetComponent<SpriteRenderer>();
+            if (skin.sprite != null) spriteRenderer.sprite = skin.sprite;
+            if (skin.materialOverride != null) spriteRenderer.sharedMaterial = skin.materialOverride;
         }
 
         private void UpdateAutopilot()
@@ -224,21 +234,21 @@ namespace PolarBreakout
                 _paddle.AutopilotOverrideAngleDegrees = null;
         }
 
-        /// <summary>Fires both cannon barrels at once - one bullet per barrel, each flying
-        /// outward along its own offset angle rather than both firing straight out from the
-        /// paddle's center.</summary>
+        /// <summary>Fires both cannon barrels at once - one bullet per barrel, both flying
+        /// straight out parallel to each other (matching the barrels' own visual orientation),
+        /// just spawned from each barrel's own sideways-offset position rather than converging
+        /// from the paddle's center.</summary>
         private void FireCannon()
         {
-            FireBarrel(-cannonOffsetDegrees);
-            FireBarrel(cannonOffsetDegrees);
+            FireBarrel(-turretSpacing / 2f);
+            FireBarrel(turretSpacing / 2f);
         }
 
-        private void FireBarrel(float offsetDegrees)
+        private void FireBarrel(float lateralOffset)
         {
-            float fireAngleDegrees = _paddle.CurrentAngleDegrees + offsetDegrees;
+            float fireAngleDegrees = _paddle.CurrentAngleDegrees;
             float spawnRadius = _paddle.settings.paddleOrbitRadius + _paddle.radialThickness / 2f + 0.3f;
-            float rad = fireAngleDegrees * Mathf.Deg2Rad;
-            Vector2 spawnPos = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * spawnRadius;
+            Vector2 spawnPos = transform.TransformPoint(new Vector3(spawnRadius, lateralOffset, 0f));
 
             var bulletObject = new GameObject("Bullet");
             var bullet = bulletObject.AddComponent<Bullet>();
@@ -256,58 +266,33 @@ namespace PolarBreakout
             }
         }
 
-        /// <summary>Builds one cannon barrel as a small child quad sticking radially outward
-        /// from the paddle's outer edge at a fixed angular offset from center - parented under
-        /// the paddle (built in the same local, angle-0-centered space as the paddle's own mesh)
-        /// so it rotates along with the paddle for free via the parent transform, matching how
-        /// PaddleController's own mesh is built. Starts hidden; CollectPowerUp/ResetAbilities
-        /// toggle it via SetCannonVisualsActive.</summary>
-        private GameObject BuildCannonVisual(float offsetDegrees, string label)
+        /// <summary>Builds one cannon barrel as a sprite sticking straight outward from the
+        /// paddle's outer edge, offset sideways from center by lateralOffset (world units) -
+        /// parented under the paddle (built in the same local, angle-0-centered space as the
+        /// paddle's own mesh) so it rotates along with the paddle for free via the parent
+        /// transform. Both barrels share the same (identity) local rotation so they point
+        /// straight out parallel to each other, rather than each fanning outward at its own
+        /// angle. Purely cosmetic (no collider), so - unlike the paddle itself - it's a plain
+        /// SpriteRenderer rather than a procedural mesh, letting each turret skin be actual
+        /// hand-drawn artwork. A small negative local Z nudges it in front of the paddle's own
+        /// MeshRenderer, since Unity doesn't otherwise guarantee draw order between a
+        /// SpriteRenderer and a MeshRenderer at the same depth. Starts hidden; CollectPowerUp/
+        /// ResetAbilities toggle it via SetCannonVisualsActive. The sprite itself is assigned by
+        /// RefreshTurretSkin, not here.</summary>
+        private GameObject BuildCannonVisual(float lateralOffset, string label)
         {
             var go = new GameObject($"CannonBarrel_{label}");
             go.transform.SetParent(transform, worldPositionStays: false);
 
             float radius = _paddle.settings.paddleOrbitRadius + _paddle.radialThickness / 2f;
-            float rad = offsetDegrees * Mathf.Deg2Rad;
-            go.transform.localPosition = new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f) * radius;
-            go.transform.localRotation = Quaternion.Euler(0f, 0f, offsetDegrees);
+            go.transform.localPosition = new Vector3(radius, lateralOffset, -0.01f);
+            go.transform.localRotation = Quaternion.identity;
 
-            var meshFilter = go.AddComponent<MeshFilter>();
-            meshFilter.mesh = BuildBarrelMesh();
-
-            // Best-effort default - RefreshCannonMaterial() re-syncs this to whatever the paddle
-            // currently has every time the barrels are actually revealed, so a stale material
-            // picked up here (e.g. if this runs before PaddleController.Awake() has applied its
-            // own materialOverride) never actually reaches the player.
-            var renderer = go.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = _paddle.GetComponent<MeshRenderer>().sharedMaterial;
+            go.AddComponent<SpriteRenderer>();
 
             go.transform.localScale = new Vector3(0f, 1f, 1f);
             go.SetActive(false);
             return go;
-        }
-
-        private Mesh BuildBarrelMesh()
-        {
-            var mesh = new Mesh { name = "CannonBarrel" };
-            mesh.vertices = new Vector3[]
-            {
-                new Vector3(0f, -cannonBarrelWidth, 0f),
-                new Vector3(cannonBarrelLength, -cannonBarrelWidth, 0f),
-                new Vector3(cannonBarrelLength, cannonBarrelWidth, 0f),
-                new Vector3(0f, cannonBarrelWidth, 0f),
-            };
-            mesh.uv = new Vector2[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
-            // Same -Z-facing winding convention as Bullet.cs/PolarMeshUtility.
-            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
-            mesh.RecalculateNormals();
-            // Needed since the barrels can end up sharing the paddle's material (see
-            // RefreshCannonMaterial) - if that's a shader reading a tangent-space normal map (e.g.
-            // the gemstone brick shader), a mesh with no tangents renders that lighting as garbage
-            // rather than just flat, matching why PolarMeshUtility.BuildArcSegmentMesh does the same.
-            mesh.RecalculateTangents();
-            mesh.RecalculateBounds();
-            return mesh;
         }
     }
 }
