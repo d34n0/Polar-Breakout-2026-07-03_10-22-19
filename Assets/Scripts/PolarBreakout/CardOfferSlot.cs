@@ -10,7 +10,7 @@ namespace PolarBreakout
     /// One clickable card tile within CardOfferController's 3-card layout - purely a view:
     /// Initialize() fills in the text/color for a given CardSO and wires the whole tile's Button
     /// to the callback. CardOfferController owns everything else (picking which 3 to show,
-    /// applying the chosen card, and staggering each slot's PlayPopAndFlipReveal).
+    /// applying the chosen card, and staggering each slot's PlayFlipReveal).
     /// </summary>
     public class CardOfferSlot : MonoBehaviour
     {
@@ -38,18 +38,22 @@ namespace PolarBreakout
 
         [Header("Reveal Animation")]
         [Tooltip("Optional. The face-down card-back visual, covering the rarity/name/description/" +
-                 "art - shown until PlayPopAndFlipReveal flips it away. Leave unset to skip the " +
-                 "pop/flip animation entirely and just show the front immediately (matches the " +
-                 "original, pre-reveal-animation behavior).")]
+                 "art - shown until PlayFlipReveal flips it away. Leave unset to skip the flip " +
+                 "animation entirely and just show the front immediately (matches the original, " +
+                 "pre-reveal-animation behavior).")]
         public GameObject cardBackRoot;
-        [Tooltip("How long the initial pop-in (scaling up from nothing while still face-down) takes, seconds.")]
-        public float popInDuration = 0.18f;
-        [Tooltip("How long the card sits face-down at full size before flipping, seconds - gives " +
-                 "the pop a moment to read before the flip starts.")]
+        [Tooltip("How long the card sits face-down at normal scale before flipping, seconds - " +
+                 "gives the face-down card a moment to read before the flip starts.")]
         public float faceDownHoldDuration = 0.15f;
         [Tooltip("How long the flip (rotating edge-on and back out around the Y axis, swapping to " +
                  "the revealed front face exactly at the edge-on midpoint) takes, seconds.")]
         public float flipDuration = 0.3f;
+
+        /// <summary>Total real time PlayFlipReveal takes from start to finish (face-down hold +
+        /// flip) - read by CardOfferController to know when the NEXT card's own reveal should
+        /// start (halfway through this one), rather than waiting for this one to fully finish
+        /// first.</summary>
+        public float TotalRevealDuration => faceDownHoldDuration + flipDuration;
 
         [Header("Selected Card Feedback")]
         [Tooltip("How much larger the selected card's RectTransform scales, e.g. 1.08 = 8% bigger " +
@@ -69,6 +73,13 @@ namespace PolarBreakout
         public float wobbleRampInDuration = 0.3f;
         [Tooltip("How fast scale/rotation ease toward their selected/deselected target, higher = snappier.")]
         public float selectionTransitionSpeed = 8f;
+        [Tooltip("How long the one-shot 360-degree Y spin takes the instant this card becomes " +
+                 "selected, seconds - eased in and out (via Mathf.SmoothStep) so it accelerates " +
+                 "into the turn and settles cleanly facing forward, rather than snapping straight " +
+                 "into the enlarged/wobble look. The scale-up to selectedScale happens at the same " +
+                 "time, not after. Set to 0 to skip the spin and go straight to the normal " +
+                 "selected behaviour.")]
+        public float selectionSpinDuration = 0.4f;
 
         private bool _hasArt;
         private bool _revealed;
@@ -98,19 +109,38 @@ namespace PolarBreakout
             Vector3 targetScale = Vector3.one * (isSelected ? selectedScale : 1f);
             rect.localScale = Vector3.Lerp(rect.localScale, targetScale, Time.unscaledDeltaTime * selectionTransitionSpeed);
 
-            if (isSelected && idleWobbleDegrees > 0f)
+            if (isSelected)
             {
-                // rampT is 0 the instant selection starts, so x/y/z below all come out to
-                // exactly 0 (unrotated) at that moment no matter where the Perlin curves are.
-                float rampT = wobbleRampInDuration > 0f
-                    ? Mathf.Clamp01((Time.unscaledTime - _selectedSinceTime) / wobbleRampInDuration)
-                    : 1f;
-                float amount = idleWobbleDegrees * rampT;
-                float t = Time.unscaledTime * idleWobbleSpeed;
-                float x = (Mathf.PerlinNoise(_wobbleSeedX, t) * 2f - 1f) * amount;
-                float y = (Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount;
-                float z = (Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount;
-                rect.localRotation = Quaternion.Euler(x, y, z);
+                float timeSinceSelected = Time.unscaledTime - _selectedSinceTime;
+
+                if (timeSinceSelected < selectionSpinDuration)
+                {
+                    // One-shot 360-degree Y spin the instant this card becomes selected, at the
+                    // same time as the scale-up above - eased in and out (SmoothStep) so it
+                    // accelerates into the turn and settles cleanly facing forward, rather than
+                    // snapping straight into the wobble below.
+                    float spinT = Mathf.Clamp01(timeSinceSelected / Mathf.Max(0.0001f, selectionSpinDuration));
+                    rect.localRotation = Quaternion.Euler(0f, Mathf.SmoothStep(0f, 360f, spinT), 0f);
+                }
+                else if (idleWobbleDegrees > 0f)
+                {
+                    // Ramp starts once the spin above finishes (not from the moment selection
+                    // began), so the wobble eases in cleanly right where the spin left off -
+                    // facing forward - instead of racing ahead mid-spin.
+                    float rampT = wobbleRampInDuration > 0f
+                        ? Mathf.Clamp01((timeSinceSelected - selectionSpinDuration) / wobbleRampInDuration)
+                        : 1f;
+                    float amount = idleWobbleDegrees * rampT;
+                    float t = Time.unscaledTime * idleWobbleSpeed;
+                    float x = (Mathf.PerlinNoise(_wobbleSeedX, t) * 2f - 1f) * amount;
+                    float y = (Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount;
+                    float z = (Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount;
+                    rect.localRotation = Quaternion.Euler(x, y, z);
+                }
+                else if (rect.localRotation != Quaternion.identity)
+                {
+                    rect.localRotation = Quaternion.Slerp(rect.localRotation, Quaternion.identity, Time.unscaledDeltaTime * selectionTransitionSpeed);
+                }
             }
             else if (rect.localRotation != Quaternion.identity)
             {
@@ -139,7 +169,7 @@ namespace PolarBreakout
         }
 
         /// <summary>Instantly shows either the face-down back or the fully-revealed front, no
-        /// animation - used to reset state before a reveal plays (see PlayPopAndFlipReveal) and
+        /// animation - used to reset state before a reveal plays (see PlayFlipReveal) and
         /// as the immediate fallback when cardBackRoot isn't wired.</summary>
         public void SetRevealed(bool revealed)
         {
@@ -151,17 +181,17 @@ namespace PolarBreakout
             if (artImage != null) artImage.gameObject.SetActive(revealed && _hasArt);
         }
 
-        /// <summary>Pops up from nothing while face-down, holds briefly, then flips over -
-        /// rotating around the Y axis to edge-on and back out, swapping to the revealed front
-        /// face exactly at the edge-on midpoint - so a holo/foil card material gets its own
-        /// moment in the spotlight rather than just appearing instantly. Uses an actual rotation
-        /// (rather than squashing localScale.x to 0) so shaders that react to view direction/tilt
-        /// - like a holo card material - visibly catch the light during the flip, not just when
-        /// the card is dragged around afterward. Runs entirely on unscaled time, since the whole
-        /// card offer plays with Time.timeScale at 0 (see CardOfferController.ShowOffer). No-op
-        /// (just reveals instantly) if cardBackRoot isn't wired, so slots built before this
-        /// feature existed keep working unchanged.</summary>
-        public IEnumerator PlayPopAndFlipReveal()
+        /// <summary>Holds briefly at normal scale while face-down, then flips over - rotating
+        /// around the Y axis to edge-on and back out, swapping to the revealed front face exactly
+        /// at the edge-on midpoint - so a holo/foil card material gets its own moment in the
+        /// spotlight rather than just appearing instantly. Uses an actual rotation (rather than
+        /// squashing localScale.x to 0) so shaders that react to view direction/tilt - like a holo
+        /// card material - visibly catch the light during the flip, not just when the card is
+        /// dragged around afterward. Runs entirely on unscaled time, since the whole card offer
+        /// plays with Time.timeScale at 0 (see CardOfferController.ShowOffer). No-op (just reveals
+        /// instantly) if cardBackRoot isn't wired, so slots built before this feature existed keep
+        /// working unchanged.</summary>
+        public IEnumerator PlayFlipReveal()
         {
             if (cardBackRoot == null)
             {
@@ -172,11 +202,10 @@ namespace PolarBreakout
             _flipping = true;
 
             var rect = (RectTransform)transform;
-            rect.localScale = Vector3.zero;
+            rect.localScale = Vector3.one;
             rect.localRotation = Quaternion.identity;
             SetRevealed(false);
 
-            yield return ScaleOverRealtime(rect, Vector3.zero, Vector3.one, popInDuration);
             yield return new WaitForSecondsRealtime(faceDownHoldDuration);
 
             float half = Mathf.Max(0.0001f, flipDuration / 2f);
@@ -191,19 +220,6 @@ namespace PolarBreakout
             yield return RotateYOverRealtime(rect, -90f, 0f, half);
 
             _flipping = false;
-        }
-
-        private static IEnumerator ScaleOverRealtime(RectTransform rect, Vector3 from, Vector3 to, float duration)
-        {
-            float elapsed = 0f;
-            duration = Mathf.Max(0.0001f, duration);
-            while (elapsed < duration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                rect.localScale = Vector3.Lerp(from, to, Mathf.Clamp01(elapsed / duration));
-                yield return null;
-            }
-            rect.localScale = to;
         }
 
         private static IEnumerator RotateYOverRealtime(RectTransform rect, float fromY, float toY, float duration)

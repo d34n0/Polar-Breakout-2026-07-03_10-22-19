@@ -52,12 +52,6 @@ namespace PolarBreakout
                  "menu - leave unset if not needed.")]
         public InputActionAsset actions;
 
-        [Header("Reveal Animation")]
-        [Tooltip("Pause after each card finishes its pop/flip reveal (see " +
-                 "CardOfferSlot.PlayPopAndFlipReveal), before the next one starts, seconds - " +
-                 "cards turn over strictly one at a time, not overlapping.")]
-        public float revealStaggerDelay = 0.15f;
-
         private CardSO _chosenCard;
         private bool _waitingForChoice;
         private int _rerollsUsedThisOffer;
@@ -113,25 +107,33 @@ namespace PolarBreakout
             UpdateRerollUI();
         }
 
-        /// <summary>Pops each active slot up face-down, then flips it over to reveal its card,
-        /// strictly one at a time (see CardOfferSlot.PlayPopAndFlipReveal) - each card's entire
-        /// pop/hold/flip finishes, then revealStaggerDelay passes, before the next one even
-        /// starts, giving each card's own material/shader its own moment in the spotlight rather
-        /// than overlapping. Every button (cards and Reroll alike) stays non-interactable for the
-        /// whole sequence, so a trigger-happy click can't pick a card before its face is even
+        /// <summary>Each active slot sits face-down at normal scale, then flips over to reveal
+        /// its card (see CardOfferSlot.PlayFlipReveal) - each next card starts its own reveal once
+        /// the previous one is halfway through its own total reveal duration (see
+        /// CardOfferSlot.TotalRevealDuration), rather than waiting for it to fully finish, so
+        /// reveals overlap and the whole sequence completes faster while still reading as a
+        /// left-to-right cascade. Every button (cards and Reroll alike) stays non-interactable for
+        /// the whole sequence, so a trigger-happy click can't pick a card before its face is even
         /// showing, or reroll again mid-flip and overlap two reveals at once.</summary>
         private IEnumerator PlayRevealSequence()
         {
             SetOfferInteractable(false);
 
-            bool revealedAny = false;
+            var running = new List<Coroutine>();
+            CardOfferSlot previousSlot = null;
             for (int i = 0; i < slots.Length; i++)
             {
                 if (!slots[i].gameObject.activeSelf) continue;
-                if (revealedAny) yield return new WaitForSecondsRealtime(revealStaggerDelay);
-                yield return slots[i].PlayPopAndFlipReveal();
-                revealedAny = true;
+
+                if (previousSlot != null)
+                    yield return new WaitForSecondsRealtime(previousSlot.TotalRevealDuration / 2f);
+
+                running.Add(StartCoroutine(slots[i].PlayFlipReveal()));
+                previousSlot = slots[i];
             }
+
+            foreach (var routine in running)
+                yield return routine;
 
             SetOfferInteractable(true);
 
