@@ -59,9 +59,10 @@ namespace PolarBreakout
         [Tooltip("How much larger the selected card's RectTransform scales, e.g. 1.08 = 8% bigger " +
                  "- the primary at-a-glance cue for which card is currently selected.")]
         public float selectedScale = 1.08f;
-        [Tooltip("Max tilt in degrees on each axis while this card is the EventSystem's currently " +
+        [Tooltip("Max tilt in degrees on the X axis while this card is the EventSystem's currently " +
                  "selected one - kept small so the front stays almost facing forward, just enough " +
-                 "to catch the light on a holo/foil material. Set to 0 to disable.")]
+                 "to catch the light on a holo/foil material. Also scales the Y/Z wobble before " +
+                 "those get clamped to +/-8 degrees (see Update). Set to 0 to disable.")]
         public float idleWobbleDegrees = 3f;
         [Tooltip("How fast the idle wobble drifts, in cycles per second - low values read as a " +
                  "slow ambient tilt rather than a shake.")]
@@ -81,6 +82,17 @@ namespace PolarBreakout
                  "selected behaviour.")]
         public float selectionSpinDuration = 0.4f;
 
+        [Header("Holographic Shader Tilt")]
+        [Tooltip("Multiplies the simulated tilt fed to the Holographic material's " +
+                 "_Simulated_Tilt property (a UV offset), driven every frame from this card's own " +
+                 "current rotation - the main camera is orthographic, so the shader's real " +
+                 "ViewDirection input never actually changes on its own, and the holo effect would " +
+                 "otherwise never be visible. Tune to taste; 0 disables it (material stays at a " +
+                 "flat 0,0 offset).")]
+        public float simulatedTiltStrength = 0.25f;
+
+        private static readonly int SimulatedTiltId = Shader.PropertyToID("_Simulated_Tilt");
+
         private bool _hasArt;
         private bool _revealed;
         private bool _flipping;
@@ -90,12 +102,39 @@ namespace PolarBreakout
         private bool _spinSuppressedForCurrentSelection;
         private bool _spinShowingBack;
         private float _wobbleSeedX, _wobbleSeedY, _wobbleSeedZ;
+        private Material _rootMaterialInstance;
 
         private void Awake()
         {
             _wobbleSeedX = Random.Range(0f, 100f);
             _wobbleSeedY = Random.Range(0f, 100f);
             _wobbleSeedZ = Random.Range(0f, 100f);
+
+            // Instanced (not shared) so each card's own rotation drives its own tilt - setting
+            // the property straight on the shared material asset would make every card using it
+            // show whichever card last wrote to it.
+            var rootImage = GetComponent<Image>();
+            if (rootImage != null && rootImage.material != null && rootImage.material.HasProperty(SimulatedTiltId))
+            {
+                _rootMaterialInstance = new Material(rootImage.material);
+                rootImage.material = _rootMaterialInstance;
+            }
+        }
+
+        /// <summary>Feeds the card's current rotation to the Holographic material as a simulated
+        /// view-angle offset (see simulatedTiltStrength) - sin/cos of the euler angles rather than
+        /// the raw degrees, so the value is continuous (no jump when Quaternion.eulerAngles wraps
+        /// from 359 back to 0, or during the one-shot 360 spin) and naturally settles to (0,0)
+        /// when the card faces forward. No-op if this card's material doesn't expose the
+        /// property (see Awake).</summary>
+        private void UpdateSimulatedTilt(Quaternion rotation)
+        {
+            if (_rootMaterialInstance == null) return;
+
+            Vector3 euler = rotation.eulerAngles;
+            float tiltX = Mathf.Sin(euler.x * Mathf.Deg2Rad) * simulatedTiltStrength;
+            float tiltY = Mathf.Sin(euler.y * Mathf.Deg2Rad) * simulatedTiltStrength;
+            _rootMaterialInstance.SetVector(SimulatedTiltId, new Vector4(tiltX, tiltY, 0f, 0f));
         }
 
         /// <summary>Call right before the very first, automatic post-reveal selection (see
@@ -172,8 +211,11 @@ namespace PolarBreakout
                         float amount = idleWobbleDegrees * rampT;
                         float t = Time.unscaledTime * idleWobbleSpeed;
                         float x = (Mathf.PerlinNoise(_wobbleSeedX, t) * 2f - 1f) * amount;
-                        float y = (Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount;
-                        float z = (Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount;
+                        // Y (turning left/right) and Z (in-plane roll) are capped at +/-8 degrees
+                        // regardless of idleWobbleDegrees - large values there read as the card
+                        // spinning or tipping over rather than a subtle idle wobble.
+                        float y = Mathf.Clamp((Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount, -8f, 8f);
+                        float z = Mathf.Clamp((Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount, -8f, 8f);
                         rect.localRotation = Quaternion.Euler(x, y, z);
                     }
                     else if (rect.localRotation != Quaternion.identity)
@@ -193,6 +235,8 @@ namespace PolarBreakout
                 if (rect.localRotation != Quaternion.identity)
                     rect.localRotation = Quaternion.Slerp(rect.localRotation, Quaternion.identity, Time.unscaledDeltaTime * selectionTransitionSpeed);
             }
+
+            UpdateSimulatedTilt(rect.localRotation);
         }
 
         public void Initialize(CardSO card, System.Action<CardSO> onChosen)
@@ -284,7 +328,7 @@ namespace PolarBreakout
             _flipping = false;
         }
 
-        private static IEnumerator RotateYOverRealtime(RectTransform rect, float fromY, float toY, float duration)
+        private IEnumerator RotateYOverRealtime(RectTransform rect, float fromY, float toY, float duration)
         {
             float elapsed = 0f;
             duration = Mathf.Max(0.0001f, duration);
@@ -293,9 +337,11 @@ namespace PolarBreakout
                 elapsed += Time.unscaledDeltaTime;
                 float y = Mathf.Lerp(fromY, toY, Mathf.Clamp01(elapsed / duration));
                 rect.localRotation = Quaternion.Euler(0f, y, 0f);
+                UpdateSimulatedTilt(rect.localRotation);
                 yield return null;
             }
             rect.localRotation = Quaternion.Euler(0f, toY, 0f);
+            UpdateSimulatedTilt(rect.localRotation);
         }
 
         /// <summary>Grey/blue/purple/gold - deliberately avoids green entirely, since the

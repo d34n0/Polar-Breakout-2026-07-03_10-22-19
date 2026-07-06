@@ -2606,7 +2606,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 3cfc25603d6ed074789ea0a681820040, type: 2}
+  - {fileID: 2100000, guid: cd35086b21c24884db1791254f258e8a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2647,7 +2647,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 445592112}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0.0027849614, y: 0.1679502, z: -0.016344216, w: 0.9856561}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2656,7 +2656,7 @@ Transform:
   - {fileID: 393132305}
   - {fileID: 354925361}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 19.34, z: -1.9}
 --- !u!1 &452747080
 GameObject:
   m_ObjectHideFlags: 0
@@ -7020,7 +7020,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 2100000, guid: 3cfc25603d6ed074789ea0a681820040, type: 2}
+  m_Material: {fileID: 2100000, guid: cd35086b21c24884db1791254f258e8a, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -7075,6 +7075,7 @@ MonoBehaviour:
   wobbleRampInDuration: 0.3
   selectionTransitionSpeed: 8
   selectionSpinDuration: 0.4
+  simulatedTiltStrength: 0.25
 --- !u!1 &1426727416
 GameObject:
   m_ObjectHideFlags: 0
@@ -13143,7 +13144,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 2100000, guid: 3cfc25603d6ed074789ea0a681820040, type: 2}
+  m_Material: {fileID: 2100000, guid: cd35086b21c24884db1791254f258e8a, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -13198,6 +13199,7 @@ MonoBehaviour:
   wobbleRampInDuration: 0.3
   selectionTransitionSpeed: 8
   selectionSpinDuration: 0.4
+  simulatedTiltStrength: 0.25
 --- !u!1 &1636625391
 GameObject:
   m_ObjectHideFlags: 0
@@ -13435,6 +13437,7 @@ MonoBehaviour:
   wobbleRampInDuration: 0.3
   selectionTransitionSpeed: 8
   selectionSpinDuration: 0.4
+  simulatedTiltStrength: 0.25
 --- !u!114 &1659539397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13491,7 +13494,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 2100000, guid: 3cfc25603d6ed074789ea0a681820040, type: 2}
+  m_Material: {fileID: 2100000, guid: cd35086b21c24884db1791254f258e8a, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
