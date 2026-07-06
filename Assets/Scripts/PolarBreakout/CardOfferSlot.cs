@@ -15,6 +15,9 @@ namespace PolarBreakout
         public TextMeshProUGUI rarityText;
         public TextMeshProUGUI nameText;
         public TextMeshProUGUI descriptionText;
+        [Tooltip("Optional. Shows CardSO.artSprite when set - hidden entirely for cards with no " +
+                 "art yet, rather than showing an empty white box.")]
+        public Image artImage;
         public Button button;
 
         public void Initialize(CardSO card, System.Action<CardSO> onChosen)
@@ -23,6 +26,17 @@ namespace PolarBreakout
             rarityText.color = RarityColor(card.rarity);
             nameText.text = card.displayName;
             descriptionText.text = card.description;
+
+            if (artImage != null)
+            {
+                bool hasArt = card.artSprite != null;
+                artImage.gameObject.SetActive(hasArt);
+                if (hasArt)
+                {
+                    artImage.sprite = card.artSprite;
+                    artImage.material = card.artMaterialOverride;
+                }
+            }
 
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => onChosen(card));

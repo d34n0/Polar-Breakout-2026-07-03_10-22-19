@@ -34,7 +34,22 @@ namespace PolarBreakout
                  "shot (see ModifierType.ExtraBulletsPerBarrel) - extras fan out symmetrically " +
                  "around the barrel's own aim direction (averaged/centered on it) rather than " +
                  "all firing dead ahead.")]
-        public float bulletSpreadDegrees = 5f;
+        public float bulletSpreadDegrees = 10f;
+
+        [Header("Laser Beam (Laser Cannon legendary)")]
+        [Tooltip("Full width (world units) of the beam each turret fires while the Laser Cannon " +
+                 "card is active, before any Split the Atom widening below.")]
+        public float laserBeamBaseWidth = 0.3f;
+        [Tooltip("Extra width (world units) added per stack of ExtraBulletsPerBarrel (i.e. per " +
+                 "Split the Atom card also equipped) - the combined firepower widens the single " +
+                 "beam instead of also fanning out separate bullets.")]
+        public float laserBeamWidthPerExtraBullet = 0.25f;
+        [Tooltip("How long each beam stays active (visible and damaging) per shot, seconds.")]
+        public float laserBeamDuration = 0.15f;
+        [Tooltip("Optional. Overrides the beam's default procedural material/color - the hook " +
+                 "for a future \"laser skin\" to give it a custom shader/texture. Leave unset to " +
+                 "use the plain default beam color.")]
+        public Material laserBeamMaterial;
 
         [Header("Turret Skin")]
         [Tooltip("Selectable turret sprites - the currently chosen one (CosmeticsManager." +
@@ -45,6 +60,13 @@ namespace PolarBreakout
 
         [Header("Autopilot")]
         public float autopilotDuration = 5f;
+
+        [Header("Twin Paddle")]
+        [Tooltip("Optional. A second PaddleController instance, pre-built in the scene (inactive " +
+                 "by default) with its mirrorSource already pointed at this paddle - activated/" +
+                 "deactivated automatically to match ModifierType.TwinPaddleEnabled (see " +
+                 "RefreshTwinPaddle). Leave unset to omit the mechanic entirely.")]
+        public PaddleController twinPaddle;
 
         [Header("Run Modifiers")]
         [Tooltip("Optional. When set, cannon ammo/bullet speed/turret spacing/autopilot duration " +
@@ -69,20 +91,31 @@ namespace PolarBreakout
         private bool _firePressed;
         private GameObject _cannonLeft;
         private GameObject _cannonRight;
+        private GameObject _twinCannonLeft;
+        private GameObject _twinCannonRight;
         private Coroutine _cannonRevealCoroutine;
         private InputAction _fireAction;
 
         /// <summary>turretSpacing plus any TurretSpacingBonus from acquired Cards - both the
         /// barrels' own built position and each shot's spawn/travel offset read this instead of
-        /// the raw field, so a "Twin Cannons" card widens the spread live.</summary>
+        /// the raw field, so a "Split the Atom" card widens the spread live.</summary>
         private float EffectiveTurretSpacing => turretSpacing
             + (runModifiers != null ? runModifiers.GetBonus(ModifierType.TurretSpacingBonus) : 0f);
 
         private void Awake()
         {
             _paddle = GetComponent<PaddleController>();
-            _cannonLeft = BuildCannonVisual(-EffectiveTurretSpacing / 2f, "Left");
-            _cannonRight = BuildCannonVisual(EffectiveTurretSpacing / 2f, "Right");
+            _cannonLeft = BuildCannonVisual(_paddle, -EffectiveTurretSpacing / 2f, "Left");
+            _cannonRight = BuildCannonVisual(_paddle, EffectiveTurretSpacing / 2f, "Right");
+
+            // Built (hidden) regardless of whether the Quantum Mirror card is active yet, same as
+            // the main barrels above - RefreshTwinPaddle/SetCannonVisualsActive toggle them, not
+            // their construction.
+            if (twinPaddle != null)
+            {
+                _twinCannonLeft = BuildCannonVisual(twinPaddle, -EffectiveTurretSpacing / 2f, "TwinLeft");
+                _twinCannonRight = BuildCannonVisual(twinPaddle, EffectiveTurretSpacing / 2f, "TwinRight");
+            }
 
             // Reuses the same actions asset PaddleController already holds (same GameObject) -
             // leave unset, as every existing isolated test does, to fall back to the original
@@ -96,7 +129,12 @@ namespace PolarBreakout
 
             RefreshTurretSkin();
             CosmeticsManager.OnTurretSkinChanged += RefreshTurretSkin;
-            if (runModifiers != null) runModifiers.OnModifiersChanged += RefreshTurretSpacing;
+            if (runModifiers != null)
+            {
+                runModifiers.OnModifiersChanged += RefreshTurretSpacing;
+                runModifiers.OnModifiersChanged += RefreshTwinPaddle;
+            }
+            RefreshTwinPaddle();
         }
 
         private void OnFirePerformed(InputAction.CallbackContext context)
@@ -108,22 +146,70 @@ namespace PolarBreakout
         {
             if (_fireAction != null) _fireAction.performed -= OnFirePerformed;
             CosmeticsManager.OnTurretSkinChanged -= RefreshTurretSkin;
-            if (runModifiers != null) runModifiers.OnModifiersChanged -= RefreshTurretSpacing;
+            if (runModifiers != null)
+            {
+                runModifiers.OnModifiersChanged -= RefreshTurretSpacing;
+                runModifiers.OnModifiersChanged -= RefreshTwinPaddle;
+            }
         }
 
-        /// <summary>Repositions both already-built barrels to the current EffectiveTurretSpacing
-        /// - called whenever a Card changes TurretSpacingBonus, since BuildCannonVisual only
-        /// ever positions them once, at Awake.</summary>
+        /// <summary>Repositions every already-built barrel (main and twin) to the current
+        /// EffectiveTurretSpacing - called whenever a Card changes TurretSpacingBonus, since
+        /// BuildCannonVisual only ever positions them once, at Awake.</summary>
         private void RefreshTurretSpacing()
         {
             float half = EffectiveTurretSpacing / 2f;
-            var leftPos = _cannonLeft.transform.localPosition;
-            leftPos.y = -half;
-            _cannonLeft.transform.localPosition = leftPos;
+            RepositionCannon(_cannonLeft, -half);
+            RepositionCannon(_cannonRight, half);
+            RepositionCannon(_twinCannonLeft, -half);
+            RepositionCannon(_twinCannonRight, half);
+        }
 
-            var rightPos = _cannonRight.transform.localPosition;
-            rightPos.y = half;
-            _cannonRight.transform.localPosition = rightPos;
+        private static void RepositionCannon(GameObject cannon, float lateralOffset)
+        {
+            if (cannon == null) return;
+            var pos = cannon.transform.localPosition;
+            pos.y = lateralOffset;
+            cannon.transform.localPosition = pos;
+        }
+
+        /// <summary>Activates/deactivates twinPaddle to match ModifierType.TwinPaddleEnabled -
+        /// called once at Awake (so a Quantum Mirror card already acquired earlier this run - e.g.
+        /// on a fresh stage's rebuilt paddle - takes effect immediately) and again every time a
+        /// Card is added. Snaps the twin to its mirrored angle on every refresh (not just the
+        /// activating one) rather than tracking a separate "just turned on" flag - a snap while
+        /// already active and roughly in sync is an imperceptible no-op, so it isn't worth the
+        /// extra state.</summary>
+        private void RefreshTwinPaddle()
+        {
+            if (twinPaddle == null) return;
+
+            bool twinPaddleEnabled = runModifiers != null && runModifiers.GetBonus(ModifierType.TwinPaddleEnabled) > 0f;
+            twinPaddle.gameObject.SetActive(twinPaddleEnabled);
+            if (twinPaddleEnabled)
+            {
+                twinPaddle.SnapToMirrorAngle();
+                SyncTwinCannonVisuals();
+            }
+        }
+
+        /// <summary>Matches the twin cannons' active/grown state to whatever the main cannons are
+        /// currently showing - needed because the main cannons might already be revealed (ammo
+        /// already in hand) by the time the Quantum Mirror card activates mid-run, in which case the
+        /// twin should appear already-grown immediately rather than staying hidden until the next
+        /// Cannon pickup.</summary>
+        private void SyncTwinCannonVisuals()
+        {
+            if (_twinCannonLeft == null || _twinCannonRight == null) return;
+
+            bool cannonsVisible = _cannonLeft.activeSelf;
+            _twinCannonLeft.SetActive(cannonsVisible);
+            _twinCannonRight.SetActive(cannonsVisible);
+            if (cannonsVisible)
+            {
+                _twinCannonLeft.transform.localScale = _cannonLeft.transform.localScale;
+                _twinCannonRight.transform.localScale = _cannonRight.transform.localScale;
+            }
         }
 
         private void Update()
@@ -147,8 +233,12 @@ namespace PolarBreakout
                 && ballManager.primaryBall.State == BallState.Launched;
             if (firePressed && _cannonAmmo > 0 && ballInPlay)
             {
+                // Laser Cannon spends the whole pickup on a single shot - a Cannon capsule
+                // should only ever fire one beam, regardless of how much ammo bonus other
+                // acquired cards granted, rather than letting it be re-fired repeatedly.
+                bool laserEnabled = runModifiers != null && runModifiers.GetBonus(ModifierType.LaserBeamEnabled) > 0f;
                 FireCannon();
-                _cannonAmmo--;
+                _cannonAmmo = laserEnabled ? 0 : _cannonAmmo - 1;
                 if (_cannonAmmo <= 0) SetCannonVisualsActive(false);
             }
         }
@@ -185,10 +275,13 @@ namespace PolarBreakout
 
             foreach (var bullet in Object.FindObjectsByType<Bullet>(FindObjectsSortMode.None))
                 Destroy(bullet.gameObject);
+            foreach (var beam in Object.FindObjectsByType<LaserBeam>(FindObjectsSortMode.None))
+                Destroy(beam.gameObject);
         }
 
-        /// <summary>Instantly hides both barrels (used when ammo runs out or the ability is
-        /// reset on death) - the grow-out reveal only plays on collection, via RevealCannons.</summary>
+        /// <summary>Instantly hides every barrel, main and twin alike (used when ammo runs out
+        /// or the ability is reset on death) - the grow-out reveal only plays on collection, via
+        /// RevealCannons.</summary>
         private void SetCannonVisualsActive(bool active)
         {
             if (_cannonRevealCoroutine != null)
@@ -199,12 +292,16 @@ namespace PolarBreakout
 
             _cannonLeft.SetActive(active);
             _cannonRight.SetActive(active);
+            if (_twinCannonLeft != null) _twinCannonLeft.SetActive(active);
+            if (_twinCannonRight != null) _twinCannonRight.SetActive(active);
             if (!active)
             {
                 // Reset to zero-grown so the next pickup's reveal starts from scratch instead of
                 // popping to whatever scale was left over from an interrupted animation.
                 _cannonLeft.transform.localScale = new Vector3(0f, 1f, 1f);
                 _cannonRight.transform.localScale = new Vector3(0f, 1f, 1f);
+                if (_twinCannonLeft != null) _twinCannonLeft.transform.localScale = new Vector3(0f, 1f, 1f);
+                if (_twinCannonRight != null) _twinCannonRight.transform.localScale = new Vector3(0f, 1f, 1f);
             }
         }
 
@@ -219,6 +316,8 @@ namespace PolarBreakout
             RefreshTurretSkin();
             _cannonLeft.SetActive(true);
             _cannonRight.SetActive(true);
+            if (_twinCannonLeft != null) _twinCannonLeft.SetActive(true);
+            if (_twinCannonRight != null) _twinCannonRight.SetActive(true);
 
             float elapsed = 0f;
             float duration = Mathf.Max(0.0001f, cannonRevealDuration);
@@ -236,10 +335,12 @@ namespace PolarBreakout
         {
             _cannonLeft.transform.localScale = new Vector3(t, 1f, 1f);
             _cannonRight.transform.localScale = new Vector3(t, 1f, 1f);
+            if (_twinCannonLeft != null) _twinCannonLeft.transform.localScale = new Vector3(t, 1f, 1f);
+            if (_twinCannonRight != null) _twinCannonRight.transform.localScale = new Vector3(t, 1f, 1f);
         }
 
         /// <summary>Applies the currently selected TurretSkin's sprite (and optional material
-        /// override) to both barrels.</summary>
+        /// override) to every barrel, main and twin alike.</summary>
         private void RefreshTurretSkin()
         {
             var skin = GetCurrentTurretSkin();
@@ -247,6 +348,8 @@ namespace PolarBreakout
 
             ApplyTurretSkin(_cannonLeft, skin);
             ApplyTurretSkin(_cannonRight, skin);
+            if (_twinCannonLeft != null) ApplyTurretSkin(_twinCannonLeft, skin);
+            if (_twinCannonRight != null) ApplyTurretSkin(_twinCannonRight, skin);
         }
 
         /// <summary>The currently equipped TurretSkin asset (not just its index) - read by
@@ -278,27 +381,50 @@ namespace PolarBreakout
                 _paddle.AutopilotOverrideAngleDegrees = null;
         }
 
-        /// <summary>Fires both cannon barrels at once - one bullet per barrel, both flying
-        /// straight out parallel to each other (matching the barrels' own visual orientation),
-        /// just spawned from each barrel's own sideways-offset position rather than converging
-        /// from the paddle's center.</summary>
+        /// <summary>Fires both of the main paddle's cannon barrels at once - one bullet per
+        /// barrel, both flying straight out parallel to each other (matching the barrels' own
+        /// visual orientation), just spawned from each barrel's own sideways-offset position
+        /// rather than converging from the paddle's center. Also fires the twin paddle's own pair
+        /// (see Card_QuantumMirror) when it's active, from the same single press and the same
+        /// shared ammo pool - Quantum Mirror doubles firepower, not shot cost.</summary>
         private void FireCannon()
         {
             float half = EffectiveTurretSpacing / 2f;
-            FireBarrel(-half);
-            FireBarrel(half);
+            FireBarrel(_paddle, -half);
+            FireBarrel(_paddle, half);
+
+            if (twinPaddle != null && twinPaddle.gameObject.activeSelf)
+            {
+                FireBarrel(twinPaddle, -half);
+                FireBarrel(twinPaddle, half);
+            }
         }
 
-        /// <summary>Fires one barrel's shot - normally a single bullet, but a
-        /// ModifierType.ExtraBulletsPerBarrel card fans out extra bullets around the barrel's own
-        /// aim direction without costing any extra ammo (a shot is still a shot), and a
-        /// ModifierType.LaserBeamEnabled card turns every bullet fired into a piercing laser -
-        /// the two stack, so a fully-decked cannon can fan out several piercing beams at once.</summary>
-        private void FireBarrel(float lateralOffset)
+        /// <summary>Fires one barrel's shot from the given paddle (the main one, or the twin -
+        /// see FireCannon). Normally a single bullet, but a ModifierType.ExtraBulletsPerBarrel
+        /// card (Split the Atom) fans out extra bullets around the barrel's own aim direction
+        /// without costing any extra ammo (a shot is still a shot). A ModifierType.LaserBeamEnabled
+        /// card (Laser Cannon) replaces bullets entirely with one continuous beam per barrel
+        /// instead - Split the Atom stacks widen that single beam rather than also fanning out
+        /// separate bullets. A ModifierType.BulletRicochetBonus card (Ricochet Rounds) gives each
+        /// fired bullet that many extra bounces off a brick instead of being destroyed on hit -
+        /// ignored while the Laser Cannon is active, since there are no bullets to bounce.</summary>
+        private void FireBarrel(PaddleController paddle, float lateralOffset)
         {
-            float baseFireAngleDegrees = _paddle.CurrentAngleDegrees;
-            float spawnRadius = _paddle.settings.paddleOrbitRadius + _paddle.radialThickness / 2f + 0.3f;
-            Vector2 spawnPos = transform.TransformPoint(new Vector3(spawnRadius, lateralOffset, 0f));
+            float fireAngleDegrees = paddle.CurrentAngleDegrees;
+            float spawnRadius = paddle.settings.paddleOrbitRadius + paddle.radialThickness / 2f + 0.3f;
+            Vector2 spawnPos = paddle.transform.TransformPoint(new Vector3(spawnRadius, lateralOffset, 0f));
+
+            bool laserEnabled = runModifiers != null && runModifiers.GetBonus(ModifierType.LaserBeamEnabled) > 0f;
+            int extraBullets = runModifiers != null ? Mathf.RoundToInt(runModifiers.GetBonus(ModifierType.ExtraBulletsPerBarrel)) : 0;
+
+            if (laserEnabled)
+            {
+                FireLaserBeam(paddle, spawnPos, fireAngleDegrees, extraBullets);
+                return;
+            }
+
+            int ricochets = runModifiers != null ? Mathf.RoundToInt(runModifiers.GetBonus(ModifierType.BulletRicochetBonus)) : 0;
 
             // The equipped turret's own BulletSkin (if any) overrides the shared defaults below,
             // so each turret look can fire its own kind of bullet. The run-modifier multiplier
@@ -309,18 +435,15 @@ namespace PolarBreakout
             float bulletSpeedMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.BulletSpeedMultiplier) : 1f;
             float speed = bulletSpeed * bulletSpeedMultiplier * (bulletSkin != null ? bulletSkin.speedMultiplier : 1f);
 
-            bool laserEnabled = runModifiers != null && runModifiers.GetBonus(ModifierType.LaserBeamEnabled) > 0f;
-            int extraBullets = runModifiers != null ? Mathf.RoundToInt(runModifiers.GetBonus(ModifierType.ExtraBulletsPerBarrel)) : 0;
             int bulletCount = Mathf.Max(1, 1 + extraBullets);
-
             for (int i = 0; i < bulletCount; i++)
             {
                 float offsetDegrees = bulletCount > 1 ? (i - (bulletCount - 1) / 2f) * bulletSpreadDegrees : 0f;
-                float fireAngleDegrees = baseFireAngleDegrees + offsetDegrees;
+                float bulletAngleDegrees = fireAngleDegrees + offsetDegrees;
 
                 var bulletObject = new GameObject("Bullet");
                 var bullet = bulletObject.AddComponent<Bullet>();
-                bullet.Launch(spawnPos, fireAngleDegrees, speed, _paddle.settings, material, color, laserEnabled);
+                bullet.Launch(spawnPos, bulletAngleDegrees, speed, paddle.settings, material, color, ricochets: ricochets);
 
                 // Bullets shouldn't physically collide with any ball in play (primary or
                 // multiball clones) - without this, the physics solver would bounce the bullet
@@ -335,25 +458,41 @@ namespace PolarBreakout
             }
         }
 
-        /// <summary>Builds one cannon barrel as a sprite sticking straight outward from the
-        /// paddle's outer edge, offset sideways from center by lateralOffset (world units) -
-        /// parented under the paddle (built in the same local, angle-0-centered space as the
-        /// paddle's own mesh) so it rotates along with the paddle for free via the parent
-        /// transform. Both barrels share the same (identity) local rotation so they point
-        /// straight out parallel to each other, rather than each fanning outward at its own
-        /// angle. Purely cosmetic (no collider), so - unlike the paddle itself - it's a plain
-        /// SpriteRenderer rather than a procedural mesh, letting each turret skin be actual
+        /// <summary>Fires one continuous beam from a single barrel - the whole beam appears
+        /// instantly spanning out to the arena's outer wall (see LaserBeam), rather than a bullet
+        /// traveling there. Width grows with extraBullets (i.e. how many Split the Atom cards are
+        /// also equipped), so a combined build fires one dramatically wider beam instead of
+        /// multiple separate ones.</summary>
+        private void FireLaserBeam(PaddleController paddle, Vector2 spawnPos, float fireAngleDegrees, int extraBullets)
+        {
+            float width = laserBeamBaseWidth + extraBullets * laserBeamWidthPerExtraBullet;
+            float length = Mathf.Max(1f, paddle.settings.outerWallRadius - spawnPos.magnitude);
+
+            var beamObject = new GameObject("LaserBeam");
+            var beam = beamObject.AddComponent<LaserBeam>();
+            beam.duration = laserBeamDuration;
+            beam.Initialize(spawnPos, fireAngleDegrees, width, length, laserBeamMaterial);
+        }
+
+        /// <summary>Builds one cannon barrel as a sprite sticking straight outward from the given
+        /// paddle's outer edge (the main paddle, or the twin - see FireCannon), offset sideways
+        /// from center by lateralOffset (world units) - parented under that paddle (built in the
+        /// same local, angle-0-centered space as its own mesh) so it rotates along with it for
+        /// free via the parent transform. Both barrels share the same (identity) local rotation
+        /// so they point straight out parallel to each other, rather than each fanning outward at
+        /// its own angle. Purely cosmetic (no collider), so - unlike the paddle itself - it's a
+        /// plain SpriteRenderer rather than a procedural mesh, letting each turret skin be actual
         /// hand-drawn artwork. A small negative local Z nudges it in front of the paddle's own
         /// MeshRenderer, since Unity doesn't otherwise guarantee draw order between a
         /// SpriteRenderer and a MeshRenderer at the same depth. Starts hidden; CollectPowerUp/
         /// ResetAbilities toggle it via SetCannonVisualsActive. The sprite itself is assigned by
         /// RefreshTurretSkin, not here.</summary>
-        private GameObject BuildCannonVisual(float lateralOffset, string label)
+        private static GameObject BuildCannonVisual(PaddleController paddle, float lateralOffset, string label)
         {
             var go = new GameObject($"CannonBarrel_{label}");
-            go.transform.SetParent(transform, worldPositionStays: false);
+            go.transform.SetParent(paddle.transform, worldPositionStays: false);
 
-            float radius = _paddle.settings.paddleOrbitRadius + _paddle.radialThickness / 2f;
+            float radius = paddle.settings.paddleOrbitRadius + paddle.radialThickness / 2f;
             go.transform.localPosition = new Vector3(radius, lateralOffset, -0.01f);
             go.transform.localRotation = Quaternion.identity;
 

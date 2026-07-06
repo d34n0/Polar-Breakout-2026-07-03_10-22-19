@@ -153,6 +153,25 @@ namespace PolarBreakout
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
+        /// <summary>Called at the start of every new round/stage (see
+        /// LevelManager.AdvanceToNextStage) to guarantee a clean, deterministic start regardless
+        /// of whatever state the ball(s) were left in: any multiball clones from the previous
+        /// stage are destroyed and the primary ball is forced back to Docked. This also discards
+        /// any stray launch request - e.g. Unity's Input System re-checks already-actuated
+        /// controls the moment an action is re-enabled (see CardOfferController.ShowOffer), which
+        /// can fire Performed immediately if Fire happens to still be held when the card offer
+        /// closes, otherwise launching the ball before the player has actually pressed anything
+        /// for the new round.</summary>
+        public void ResetForNewRound()
+        {
+            foreach (var clone in _clones)
+                if (clone != null) Destroy(clone.gameObject);
+            _clones.Clear();
+
+            primaryBall.gameObject.SetActive(true);
+            primaryBall.Redock();
+        }
+
         /// <summary>Angle (degrees) of whichever active, launched ball is angularly closest
         /// to <paramref name="referenceAngle"/> - used by the Autopilot ability to decide
         /// which ball to track when multiball is in play. Falls back to

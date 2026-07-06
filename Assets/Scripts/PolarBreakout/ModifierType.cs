@@ -34,5 +34,19 @@ namespace PolarBreakout
         ScoreMultiplier,
         CapsuleBonusScoreMultiplier,
         ExtraLifeThresholdMultiplier,
+
+        /// <summary>Additive - appended here rather than alongside the other additive entries
+        /// above so every existing card asset's serialized `type` integer (a plain enum index)
+        /// stays pointed at the same entry. How many extra times a bullet ricochets off a brick
+        /// instead of being destroyed on hit (see Bullet.Launch's ricochets parameter) - the
+        /// first Ricochet Rounds card grants 1 (one bounce before the bullet is spent), and each
+        /// further copy stacks an additional bounce.</summary>
+        BulletRicochetBonus,
+
+        /// <summary>Not a count - any nonzero total means a second paddle (see
+        /// PaddleAbilities.twinPaddle/RefreshTwinPaddle) is active, mirroring the main paddle's
+        /// angle 180 degrees opposite. Same "big value flips a threshold-based bool" convention
+        /// as LaserBeamEnabled/PhaseThresholdReduction.</summary>
+        TwinPaddleEnabled,
     }
 }

@@ -77,6 +77,14 @@ namespace PolarBreakout
         /// </summary>
         public float? AutopilotOverrideAngleDegrees;
 
+        [Header("Twin Paddle")]
+        [Tooltip("Optional. When set, this paddle ignores stick input/autopilot entirely and " +
+                 "instead mirrors mirrorSource's angle, offset 180 degrees opposite - used for " +
+                 "the Quantum Mirror card's second paddle instance (see " +
+                 "PaddleAbilities.RefreshTwinPaddle). Leave unset for a normal, independently " +
+                 "player-controlled paddle.")]
+        public PaddleController mirrorSource;
+
         private float _targetAngleDegrees;
         private float _previousAngleDegrees;
         private Rigidbody2D _rb;
@@ -150,7 +158,11 @@ namespace PolarBreakout
 
         private void FixedUpdate()
         {
-            if (AutopilotOverrideAngleDegrees.HasValue)
+            if (mirrorSource != null)
+            {
+                _targetAngleDegrees = Mathf.Repeat(mirrorSource.CurrentAngleDegrees + 180f, 360f);
+            }
+            else if (AutopilotOverrideAngleDegrees.HasValue)
             {
                 _targetAngleDegrees = AutopilotOverrideAngleDegrees.Value;
             }
@@ -178,6 +190,21 @@ namespace PolarBreakout
             AngularVelocityDegreesPerSecond = Mathf.DeltaAngle(_previousAngleDegrees, CurrentAngleDegrees) / Time.fixedDeltaTime;
             _previousAngleDegrees = CurrentAngleDegrees;
 
+            _rb.MoveRotation(CurrentAngleDegrees);
+        }
+
+        /// <summary>Immediately snaps to mirrorSource's angle (offset 180 degrees), bypassing
+        /// the normal turn-speed easing - called when a Quantum Mirror card is (re-)activated, so
+        /// the second paddle appears already correctly positioned instead of visibly sweeping
+        /// there from wherever it happened to be last (usually angle 0, from before it was ever
+        /// active). No-op if mirrorSource isn't set.</summary>
+        public void SnapToMirrorAngle()
+        {
+            if (mirrorSource == null) return;
+
+            CurrentAngleDegrees = Mathf.Repeat(mirrorSource.CurrentAngleDegrees + 180f, 360f);
+            _targetAngleDegrees = CurrentAngleDegrees;
+            _previousAngleDegrees = CurrentAngleDegrees;
             _rb.MoveRotation(CurrentAngleDegrees);
         }
     }

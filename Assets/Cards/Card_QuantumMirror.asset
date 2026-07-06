@@ -10,13 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 395b2129749642a41b7aef697ce7a777, type: 3}
-  m_Name: Card_LaserCannon
+  m_Name: Card_QuantumMirror
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.CardSO
-  displayName: Laser Cannon
-  description: Each turret fires one continuous beam that instantly cuts through
-    every brick in its path, instead of firing bullets. Beam width increases with
-    how many Split the Atom cards you also have.
+  displayName: Quantum Mirror
+  description: Deploys a second paddle directly opposite yours, mirroring its every
+    move.
   rarity: 3
   effects:
-  - type: 6
+  - type: 15
     value: 1
+  artSprite: {fileID: 0}
+  artMaterialOverride: {fileID: 0}

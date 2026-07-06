@@ -6,7 +6,11 @@ namespace PolarBreakout
     /// Cannon-ability projectile. Flies outward in a straight radial line from where it was
     /// fired, destroys the first brick it touches, and despawns if it reaches the outer wall
     /// without hitting anything. A "pierce" (laser) bullet instead flies straight through every
-    /// brick it touches rather than stopping at the first one - see Launch's pierce parameter.
+    /// brick it touches rather than stopping at the first one - see Launch's pierce parameter. A
+    /// bullet with ricochets remaining (see Launch's ricochets parameter and Ricochet Rounds)
+    /// instead bounces off the radial direction at its point of impact - the same "reflect off
+    /// an outward-facing surface" math BallController uses for the outer wall - continuing on to
+    /// potentially hit further bricks, until its ricochets run out.
     ///
     /// The collider is always a trigger, never a physical one - with lots of bullets in flight
     /// at once, a physical collider let bullets collide with each other (and occasionally wedge
@@ -34,6 +38,7 @@ namespace PolarBreakout
         private PolarGridSettings _settings;
         private Camera _arenaCamera;
         private bool _pierce;
+        private int _ricochetsRemaining;
 
         private void Awake()
         {
@@ -107,11 +112,16 @@ namespace PolarBreakout
         /// <param name="pierce">When true, this becomes a laser bullet: it flies straight through
         /// every brick it touches (still damaging each one via Brick.Hit) instead of stopping at
         /// the first, and gets a long trailing visual streak.</param>
+        /// <param name="ricochets">How many times this bullet bounces off a brick instead of
+        /// being destroyed on hit (see Ricochet), before finally being destroyed on the next hit
+        /// after they run out. Ignored while pierce is true, since a piercing bullet is never
+        /// destroyed on a brick hit in the first place.</param>
         public void Launch(Vector2 origin, float angleDegrees, float speed, PolarGridSettings settings,
-            Material materialOverride = null, Color? colorOverride = null, bool pierce = false)
+            Material materialOverride = null, Color? colorOverride = null, bool pierce = false, int ricochets = 0)
         {
             _settings = settings;
             _pierce = pierce;
+            _ricochetsRemaining = ricochets;
             _rb.position = origin;
             _rb.rotation = angleDegrees;
             transform.rotation = Quaternion.Euler(0f, 0f, angleDegrees);
@@ -154,14 +164,41 @@ namespace PolarBreakout
 
         /// <summary>A plain bullet destroys itself after damaging the first brick it touches; a
         /// piercing one (see Launch's pierce parameter) doesn't - it keeps flying straight
-        /// through every brick in its path instead of stopping at the first.</summary>
+        /// through every brick in its path instead of stopping at the first. A bullet with
+        /// ricochets remaining bounces instead of being destroyed - see Ricochet.</summary>
         private void OnTriggerEnter2D(Collider2D other)
         {
             var brick = other.GetComponent<Brick>();
             if (brick == null) return;
 
             brick.Hit(gameObject);
-            if (!_pierce) Destroy(gameObject);
+            if (_pierce) return;
+
+            if (_ricochetsRemaining > 0)
+            {
+                _ricochetsRemaining--;
+                Ricochet();
+                return;
+            }
+
+            Destroy(gameObject);
+        }
+
+        /// <summary>Reflects the bullet's velocity off the radial direction at its current
+        /// position - the same "bounce off an outward-facing surface" math BallController uses
+        /// for the outer wall (see BounceOffCircularWall) - so a ricocheting bullet bounces back
+        /// through the arena rather than just stopping dead at the first brick it hits. Updates
+        /// the visual's rotation to match, since the bolt mesh is drawn along local +X.</summary>
+        private void Ricochet()
+        {
+            Vector2 normal = _rb.position.normalized;
+            Vector2 velocity = _rb.linearVelocity;
+            velocity -= 2f * Vector2.Dot(velocity, normal) * normal;
+            _rb.linearVelocity = velocity;
+
+            float angleDegrees = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+            _rb.rotation = angleDegrees;
+            transform.rotation = Quaternion.Euler(0f, 0f, angleDegrees);
         }
     }
 }
