@@ -38,7 +38,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _CardTex:
-        m_Texture: {fileID: 2800000, guid: 7d0e19665b5a4b84d8210b7734302bc9, type: 3}
+        m_Texture: {fileID: 2800000, guid: deca094162b966c40ab331473ae2e6f2, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Foil_Pattern:
@@ -50,7 +50,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Foil_Pattern_3:
-        m_Texture: {fileID: 2800000, guid: b0483438afb0e054aad3219e90117b90, type: 3}
+        m_Texture: {fileID: 2800000, guid: 13ec1035ccb77584ca97bc45bd8454b5, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _HoloTex:
@@ -69,6 +69,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: f73eb5c5548c67d4397b5934ce9a76ad, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Mask:
+        m_Texture: {fileID: 2800000, guid: 73881dbebdceef94e8cd74f854f9ae96, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -83,7 +87,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Bright_Power: 2
+    - _Bright_Power: 1
     - _Colour_Density: 2
     - _QueueControl: 0
     - _QueueOffset: 0
