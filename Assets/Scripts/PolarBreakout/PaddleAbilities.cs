@@ -265,7 +265,10 @@ namespace PolarBreakout
 
         /// <summary>Called by BallManager the instant every ball has been lost - abilities
         /// don't survive losing the ball, and any bullets already in flight are destroyed
-        /// immediately rather than being left to finish their flight.</summary>
+        /// immediately rather than being left to finish their flight. Also clears any
+        /// still-falling power-up capsule (e.g. an Autopilot drop that hadn't been caught yet) -
+        /// otherwise catching it right after respawning would silently re-grant the very ability
+        /// that's supposed to have just been reset, reading as "it persisted through death."</summary>
         public void ResetAbilities()
         {
             _cannonAmmo = 0;
@@ -277,6 +280,8 @@ namespace PolarBreakout
                 Destroy(bullet.gameObject);
             foreach (var beam in Object.FindObjectsByType<LaserBeam>(FindObjectsSortMode.None))
                 Destroy(beam.gameObject);
+            foreach (var capsule in Object.FindObjectsByType<PowerUpCapsule>(FindObjectsSortMode.None))
+                Destroy(capsule.gameObject);
         }
 
         /// <summary>Instantly hides every barrel, main and twin alike (used when ammo runs out

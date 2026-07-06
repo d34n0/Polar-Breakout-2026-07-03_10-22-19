@@ -56,6 +56,15 @@ namespace PolarBreakout.Tests
             InputSystem.QueueStateEvent(_gamepad, state);
         }
 
+        // Brick.Initialize now takes a pre-built shared mesh/outline (BrickGridManager normally
+        // builds these once per level) - tests that construct a Brick directly need to build the
+        // same pair themselves.
+        private static (Mesh mesh, Vector2[] outline) BuildHexGeometry(PolarGridSettings settings)
+        {
+            float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
+            return (PolarMeshUtility.BuildHexMesh(hexRadius), PolarMeshUtility.BuildHexOutlinePoints(hexRadius));
+        }
+
         // BallController latches wasPressedThisFrame in Update() and consumes it in the
         // following FixedUpdate, so a held press just needs a couple of frames to land.
         private IEnumerator PressButtonSouthUntilLaunched(int maxIterations = 10)
@@ -194,13 +203,8 @@ namespace PolarBreakout.Tests
         [UnityTest]
         public IEnumerator BallHittingRealBrick_BouncesAndDestroysIt()
         {
-            _settings.firstRingRadius = 5f;
-            _settings.ringSpacing = 1f;
-            _settings.ringCount = 1;
-            _settings.segmentsPerRing = new[] { 8 };
-            _settings.brickRadialThickness = 0.7f;
-            _settings.radialGap = 0.04f;
-            _settings.angularGapWorldUnits = 0.04f;
+            _settings.hexSize = 1f;
+            _settings.hexGap = 0f;
 
             var managerGO = new GameObject("TestBrickManager");
             var manager = managerGO.AddComponent<BrickGridManager>();
@@ -208,14 +212,16 @@ namespace PolarBreakout.Tests
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
 
-            var coord = new PolarCoordinate(0, 0);
+            // (3,0) with hexSize=1 sits at world distance ~5.2 from the center, matching the old
+            // firstRingRadius=5 ring test's distance.
+            var coord = new HexCoordinate(3, 0);
+            var (hexMesh, hexOutline) = BuildHexGeometry(_settings);
             var brickGO = new GameObject("TestBrick");
+            brickGO.transform.position = _settings.HexToWorld(coord);
             var brick = brickGO.AddComponent<Brick>();
-            brick.Initialize(manager, _settings, coord, brickType);
+            brick.Initialize(manager, _settings, coord, brickType, hexMesh, hexOutline);
 
-            float centerAngleDeg = _settings.SegmentCenterAngle(coord);
-            float rad = centerAngleDeg * Mathf.Deg2Rad;
-            Vector2 dir = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
+            Vector2 dir = _settings.HexToWorld(coord).normalized;
 
             yield return PressButtonSouthUntilLaunched();
             var rb = _ballObject.GetComponent<Rigidbody2D>();
@@ -268,13 +274,8 @@ namespace PolarBreakout.Tests
         [UnityTest]
         public IEnumerator Phasing_BallPassesThroughBrickWithoutBouncing_AndDestroysIt()
         {
-            _settings.firstRingRadius = 5f;
-            _settings.ringSpacing = 1f;
-            _settings.ringCount = 1;
-            _settings.segmentsPerRing = new[] { 8 };
-            _settings.brickRadialThickness = 0.7f;
-            _settings.radialGap = 0.04f;
-            _settings.angularGapWorldUnits = 0.04f;
+            _settings.hexSize = 1f;
+            _settings.hexGap = 0f;
 
             var managerGO = new GameObject("PhaseTestBrickManager");
             var manager = managerGO.AddComponent<BrickGridManager>();
@@ -282,14 +283,16 @@ namespace PolarBreakout.Tests
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
 
-            var coord = new PolarCoordinate(0, 0);
+            // (3,0) with hexSize=1 sits at world distance ~5.2 from the center, matching the old
+            // firstRingRadius=5 ring test's distance.
+            var coord = new HexCoordinate(3, 0);
+            var (hexMesh, hexOutline) = BuildHexGeometry(_settings);
             var brickGO = new GameObject("PhaseTestBrick");
+            brickGO.transform.position = _settings.HexToWorld(coord);
             var brick = brickGO.AddComponent<Brick>();
-            brick.Initialize(manager, _settings, coord, brickType);
+            brick.Initialize(manager, _settings, coord, brickType, hexMesh, hexOutline);
 
-            float centerAngleDeg = _settings.SegmentCenterAngle(coord);
-            float rad = centerAngleDeg * Mathf.Deg2Rad;
-            Vector2 dir = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
+            Vector2 dir = _settings.HexToWorld(coord).normalized;
 
             // Force the ball into a strongly-phasing spin state directly - isolates this
             // behavior from the separate paddle-contact spin-transfer mechanism (see

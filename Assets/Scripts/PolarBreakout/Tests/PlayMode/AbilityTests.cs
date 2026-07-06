@@ -28,6 +28,15 @@ namespace PolarBreakout.Tests
             return go;
         }
 
+        // Brick.Initialize now takes a pre-built shared mesh/outline (BrickGridManager normally
+        // builds these once per level) - tests that construct a Brick directly, without going
+        // through BrickGridManager.BuildLevel, need to build the same pair themselves.
+        private static (Mesh mesh, Vector2[] outline) BuildHexGeometry(PolarGridSettings settings)
+        {
+            float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
+            return (PolarMeshUtility.BuildHexMesh(hexRadius), PolarMeshUtility.BuildHexOutlinePoints(hexRadius));
+        }
+
         [TearDown]
         public void TearDown()
         {
@@ -47,13 +56,11 @@ namespace PolarBreakout.Tests
         public IEnumerator ExplodingBrick_ChainReaction_DestroysConnectedBricksOnceEach()
         {
             var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
-            settings.firstRingRadius = 2f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 1;
-            settings.segmentsPerRing = new[] { 16 };
-            settings.brickRadialThickness = 0.5f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            // hexSize=0.5 puts adjacent hex centers sqrt(3)*0.5 ~= 0.866 apart, safely within
+            // the 1f explosionRadius below so the chain reaction propagates hex-to-hex.
+            settings.hexSize = 0.5f;
+            settings.hexGap = 0f;
+            settings.outerWallRadius = 10f;
             settings.curveResolutionDegrees = 10f;
 
             var explodingType = ScriptableObject.CreateInstance<ExplodingBrickType>();
@@ -65,13 +72,13 @@ namespace PolarBreakout.Tests
 
             var level = ScriptableObject.CreateInstance<LevelSO>();
             level.gridSettings = settings;
-            // A chain of 3 exploding bricks (0,1,2), a standard brick just within the last
-            // explosion's radius (3), and a standard brick far enough away to survive (8).
-            level.SetBrick(0, 0, explodingType);
-            level.SetBrick(0, 1, explodingType);
-            level.SetBrick(0, 2, explodingType);
-            level.SetBrick(0, 3, standardType);
-            level.SetBrick(0, 8, standardType);
+            // A chain of 3 exploding bricks (0,0)-(2,0), a standard brick just within the last
+            // explosion's radius (3,0), and a standard brick far enough away to survive (8,0).
+            level.SetBrick(new HexCoordinate(0, 0), explodingType);
+            level.SetBrick(new HexCoordinate(1, 0), explodingType);
+            level.SetBrick(new HexCoordinate(2, 0), explodingType);
+            level.SetBrick(new HexCoordinate(3, 0), standardType);
+            level.SetBrick(new HexCoordinate(8, 0), standardType);
 
             var brickPrefab = AssetDatabase.LoadAssetAtPath<Brick>("Assets/Prefabs/Brick.prefab");
             var managerGO = Track(new GameObject("ExplodeTestManager"));
@@ -81,7 +88,7 @@ namespace PolarBreakout.Tests
 
             Assert.AreEqual(5, manager.RemainingDestructibleCount, "Precondition: 5 destructible bricks placed.");
 
-            var triggerBrick = manager.GetBrickAt(new PolarCoordinate(0, 0));
+            var triggerBrick = manager.GetBrickAt(new HexCoordinate(0, 0));
             Assert.IsNotNull(triggerBrick, "Precondition: trigger brick should exist.");
 
             triggerBrick.Hit(null);
@@ -94,20 +101,16 @@ namespace PolarBreakout.Tests
 
             Assert.AreEqual(1, manager.RemainingDestructibleCount,
                 "The chain should destroy the 3 exploding bricks plus the adjacent standard brick exactly once each, leaving only the far-away control brick.");
-            Assert.IsNotNull(manager.GetBrickAt(new PolarCoordinate(0, 8)), "The far-away control brick should have survived.");
+            Assert.IsNotNull(manager.GetBrickAt(new HexCoordinate(8, 0)), "The far-away control brick should have survived.");
         }
 
         [UnityTest]
         public IEnumerator BrickTypeSO_GuaranteedDropChance_SpawnsPowerUpCapsuleOnDestroy()
         {
             var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
-            settings.firstRingRadius = 2f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 1;
-            settings.segmentsPerRing = new[] { 8 };
-            settings.brickRadialThickness = 0.7f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            settings.hexSize = 1f;
+            settings.hexGap = 0f;
+            settings.outerWallRadius = 8f;
             settings.curveResolutionDegrees = 10f;
 
             var managerGO = Track(new GameObject("DropChanceManager"));
@@ -115,8 +118,10 @@ namespace PolarBreakout.Tests
 
             // PowerUpCapsule.Update() self-destructs immediately if it can't find a
             // PaddleController in the scene, so one needs to exist even though this test isn't
-            // about catching it. Its default angle (0, no stick input) doesn't line up with the
-            // brick's segment center (~22.5 degrees), so it won't accidentally catch it either.
+            // about catching it. The brick sits at (3,0) -> world distance ~5.2, well outside the
+            // default deathZoneRadius (1f, unset here) and away from the paddle's default orbit
+            // position - a brick at the literal origin (0,0) would spawn its capsule already
+            // inside the death zone, self-destructing before the test can observe it.
             var paddleGO = Track(new GameObject("DropChancePaddle"));
             paddleGO.SetActive(false);
             var paddle = paddleGO.AddComponent<PaddleController>();
@@ -128,9 +133,10 @@ namespace PolarBreakout.Tests
             brickType.powerUpDropChance = 1f;
             brickType.possiblePowerUps = new[] { PowerUpType.Cannon };
 
+            var (hexMesh, hexOutline) = BuildHexGeometry(settings);
             var brickGO = Track(new GameObject("DropChanceBrick"));
             var brick = brickGO.AddComponent<Brick>();
-            brick.Initialize(manager, settings, new PolarCoordinate(0, 0), brickType);
+            brick.Initialize(manager, settings, new HexCoordinate(3, 0), brickType, hexMesh, hexOutline);
 
             brick.Hit(null);
             yield return new WaitForSeconds(brick.flashDuration + 0.2f);
@@ -144,13 +150,9 @@ namespace PolarBreakout.Tests
         public IEnumerator BrickTypeSO_ZeroDropChance_NeverSpawnsPowerUpCapsule()
         {
             var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
-            settings.firstRingRadius = 2f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 1;
-            settings.segmentsPerRing = new[] { 8 };
-            settings.brickRadialThickness = 0.7f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            settings.hexSize = 1f;
+            settings.hexGap = 0f;
+            settings.outerWallRadius = 8f;
             settings.curveResolutionDegrees = 10f;
 
             var managerGO = Track(new GameObject("NoDropChanceManager"));
@@ -160,9 +162,10 @@ namespace PolarBreakout.Tests
             brickType.maxHealth = 1;
             // powerUpDropChance left at its default (0) - the common case for most brick tiers.
 
+            var (hexMesh, hexOutline) = BuildHexGeometry(settings);
             var brickGO = Track(new GameObject("NoDropChanceBrick"));
             var brick = brickGO.AddComponent<Brick>();
-            brick.Initialize(manager, settings, new PolarCoordinate(0, 0), brickType);
+            brick.Initialize(manager, settings, new HexCoordinate(3, 0), brickType, hexMesh, hexOutline);
 
             brick.Hit(null);
             yield return new WaitForSeconds(brick.flashDuration + 0.2f);
@@ -357,14 +360,13 @@ namespace PolarBreakout.Tests
             settings.deathZoneRadius = 1f;
             settings.outerWallRadius = 8f;
             settings.curveResolutionDegrees = 15f;
-            // A single full-circle "ring" so the bullet hits it regardless of exact firing angle.
-            settings.firstRingRadius = 3f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 1;
-            settings.segmentsPerRing = new[] { 1 };
-            settings.brickRadialThickness = 1f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            // The cannon fires along the paddle's current angle (0 with no stick input, i.e.
+            // straight along +X), so a hex placed on the q-axis (r=0, which HexToWorld always
+            // keeps at world y=0) sits exactly in its path regardless of the small per-barrel
+            // lateral offset - a hexSize of 1 gives the brick's flat vertical edges enough
+            // vertical reach (+-0.5 world units at y=0) to comfortably cover that offset.
+            settings.hexSize = 1f;
+            settings.hexGap = 0f;
 
             var paddleGO = Track(new GameObject("Cannon_Paddle"));
             paddleGO.SetActive(false);
@@ -397,10 +399,12 @@ namespace PolarBreakout.Tests
             level.gridSettings = settings;
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
-            level.SetBrick(0, 0, brickType);
+            // (2,0) with hexSize=1 sits at world (3.46, 0) - directly ahead of the ball/bullet
+            // spawn point on the paddle's firing line, well within the 8f outer wall.
+            level.SetBrick(new HexCoordinate(2, 0), brickType);
             brickManager.BuildLevel(level);
 
-            var targetBrick = brickManager.GetBrickAt(new PolarCoordinate(0, 0));
+            var targetBrick = brickManager.GetBrickAt(new HexCoordinate(2, 0));
             Assert.IsNotNull(targetBrick, "Precondition: target brick should exist in the bullet's path.");
 
             // Spawned well outside deathZoneRadius (1f), moving further outward - this test never
@@ -452,15 +456,10 @@ namespace PolarBreakout.Tests
             settings.deathZoneRadius = 1f;
             settings.outerWallRadius = 10f;
             settings.curveResolutionDegrees = 15f;
-            // Each ring is a single full-circle segment, like the Cannon test above, so the beam
-            // hits every ring regardless of the paddle's exact firing angle.
-            settings.firstRingRadius = 3f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 4;
-            settings.segmentsPerRing = new[] { 1, 1, 1, 1 };
-            settings.brickRadialThickness = 1f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            // Same reasoning as the Cannon test above: hexes on the q-axis (r=0) sit exactly on
+            // the paddle's angle-0 firing line, so the beam sweeps straight through all of them.
+            settings.hexSize = 1f;
+            settings.hexGap = 0f;
 
             var paddleGO = Track(new GameObject("Laser_Paddle"));
             paddleGO.SetActive(false);
@@ -501,18 +500,20 @@ namespace PolarBreakout.Tests
             level.gridSettings = settings;
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
-            for (int ring = 0; ring < 4; ring++)
-                level.SetBrick(ring, 0, brickType);
+            // (2,0)..(5,0) with hexSize=1 sit at world x = 3.46, 5.20, 6.93, 8.66 - a straight
+            // line stretching out along the firing axis, all within the 10f outer wall.
+            for (int q = 2; q <= 5; q++)
+                level.SetBrick(new HexCoordinate(q, 0), brickType);
             brickManager.BuildLevel(level);
 
-            var brick0 = brickManager.GetBrickAt(new PolarCoordinate(0, 0));
-            var brick1 = brickManager.GetBrickAt(new PolarCoordinate(1, 0));
-            var brick2 = brickManager.GetBrickAt(new PolarCoordinate(2, 0));
-            var brick3 = brickManager.GetBrickAt(new PolarCoordinate(3, 0));
-            Assert.IsNotNull(brick0, "Precondition: ring 0 brick should exist.");
-            Assert.IsNotNull(brick1, "Precondition: ring 1 brick should exist.");
-            Assert.IsNotNull(brick2, "Precondition: ring 2 brick should exist.");
-            Assert.IsNotNull(brick3, "Precondition: ring 3 brick should exist.");
+            var brick0 = brickManager.GetBrickAt(new HexCoordinate(2, 0));
+            var brick1 = brickManager.GetBrickAt(new HexCoordinate(3, 0));
+            var brick2 = brickManager.GetBrickAt(new HexCoordinate(4, 0));
+            var brick3 = brickManager.GetBrickAt(new HexCoordinate(5, 0));
+            Assert.IsNotNull(brick0, "Precondition: nearest brick should exist.");
+            Assert.IsNotNull(brick1, "Precondition: second brick should exist.");
+            Assert.IsNotNull(brick2, "Precondition: third brick should exist.");
+            Assert.IsNotNull(brick3, "Precondition: farthest brick should exist.");
 
             ball.LaunchAt(new Vector2(2f, 0f), new Vector2(8f, 0f));
             abilities.CollectPowerUp(PowerUpType.Cannon);
@@ -551,16 +552,12 @@ namespace PolarBreakout.Tests
         {
             var settings = ScriptableObject.CreateInstance<PolarGridSettings>();
             settings.outerWallRadius = 10f;
-            settings.firstRingRadius = 3f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 2;
-            // Each ring a single full-circle segment (like the Cannon/Laser tests above) - the
-            // bullet is fired dead along the X axis, so the exact hit angle doesn't matter, only
-            // that both rings cover it.
-            settings.segmentsPerRing = new[] { 1, 1 };
-            settings.brickRadialThickness = 0.5f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            // hexSize = 1/sqrt(3) makes HexToWorld's x = sqrt(3)*hexSize*q collapse to exactly
+            // q world units (at r=0), so integer q coordinates land on nice round positions -
+            // pointy-top hexes have vertical flat edges, so a bullet arriving along y=0 bounces
+            // straight back off them exactly like the old radial-normal ring surface did.
+            settings.hexSize = 1f / Mathf.Sqrt(3f);
+            settings.hexGap = 0f;
             settings.curveResolutionDegrees = 10f;
 
             var managerGO = Track(new GameObject("Ricochet_Manager"));
@@ -569,22 +566,35 @@ namespace PolarBreakout.Tests
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
 
-            var innerGO = Track(new GameObject("Ricochet_InnerBrick"));
-            var innerBrick = innerGO.AddComponent<Brick>();
-            innerBrick.Initialize(manager, settings, new PolarCoordinate(0, 0), brickType);
+            var (hexMesh, hexOutline) = BuildHexGeometry(settings);
 
+            // Inner brick at (3,0) -> world x=3 (just ahead of the bullet's x=2.5 start). Outer
+            // brick at (-4,0) -> world x=-4, on the far side of the origin, since after bouncing
+            // back off the inner brick the bullet keeps traveling in -X past where it started.
+            // Unlike BrickGridManager.SpawnBrick, a manually AddComponent'd Brick never gets its
+            // transform positioned automatically, so it has to be set explicitly here to match
+            // the shared (locally-centered) hex mesh/collider to the intended world position.
+            var innerCoord = new HexCoordinate(3, 0);
+            var innerGO = Track(new GameObject("Ricochet_InnerBrick"));
+            innerGO.transform.position = settings.HexToWorld(innerCoord);
+            var innerBrick = innerGO.AddComponent<Brick>();
+            innerBrick.Initialize(manager, settings, innerCoord, brickType, hexMesh, hexOutline);
+
+            var outerCoord = new HexCoordinate(-4, 0);
             var outerGO = Track(new GameObject("Ricochet_OuterBrick"));
+            outerGO.transform.position = settings.HexToWorld(outerCoord);
             var outerBrick = outerGO.AddComponent<Brick>();
-            outerBrick.Initialize(manager, settings, new PolarCoordinate(1, 0), brickType);
+            outerBrick.Initialize(manager, settings, outerCoord, brickType, hexMesh, hexOutline);
 
             var bulletGO = Track(new GameObject("Ricochet_Bullet"));
             var bullet = bulletGO.AddComponent<Bullet>();
-            // Fired dead along the X axis (angle 0) from just inside the inner ring, with one
+            // Fired dead along the X axis (angle 0) from just inside the inner brick, with one
             // ricochet: should hit and destroy the inner brick, bounce straight back the way it
-            // came (reflecting off the purely-radial normal at that point reverses a purely-
-            // radial velocity), pass back through the inner ring's (already-destroyed, collider-
-            // disabled) radius untouched, then go on to hit and destroy the outer brick behind
-            // it, and finally be destroyed itself once that second hit uses up its one ricochet.
+            // came (reflecting off the flat vertical edge's purely-radial normal reverses a
+            // purely-radial velocity), pass back through the inner brick's (already-destroyed,
+            // collider-disabled) position untouched, then go on to hit and destroy the outer
+            // brick behind it, and finally be destroyed itself once that second hit uses up its
+            // one ricochet.
             bullet.Launch(new Vector2(2.5f, 0f), 0f, 20f, settings, ricochets: 1);
 
             bool bothDestroyed = false;
@@ -613,13 +623,8 @@ namespace PolarBreakout.Tests
             settings.deathZoneRadius = 1f;
             settings.outerWallRadius = 8f;
             settings.curveResolutionDegrees = 15f;
-            settings.firstRingRadius = 3f;
-            settings.ringSpacing = 1f;
-            settings.ringCount = 1;
-            settings.segmentsPerRing = new[] { 1 };
-            settings.brickRadialThickness = 1f;
-            settings.radialGap = 0.04f;
-            settings.angularGapWorldUnits = 0.04f;
+            settings.hexSize = 1f;
+            settings.hexGap = 0f;
 
             var paddleGO = Track(new GameObject("RicochetCard_Paddle"));
             paddleGO.SetActive(false);
@@ -659,10 +664,10 @@ namespace PolarBreakout.Tests
             level.gridSettings = settings;
             var brickType = ScriptableObject.CreateInstance<StandardBrickType>();
             brickType.maxHealth = 1;
-            level.SetBrick(0, 0, brickType);
+            level.SetBrick(new HexCoordinate(2, 0), brickType);
             brickManager.BuildLevel(level);
 
-            var targetBrick = brickManager.GetBrickAt(new PolarCoordinate(0, 0));
+            var targetBrick = brickManager.GetBrickAt(new HexCoordinate(2, 0));
             Assert.IsNotNull(targetBrick, "Precondition: target brick should exist in the bullet's path.");
 
             ball.LaunchAt(new Vector2(2f, 0f), new Vector2(8f, 0f));

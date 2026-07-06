@@ -7,10 +7,10 @@ namespace PolarBreakout.Editor
     [CustomEditor(typeof(LevelSO))]
     public class LevelSOEditor : UnityEditor.Editor
     {
-        private enum PatternType { Checkerboard, EveryNthRing, BorderRings }
+        private enum PatternType { Checkerboard, EveryNthDistance, BorderHexes }
 
         private BrickTypeSO _fillType;
-        private int _fillRing;
+        private int _fillDistance;
 
         private BrickTypeSO _brush;
         private bool _paintModeEnabled;
@@ -33,30 +33,29 @@ namespace PolarBreakout.Editor
             EditorGUILayout.LabelField("Quick Fill (testing)", EditorStyles.boldLabel);
 
             _fillType = (BrickTypeSO)EditorGUILayout.ObjectField("Brick Type", _fillType, typeof(BrickTypeSO), false);
-            _fillRing = EditorGUILayout.IntField("Ring", _fillRing);
+            _fillDistance = Mathf.Max(0, EditorGUILayout.IntField("Distance", _fillDistance));
 
             using (new EditorGUI.DisabledScope(_fillType == null || level.gridSettings == null))
             {
-                if (GUILayout.Button($"Fill Ring {_fillRing}"))
+                if (GUILayout.Button($"Fill At Distance {_fillDistance}"))
                 {
-                    Undo.RecordObject(level, "Fill Ring");
-                    level.FillRing(_fillRing, _fillType);
+                    Undo.RecordObject(level, "Fill At Distance");
+                    level.FillByDistance(_fillDistance, _fillType);
                     EditorUtility.SetDirty(level);
                 }
 
-                if (GUILayout.Button("Fill All Rings"))
+                if (GUILayout.Button("Fill All"))
                 {
-                    Undo.RecordObject(level, "Fill All Rings");
-                    for (int r = 0; r < level.gridSettings.ringCount; r++)
-                        level.FillRing(r, _fillType);
+                    Undo.RecordObject(level, "Fill All");
+                    level.FillWithinDistance(_fillType);
                     EditorUtility.SetDirty(level);
                 }
             }
 
-            if (GUILayout.Button($"Clear Ring {_fillRing}"))
+            if (GUILayout.Button($"Clear At Distance {_fillDistance}"))
             {
-                Undo.RecordObject(level, "Clear Ring");
-                level.ClearRing(_fillRing);
+                Undo.RecordObject(level, "Clear At Distance");
+                level.ClearByDistance(_fillDistance);
                 EditorUtility.SetDirty(level);
             }
 
@@ -71,7 +70,7 @@ namespace PolarBreakout.Editor
             EditorGUILayout.LabelField("Pattern Designer", EditorStyles.boldLabel);
 
             _patternType = (PatternType)EditorGUILayout.EnumPopup("Pattern", _patternType);
-            if (_patternType == PatternType.EveryNthRing)
+            if (_patternType == PatternType.EveryNthDistance)
             {
                 _patternInterval = Mathf.Max(1, EditorGUILayout.IntField("Interval", _patternInterval));
                 _patternOffset = Mathf.Max(0, EditorGUILayout.IntField("Offset", _patternOffset));
@@ -87,11 +86,11 @@ namespace PolarBreakout.Editor
                         case PatternType.Checkerboard:
                             level.FillCheckerboard(_fillType);
                             break;
-                        case PatternType.EveryNthRing:
-                            level.FillEveryNthRing(_fillType, _patternInterval, _patternOffset);
+                        case PatternType.EveryNthDistance:
+                            level.FillEveryNthDistance(_fillType, _patternInterval, _patternOffset);
                             break;
-                        case PatternType.BorderRings:
-                            level.FillBorderRings(_fillType);
+                        case PatternType.BorderHexes:
+                            level.FillBorderHexes(_fillType);
                             break;
                     }
                     EditorUtility.SetDirty(level);
@@ -188,45 +187,39 @@ namespace PolarBreakout.Editor
             SceneView.RepaintAll();
         }
 
-        private static Dictionary<(int ring, int segment), BrickTypeSO> BuildPlacementLookup(LevelSO level)
+        private static Dictionary<(int q, int r), BrickTypeSO> BuildPlacementLookup(LevelSO level)
         {
             var lookup = new Dictionary<(int, int), BrickTypeSO>();
             foreach (var placement in level.placements)
             {
                 if (placement.brickType != null)
-                    lookup[(placement.ring, placement.segment)] = placement.brickType;
+                    lookup[(placement.q, placement.r)] = placement.brickType;
             }
             return lookup;
         }
 
-        private static void DrawCells(PolarGridSettings settings, Dictionary<(int ring, int segment), BrickTypeSO> placementLookup)
+        private static void DrawCells(PolarGridSettings settings, Dictionary<(int q, int r), BrickTypeSO> placementLookup)
         {
-            for (int ring = 0; ring < settings.ringCount; ring++)
+            float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
+
+            foreach (var coord in settings.EnumerateValidCoordinates())
             {
-                int segmentCount = settings.SegmentsInRing(ring);
-                for (int segment = 0; segment < segmentCount; segment++)
-                {
-                    var coord = new PolarCoordinate(ring, segment);
-                    settings.GetBrickRadialRange(coord, out float innerRadius, out float outerRadius);
-                    settings.GetBrickAngleRange(coord, out float startAngleDeg, out float endAngleDeg);
+                Vector2 center = settings.HexToWorld(coord);
+                Vector2[] outline = PolarMeshUtility.BuildHexOutlinePoints(hexRadius);
 
-                    Vector2[] outline = PolarMeshUtility.BuildArcOutlinePoints(
-                        innerRadius, outerRadius, startAngleDeg, endAngleDeg, settings.curveResolutionDegrees);
+                var points3D = new Vector3[outline.Length];
+                for (int i = 0; i < outline.Length; i++)
+                    points3D[i] = new Vector3(outline[i].x + center.x, outline[i].y + center.y, 0f);
 
-                    var points3D = new Vector3[outline.Length];
-                    for (int i = 0; i < outline.Length; i++)
-                        points3D[i] = new Vector3(outline[i].x, outline[i].y, 0f);
+                bool hasBrick = placementLookup.TryGetValue((coord.q, coord.r), out var brickType);
+                Color fill = hasBrick ? brickType.color : new Color(1f, 1f, 1f, 0.05f);
+                fill.a = hasBrick ? 0.65f : fill.a;
 
-                    bool hasBrick = placementLookup.TryGetValue((ring, segment), out var brickType);
-                    Color fill = hasBrick ? brickType.color : new Color(1f, 1f, 1f, 0.05f);
-                    fill.a = hasBrick ? 0.65f : fill.a;
+                Handles.color = fill;
+                Handles.DrawAAConvexPolygon(points3D);
 
-                    Handles.color = fill;
-                    Handles.DrawAAConvexPolygon(points3D);
-
-                    Handles.color = new Color(1f, 1f, 1f, 0.25f);
-                    Handles.DrawAAPolyLine(2f, AppendFirst(points3D));
-                }
+                Handles.color = new Color(1f, 1f, 1f, 0.25f);
+                Handles.DrawAAPolyLine(2f, AppendFirst(points3D));
             }
         }
 
@@ -277,18 +270,18 @@ namespace PolarBreakout.Editor
             if (current.button == 0 && _brush != null)
             {
                 Undo.RecordObject(level, "Paint Brick");
-                level.SetBrick(coord.ring, coord.segment, _brush);
+                level.SetBrick(coord, _brush);
                 EditorUtility.SetDirty(level);
             }
             else if (current.button == 1)
             {
                 Undo.RecordObject(level, "Erase Brick");
-                level.ClearBrick(coord.ring, coord.segment);
+                level.ClearBrick(coord);
                 EditorUtility.SetDirty(level);
             }
         }
 
-        private static bool TryGetCoordUnderMouse(Vector2 mousePosition, PolarGridSettings settings, out PolarCoordinate coord)
+        private static bool TryGetCoordUnderMouse(Vector2 mousePosition, PolarGridSettings settings, out HexCoordinate coord)
         {
             coord = default;
 
@@ -299,18 +292,8 @@ namespace PolarBreakout.Editor
             if (t < 0f) return false;
 
             Vector3 worldPoint = ray.origin + ray.direction * t;
-            float radius = new Vector2(worldPoint.x, worldPoint.y).magnitude;
-            float angleDeg = Mathf.Repeat(Mathf.Atan2(worldPoint.y, worldPoint.x) * Mathf.Rad2Deg, 360f);
-
-            int ring = Mathf.RoundToInt((radius - settings.firstRingRadius) / settings.ringSpacing);
-            if (ring < 0 || ring >= settings.ringCount) return false;
-
-            int segmentCount = settings.SegmentsInRing(ring);
-            float segAngle = 360f / segmentCount;
-            int segment = Mathf.Clamp(Mathf.FloorToInt(angleDeg / segAngle), 0, segmentCount - 1);
-
-            coord = new PolarCoordinate(ring, segment);
-            return true;
+            coord = settings.WorldToHex(new Vector2(worldPoint.x, worldPoint.y));
+            return settings.IsValidCoordinate(coord);
         }
     }
 }

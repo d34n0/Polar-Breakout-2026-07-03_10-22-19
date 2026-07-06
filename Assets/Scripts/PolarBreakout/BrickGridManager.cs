@@ -6,15 +6,22 @@ using UnityEngine;
 namespace PolarBreakout
 {
     /// <summary>
-    /// Spawns and tracks brick instances for a LevelSO, converting polar
-    /// coordinates to world positions via the level's PolarGridSettings.
+    /// Spawns and tracks brick instances for a LevelSO, converting hex coordinates to world
+    /// positions via the level's PolarGridSettings (hex grid, despite the class name - see that
+    /// file for why the name stuck around).
     /// </summary>
     public class BrickGridManager : MonoBehaviour
     {
         public LevelSO level;
         public Brick brickPrefab;
 
-        private readonly Dictionary<PolarCoordinate, Brick> _activeBricks = new Dictionary<PolarCoordinate, Brick>();
+        private readonly Dictionary<HexCoordinate, Brick> _activeBricks = new Dictionary<HexCoordinate, Brick>();
+
+        // Every hex brick at a given hexSize/hexGap is congruent, so the mesh/collider outline
+        // is built once per BuildLevel call and shared across every Brick instance, rather than
+        // each brick building its own (as the old per-ring arc bricks had to).
+        private Mesh _sharedHexMesh;
+        private Vector2[] _sharedHexOutline;
 
         public int RemainingDestructibleCount { get; private set; }
         public event Action OnLevelCleared;
@@ -49,6 +56,10 @@ namespace PolarBreakout
                 return;
             }
 
+            float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
+            _sharedHexMesh = PolarMeshUtility.BuildHexMesh(hexRadius);
+            _sharedHexOutline = PolarMeshUtility.BuildHexOutlinePoints(hexRadius);
+
             foreach (var (coord, brickType) in level.GetPlacements())
             {
                 if (!settings.IsValidCoordinate(coord))
@@ -58,18 +69,16 @@ namespace PolarBreakout
                 }
                 SpawnBrick(settings, coord, brickType);
             }
+
+            GetComponent<HexArenaBoundary>()?.BuildBoundary(settings);
         }
 
-        private void SpawnBrick(PolarGridSettings settings, PolarCoordinate coord, BrickTypeSO type)
+        private void SpawnBrick(PolarGridSettings settings, HexCoordinate coord, BrickTypeSO type)
         {
-            // Brick geometry (position, curvature, angular span) is baked directly
-            // into its mesh in local space, so the prefab spawns at the manager's
-            // own transform. Keep this GameObject at the arena's center (0,0,0)
-            // with identity rotation for everything to line up.
             Brick brick = Instantiate(brickPrefab, transform);
-            brick.transform.localPosition = Vector3.zero;
+            brick.transform.localPosition = settings.HexToWorld(coord);
             brick.transform.localRotation = Quaternion.identity;
-            brick.Initialize(this, settings, coord, type);
+            brick.Initialize(this, settings, coord, type, _sharedHexMesh, _sharedHexOutline);
             _activeBricks[coord] = brick;
 
             if (!type.isIndestructible)
@@ -90,7 +99,7 @@ namespace PolarBreakout
             OnBrickDestroyed?.Invoke(brick);
         }
 
-        public Brick GetBrickAt(PolarCoordinate coord)
+        public Brick GetBrickAt(HexCoordinate coord)
         {
             _activeBricks.TryGetValue(coord, out var brick);
             return brick;

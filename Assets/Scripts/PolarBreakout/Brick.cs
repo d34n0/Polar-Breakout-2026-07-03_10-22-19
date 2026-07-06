@@ -4,9 +4,10 @@ using UnityEngine;
 namespace PolarBreakout
 {
     /// <summary>
-    /// Runtime instance of a brick placed by BrickGridManager. Builds its own
-    /// arc-segment mesh and matching collider from the grid settings so it sits
-    /// flush with its neighbors, and holds per-instance state (current health).
+    /// Runtime instance of a brick placed by BrickGridManager. Every hex brick at a given
+    /// hexSize/hexGap is congruent, so unlike the old arc-segment bricks this doesn't build its
+    /// own unique mesh/collider outline - BrickGridManager builds one shared mesh and outline once
+    /// and hands them to every Brick instance. Still holds per-instance state (current health).
     /// </summary>
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
@@ -19,7 +20,7 @@ namespace PolarBreakout
         [Tooltip("How fast the destroying hit-flash blinks between white and the brick's own color, seconds per toggle.")]
         public float blinkIntervalSeconds = 0.06f;
 
-        public PolarCoordinate Coordinate { get; private set; }
+        public HexCoordinate Coordinate { get; private set; }
         public BrickTypeSO BrickType { get; private set; }
         public int CurrentHealth;
 
@@ -32,7 +33,7 @@ namespace PolarBreakout
 
         public PolarGridSettings Settings { get; private set; }
         public BrickGridManager Manager => _manager;
-        public Vector2 WorldPosition => Settings.PolarToWorld(Coordinate);
+        public Vector2 WorldPosition => Settings.HexToWorld(Coordinate);
 
         private BrickGridManager _manager;
         private MeshRenderer _renderer;
@@ -40,7 +41,8 @@ namespace PolarBreakout
         private PolygonCollider2D _collider;
         private Coroutine _flashCoroutine;
 
-        public void Initialize(BrickGridManager manager, PolarGridSettings settings, PolarCoordinate coord, BrickTypeSO type)
+        public void Initialize(BrickGridManager manager, PolarGridSettings settings, HexCoordinate coord, BrickTypeSO type,
+                                Mesh sharedHexMesh, Vector2[] sharedHexOutline)
         {
             _manager = manager;
             Settings = settings;
@@ -54,18 +56,12 @@ namespace PolarBreakout
             // actually explodes always line up as one single, consistent delay.
             if (type is ExplodingBrickType exploding) flashDuration = exploding.fuseDuration;
 
-            settings.GetBrickRadialRange(coord, out float innerRadius, out float outerRadius);
-            settings.GetBrickAngleRange(coord, out float startAngleDeg, out float endAngleDeg);
-
             var meshFilter = GetComponent<MeshFilter>();
-            meshFilter.mesh = PolarMeshUtility.BuildArcSegmentMesh(
-                innerRadius, outerRadius, startAngleDeg, endAngleDeg, settings.curveResolutionDegrees);
+            meshFilter.mesh = sharedHexMesh;
 
             _collider = GetComponent<PolygonCollider2D>();
-            var points = PolarMeshUtility.BuildArcOutlinePoints(
-                innerRadius, outerRadius, startAngleDeg, endAngleDeg, settings.curveResolutionDegrees);
             _collider.pathCount = 1;
-            _collider.SetPath(0, points);
+            _collider.SetPath(0, sharedHexOutline);
 
             _renderer = GetComponent<MeshRenderer>();
             // Falls back to whatever material Brick.prefab already has (shared across every

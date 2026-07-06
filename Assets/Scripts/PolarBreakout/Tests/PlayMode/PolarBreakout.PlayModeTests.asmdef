@@ -6,6 +6,7 @@
         "UnityEditor.TestRunner",
         "PolarBreakout.Runtime",
         "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
         "Unity.TextMeshPro",
         "Unity.ugui"
     ],

@@ -1,10 +1,13 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PolarBreakout
 {
     /// <summary>
-    /// Defines the shape of the circular arena: death zone, paddle orbit,
-    /// brick rings, and outer wall. Also handles polar -> world conversion.
+    /// Defines the shape of the circular arena: death zone, paddle orbit, the hexagonal brick
+    /// grid, and the outer wall boundary that clips it. Also handles hex &lt;-&gt; world conversion.
+    /// (Class name kept as "PolarGridSettings" even though the grid itself is hex-based now, so
+    /// existing .asset references - PolarGridSettings.asset, LevelDesigner.asset - keep working.)
     /// </summary>
     [CreateAssetMenu(fileName = "PolarGridSettings", menuName = "PolarBreakout/Grid Settings")]
     public class PolarGridSettings : ScriptableObject
@@ -15,61 +18,19 @@ namespace PolarBreakout
         [Header("Paddle")]
         public float paddleOrbitRadius = 1.5f;
 
-        [Header("Brick Rings")]
-        [Tooltip("Radius of the innermost brick ring's center line.")]
-        public float firstRingRadius = 2.5f;
-        [Tooltip("Distance between consecutive ring center lines.")]
-        public float ringSpacing = 0.8f;
-        [Tooltip("Number of brick rings.")]
-        public int ringCount = 5;
-        [Tooltip("Segments (bricks) per ring. Index 0 = innermost ring. " +
-                 "If shorter than ringCount, the last value repeats.")]
-        public int[] segmentsPerRing = { 12, 16, 20, 24, 28 };
+        [Header("Hex Grid")]
+        [Tooltip("Center-to-corner radius of each hexagon, world units - the one knob for hex size/density.")]
+        public float hexSize = 0.45f;
+        [Tooltip("Visual/collider shrink applied uniformly toward each hex's own center, world units. 0 = hexes touch edge-to-edge.")]
+        public float hexGap = 0.04f;
 
         [Header("Outer Wall")]
+        [Tooltip("Also doubles as the play-area boundary radius - a hex is part of the level only if its center falls within this radius.")]
         public float outerWallRadius = 8f;
 
-        [Header("Brick Shape")]
-        [Tooltip("Radial thickness of each brick, world units. Keep <= ringSpacing so rings don't overlap.")]
-        public float brickRadialThickness = 0.7f;
-        [Tooltip("Visual gap between adjacent rings, world units. 0 = bricks touch.")]
-        public float radialGap = 0.04f;
-        [Tooltip("Visual gap between adjacent bricks in the same ring, world units of arc length. 0 = bricks touch.")]
-        public float angularGapWorldUnits = 0.04f;
-        [Tooltip("Smaller = smoother curved edges on each brick, more triangles.")]
+        [Header("Paddle Mesh")]
+        [Tooltip("Smaller = smoother curved edges on the paddle's arc mesh, more triangles.")]
         public float curveResolutionDegrees = 4f;
-
-        public int SegmentsInRing(int ring)
-        {
-            if (segmentsPerRing == null || segmentsPerRing.Length == 0) return 16;
-            ring = Mathf.Clamp(ring, 0, segmentsPerRing.Length - 1);
-            return Mathf.Max(1, segmentsPerRing[ring]);
-        }
-
-        public float RingRadius(int ring) => firstRingRadius + ring * ringSpacing;
-
-        public float SegmentAngleDegrees(int ring) => 360f / SegmentsInRing(ring);
-
-        /// <summary>Angle, in degrees, at the center of the given segment. 0 = +X axis, CCW positive.</summary>
-        public float SegmentCenterAngle(PolarCoordinate coord)
-        {
-            float segAngle = SegmentAngleDegrees(coord.ring);
-            return (coord.segment + 0.5f) * segAngle;
-        }
-
-        public Vector2 PolarToWorld(PolarCoordinate coord)
-        {
-            float radius = RingRadius(coord.ring);
-            float angleRad = SegmentCenterAngle(coord) * Mathf.Deg2Rad;
-            return new Vector2(Mathf.Cos(angleRad) * radius, Mathf.Sin(angleRad) * radius);
-        }
-
-        /// <summary>Rotation so a brick's local "up" faces outward, away from the center.</summary>
-        public Quaternion PolarToWorldRotation(PolarCoordinate coord)
-        {
-            float angleDeg = SegmentCenterAngle(coord);
-            return Quaternion.Euler(0, 0, angleDeg - 90f);
-        }
 
         /// <summary>World position for a given angle on the paddle's orbit circle.</summary>
         public Vector2 PaddlePositionAtAngle(float angleDegrees)
@@ -78,34 +39,72 @@ namespace PolarBreakout
             return new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * paddleOrbitRadius;
         }
 
-        /// <summary>Inner/outer radius of a brick's mesh at this coordinate, after applying radialGap.</summary>
-        public void GetBrickRadialRange(PolarCoordinate coord, out float innerRadius, out float outerRadius)
+        /// <summary>Pointy-top axial -&gt; world conversion (Red Blob Games standard formula).</summary>
+        public Vector2 HexToWorld(HexCoordinate coord)
         {
-            float centerRadius = RingRadius(coord.ring);
-            float halfThickness = brickRadialThickness / 2f;
-            innerRadius = centerRadius - halfThickness + radialGap / 2f;
-            outerRadius = centerRadius + halfThickness - radialGap / 2f;
+            float x = hexSize * (Mathf.Sqrt(3f) * coord.q + Mathf.Sqrt(3f) / 2f * coord.r);
+            float y = hexSize * (1.5f * coord.r);
+            return new Vector2(x, y);
         }
 
-        /// <summary>Start/end angle (degrees) of a brick's mesh at this coordinate, after applying angularGapWorldUnits.</summary>
-        public void GetBrickAngleRange(PolarCoordinate coord, out float startAngleDeg, out float endAngleDeg)
+        /// <summary>World -&gt; nearest pointy-top axial coordinate, via fractional axial conversion
+        /// then cube-rounding. Used by the Scene-view painter's mouse-to-cell lookup.</summary>
+        public HexCoordinate WorldToHex(Vector2 world)
         {
-            float segAngle = SegmentAngleDegrees(coord.ring);
-            float rawStart = coord.segment * segAngle;
-            float rawEnd = rawStart + segAngle;
-
-            float radius = RingRadius(coord.ring);
-            float angularGapDeg = radius > 0.001f ? (angularGapWorldUnits / radius) * Mathf.Rad2Deg : 0f;
-
-            startAngleDeg = rawStart + angularGapDeg / 2f;
-            endAngleDeg = rawEnd - angularGapDeg / 2f;
+            float qf = (Mathf.Sqrt(3f) / 3f * world.x - 1f / 3f * world.y) / hexSize;
+            float rf = (2f / 3f * world.y) / hexSize;
+            return CubeRound(qf, rf);
         }
 
-        public bool IsValidCoordinate(PolarCoordinate coord)
+        /// <summary>Rounds fractional cube coordinates to the nearest hex, fixing up whichever
+        /// component had the largest rounding error so q+r+s still sums to exactly 0.</summary>
+        private static HexCoordinate CubeRound(float qf, float rf)
         {
-            if (coord.ring < 0 || coord.ring >= ringCount) return false;
-            int segs = SegmentsInRing(coord.ring);
-            return coord.segment >= 0 && coord.segment < segs;
+            float sf = -qf - rf;
+            int q = Mathf.RoundToInt(qf);
+            int r = Mathf.RoundToInt(rf);
+            int s = Mathf.RoundToInt(sf);
+
+            float qDiff = Mathf.Abs(q - qf);
+            float rDiff = Mathf.Abs(r - rf);
+            float sDiff = Mathf.Abs(s - sf);
+
+            if (qDiff > rDiff && qDiff > sDiff) q = -r - s;
+            else if (rDiff > sDiff) r = -q - s;
+            // else s had the largest error - it's derived (HexCoordinate.S), nothing to store.
+
+            return new HexCoordinate(q, r);
+        }
+
+        /// <summary>A hex is part of the level if its center falls within the outer wall radius -
+        /// a hex is either fully in or fully out, never partially clipped.</summary>
+        public bool IsValidCoordinate(HexCoordinate coord) => HexToWorld(coord).magnitude <= outerWallRadius;
+
+        /// <summary>True if this hex is part of the level but at least one of its 6 neighbors
+        /// isn't - i.e. it touches the play-area boundary. Used both for the EdgeCollider2D
+        /// boundary wall (HexArenaBoundary) and the "border hexes" fill pattern.</summary>
+        public bool IsBoundaryHex(HexCoordinate coord)
+        {
+            if (!IsValidCoordinate(coord)) return false;
+            for (int dir = 0; dir < 6; dir++)
+                if (!IsValidCoordinate(coord.Neighbor(dir))) return true;
+            return false;
+        }
+
+        /// <summary>Every valid hex coordinate in the level, in a stable deterministic order -
+        /// the universal enumeration primitive used by the level-building helpers, the Random
+        /// Level Designer, and the Scene-view painter.</summary>
+        public IEnumerable<HexCoordinate> EnumerateValidCoordinates()
+        {
+            int maxQR = Mathf.CeilToInt(outerWallRadius / (hexSize * Mathf.Sqrt(3f) / 2f)) + 1;
+            for (int q = -maxQR; q <= maxQR; q++)
+            {
+                for (int r = -maxQR; r <= maxQR; r++)
+                {
+                    var coord = new HexCoordinate(q, r);
+                    if (IsValidCoordinate(coord)) yield return coord;
+                }
+            }
         }
     }
 }

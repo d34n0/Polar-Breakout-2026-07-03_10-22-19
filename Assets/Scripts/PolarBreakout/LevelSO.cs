@@ -8,14 +8,14 @@ namespace PolarBreakout
     [Serializable]
     public struct BrickPlacement
     {
-        public int ring;
-        public int segment;
+        public int q;
+        public int r;
         public BrickTypeSO brickType;
     }
 
     /// <summary>
     /// A level is just data: which grid settings to use, and which brick type
-    /// (if any) sits at each polar coordinate. Build these as assets in the Inspector,
+    /// (if any) sits at each hex coordinate. Build these as assets in the Inspector,
     /// or generate them procedurally using the helper methods below.
     /// </summary>
     [CreateAssetMenu(fileName = "Level", menuName = "PolarBreakout/Level")]
@@ -24,30 +24,22 @@ namespace PolarBreakout
         public PolarGridSettings gridSettings;
         public List<BrickPlacement> placements = new List<BrickPlacement>();
 
-        public IEnumerable<(PolarCoordinate coord, BrickTypeSO type)> GetPlacements()
+        public IEnumerable<(HexCoordinate coord, BrickTypeSO type)> GetPlacements()
         {
             foreach (var p in placements)
             {
                 if (p.brickType == null) continue;
-                yield return (new PolarCoordinate(p.ring, p.segment), p.brickType);
+                yield return (new HexCoordinate(p.q, p.r), p.brickType);
             }
         }
 
         // --- Level-building helpers (usable from editor tooling or procedural generation) ---
 
-        public void FillRing(int ring, BrickTypeSO type)
-        {
-            if (gridSettings == null) return;
-            int segs = gridSettings.SegmentsInRing(ring);
-            for (int s = 0; s < segs; s++)
-                SetBrick(ring, s, type);
-        }
-
-        public void SetBrick(int ring, int segment, BrickTypeSO type)
+        public void SetBrick(HexCoordinate coord, BrickTypeSO type)
         {
             for (int i = 0; i < placements.Count; i++)
             {
-                if (placements[i].ring == ring && placements[i].segment == segment)
+                if (placements[i].q == coord.q && placements[i].r == coord.r)
                 {
                     var updated = placements[i];
                     updated.brickType = type;
@@ -55,50 +47,69 @@ namespace PolarBreakout
                     return;
                 }
             }
-            placements.Add(new BrickPlacement { ring = ring, segment = segment, brickType = type });
+            placements.Add(new BrickPlacement { q = coord.q, r = coord.r, brickType = type });
         }
 
-        public void ClearBrick(int ring, int segment)
+        public void ClearBrick(HexCoordinate coord)
         {
-            placements.RemoveAll(p => p.ring == ring && p.segment == segment);
+            placements.RemoveAll(p => p.q == coord.q && p.r == coord.r);
         }
 
-        public void ClearRing(int ring)
+        /// <summary>Fills every valid hex exactly `distance` steps from the center - a "distance
+        /// shell", the hex-grid analogue of the old concentric ring.</summary>
+        public void FillByDistance(int distance, BrickTypeSO type)
         {
-            placements.RemoveAll(p => p.ring == ring);
+            if (gridSettings == null) return;
+            foreach (var coord in gridSettings.EnumerateValidCoordinates())
+                if (coord.DistanceFromOrigin() == distance) SetBrick(coord, type);
+        }
+
+        public void ClearByDistance(int distance)
+        {
+            placements.RemoveAll(p => new HexCoordinate(p.q, p.r).DistanceFromOrigin() == distance);
         }
 
         // --- Pattern helpers (usable from editor tooling or procedural generation) ---
 
-        /// <summary>Fills alternating segments in a checkerboard, offsetting by one each ring so
-        /// adjacent rings don't line up into stripes.</summary>
+        /// <summary>Fills alternating hexes in a checkerboard - (q+r) parity is a valid 2-coloring
+        /// of any hex grid, since adjacent hexes always differ in q+r by exactly 1.</summary>
         public void FillCheckerboard(BrickTypeSO type)
         {
             if (gridSettings == null) return;
-            for (int ring = 0; ring < gridSettings.ringCount; ring++)
-            {
-                int segs = gridSettings.SegmentsInRing(ring);
-                for (int s = 0; s < segs; s++)
-                {
-                    if ((ring + s) % 2 == 0) SetBrick(ring, s, type);
-                }
-            }
+            foreach (var coord in gridSettings.EnumerateValidCoordinates())
+                if (Mod2(coord.q + coord.r) == 0) SetBrick(coord, type);
         }
 
-        /// <summary>Fills every Nth ring starting at offset, e.g. interval=2 for alternating rings.</summary>
-        public void FillEveryNthRing(BrickTypeSO type, int interval, int offset = 0)
+        private static int Mod2(int value) => ((value % 2) + 2) % 2;
+
+        /// <summary>Fills every Nth distance shell starting at offset, e.g. interval=2 for
+        /// alternating shells.</summary>
+        public void FillEveryNthDistance(BrickTypeSO type, int interval, int offset = 0)
         {
             if (gridSettings == null || interval <= 0) return;
-            for (int ring = offset; ring < gridSettings.ringCount; ring += interval)
-                FillRing(ring, type);
+            int maxDistance = 0;
+            foreach (var coord in gridSettings.EnumerateValidCoordinates())
+                maxDistance = Mathf.Max(maxDistance, coord.DistanceFromOrigin());
+
+            for (int distance = offset; distance <= maxDistance; distance += interval)
+                FillByDistance(distance, type);
         }
 
-        /// <summary>Fills only the innermost and outermost rings, leaving the middle empty.</summary>
-        public void FillBorderRings(BrickTypeSO type)
+        /// <summary>Fills only the hexes that touch the play-area boundary, leaving the interior
+        /// empty - the hex-grid analogue of the old first/last ring border fill.</summary>
+        public void FillBorderHexes(BrickTypeSO type)
         {
-            if (gridSettings == null || gridSettings.ringCount <= 0) return;
-            FillRing(0, type);
-            FillRing(gridSettings.ringCount - 1, type);
+            if (gridSettings == null) return;
+            foreach (var coord in gridSettings.EnumerateValidCoordinates())
+                if (gridSettings.IsBoundaryHex(coord)) SetBrick(coord, type);
+        }
+
+        /// <summary>Fills every valid hex in the level - used for the "Fill All" button.</summary>
+        public void FillWithinDistance(BrickTypeSO type)
+        {
+            if (gridSettings == null) return;
+            foreach (var coord in gridSettings.EnumerateValidCoordinates())
+                SetBrick(coord, type);
         }
 
         /// <summary>Replaces the whole level with a random layout sized to gridSettings - each
@@ -110,15 +121,11 @@ namespace PolarBreakout
 
             var rng = new System.Random(seed);
             placements.Clear();
-            for (int ring = 0; ring < gridSettings.ringCount; ring++)
+            foreach (var coord in gridSettings.EnumerateValidCoordinates())
             {
-                int segs = gridSettings.SegmentsInRing(ring);
-                for (int s = 0; s < segs; s++)
-                {
-                    if (rng.NextDouble() > fillChance) continue;
-                    var type = brickPool[rng.Next(brickPool.Count)];
-                    SetBrick(ring, s, type);
-                }
+                if (rng.NextDouble() > fillChance) continue;
+                var type = brickPool[rng.Next(brickPool.Count)];
+                SetBrick(coord, type);
             }
         }
     }

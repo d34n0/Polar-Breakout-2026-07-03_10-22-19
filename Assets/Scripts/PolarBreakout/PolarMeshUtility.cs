@@ -3,9 +3,9 @@ using UnityEngine;
 namespace PolarBreakout
 {
     /// <summary>
-    /// Builds procedural meshes for arc-shaped ("orange slice") brick segments.
-    /// Each brick is a curved quad strip between an inner and outer radius,
-    /// spanning a start and end angle, subdivided so the curve reads as a curve.
+    /// Procedural mesh building for the arena: pointy-top hexagon bricks (the current grid shape),
+    /// arc-shaped ("orange slice") segments (still used by the paddle's own mesh), and the death
+    /// zone's filled circle.
     /// </summary>
     public static class PolarMeshUtility
     {
@@ -185,6 +185,64 @@ namespace PolarBreakout
             mesh.RecalculateTangents();
             mesh.RecalculateBounds();
             return mesh;
+        }
+
+        /// <summary>Corner i (0..5) of a pointy-top hexagon centered at `center`, going CCW
+        /// starting just above the +X axis - angle (60*i - 30) degrees. Shared by the hex
+        /// mesh/outline builders below and by HexArenaBoundary's boundary-edge tracing, so both
+        /// always agree on exactly where each hex's corners sit.</summary>
+        public static Vector2 HexCorner(Vector2 center, float radius, int i)
+        {
+            float angleRad = (60f * i - 30f) * Mathf.Deg2Rad;
+            return center + new Vector2(Mathf.Cos(angleRad), Mathf.Sin(angleRad)) * radius;
+        }
+
+        /// <summary>Filled pointy-top hexagon (triangle fan from the center) - every hex brick in
+        /// the grid is congruent, so BrickGridManager builds this once and shares it across every
+        /// Brick instance rather than building a unique mesh per cell.</summary>
+        public static Mesh BuildHexMesh(float radius)
+        {
+            var vertices = new Vector3[7];
+            var uvs = new Vector2[7];
+            var triangles = new int[18];
+
+            vertices[0] = Vector3.zero;
+            uvs[0] = new Vector2(0.5f, 0.5f);
+
+            for (int i = 0; i < 6; i++)
+            {
+                Vector2 corner = HexCorner(Vector2.zero, radius, i);
+                vertices[i + 1] = new Vector3(corner.x, corner.y, 0f);
+                uvs[i + 1] = new Vector2(corner.x / (radius * 2f) + 0.5f, corner.y / (radius * 2f) + 0.5f);
+            }
+
+            for (int i = 0; i < 6; i++)
+            {
+                // Same winding/facing convention as BuildFilledCircleMesh (-Z facing).
+                triangles[i * 3] = 0;
+                triangles[i * 3 + 1] = (i + 1) % 6 + 1;
+                triangles[i * 3 + 2] = i + 1;
+            }
+
+            var mesh = new Mesh { name = "HexBrick" };
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>The 6 corners of a pointy-top hexagon centered at the origin, suitable for
+        /// PolygonCollider2D.SetPath - shared across every Brick instance the same way
+        /// BuildHexMesh is.</summary>
+        public static Vector2[] BuildHexOutlinePoints(float radius)
+        {
+            var points = new Vector2[6];
+            for (int i = 0; i < 6; i++)
+                points[i] = HexCorner(Vector2.zero, radius, i);
+            return points;
         }
 
         /// <summary>

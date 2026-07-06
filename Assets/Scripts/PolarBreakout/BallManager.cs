@@ -214,26 +214,26 @@ namespace PolarBreakout
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
-        /// <summary>Angle (degrees) of whichever active, launched ball is angularly closest
-        /// to <paramref name="referenceAngle"/> - used by the Autopilot ability to decide
-        /// which ball to track when multiball is in play. Falls back to
-        /// <paramref name="referenceAngle"/> itself (i.e. "hold position") if no ball is
-        /// currently in flight.</summary>
+        /// <summary>Angle (degrees) of whichever active, launched ball currently sits closest to
+        /// the arena center - used by the Autopilot ability to decide which ball to track when
+        /// multiball is in play. Prioritizing proximity to the center (rather than whichever ball
+        /// needs the least paddle movement) means Autopilot always guards the ball most at risk
+        /// of reaching the death zone. Falls back to <paramref name="referenceAngle"/> itself
+        /// (i.e. "hold position") if no ball is currently in flight.</summary>
         public float GetNearestBallAngleDegrees(float referenceAngle)
         {
             float bestAngle = referenceAngle;
-            float bestDelta = float.MaxValue;
+            float bestSqrDistance = float.MaxValue;
 
             void Consider(BallController ball)
             {
                 if (ball == null || !ball.gameObject.activeSelf || ball.State != BallState.Launched) return;
                 Vector2 pos = ball.GetComponent<Rigidbody2D>().position;
-                float angle = Mathf.Atan2(pos.y, pos.x) * Mathf.Rad2Deg;
-                float delta = Mathf.Abs(Mathf.DeltaAngle(referenceAngle, angle));
-                if (delta < bestDelta)
+                float sqrDistance = pos.sqrMagnitude;
+                if (sqrDistance < bestSqrDistance)
                 {
-                    bestDelta = delta;
-                    bestAngle = angle;
+                    bestSqrDistance = sqrDistance;
+                    bestAngle = Mathf.Atan2(pos.y, pos.x) * Mathf.Rad2Deg;
                 }
             }
 

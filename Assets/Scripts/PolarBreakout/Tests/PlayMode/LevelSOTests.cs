@@ -9,9 +9,9 @@ namespace PolarBreakout.Tests
 {
     /// <summary>
     /// Covers LevelSO's level-building helpers used by LevelSOEditor's testing/pattern/random
-    /// tools - ClearRing, the pattern fillers, and the random level generator. These are plain
-    /// data operations on placements, so no scene/Play Mode setup is needed beyond the
-    /// ScriptableObject instances themselves.
+    /// tools - the distance-shell fillers, the pattern fillers, and the random level generator.
+    /// These are plain data operations on placements, so no scene/Play Mode setup is needed beyond
+    /// the ScriptableObject instances themselves.
     /// </summary>
     public class LevelSOTests
     {
@@ -32,80 +32,106 @@ namespace PolarBreakout.Tests
             _created.Clear();
         }
 
-        private PolarGridSettings BuildGrid(int ringCount, params int[] segmentsPerRing)
+        private PolarGridSettings BuildGrid(float hexSize, float outerWallRadius)
         {
             var grid = Create<PolarGridSettings>();
-            grid.ringCount = ringCount;
-            grid.segmentsPerRing = segmentsPerRing;
+            grid.hexSize = hexSize;
+            grid.hexGap = 0f;
+            grid.outerWallRadius = outerWallRadius;
             return grid;
         }
 
         [UnityTest]
-        public IEnumerator ClearRing_RemovesOnlyThatRingsPlacements()
+        public IEnumerator ClearByDistance_RemovesOnlyThatDistancesPlacements()
         {
+            // hexSize=1, outerWallRadius=2 keeps exactly distance-0 (the center) and
+            // distance-1 (its 6 neighbors, all at magnitude sqrt(3)) - distance-2's closest
+            // hexes sit at magnitude 3, safely excluded.
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(3, 4, 4, 4);
+            level.gridSettings = BuildGrid(1f, 2f);
             var brick = Create<StandardBrickType>();
 
-            for (int r = 0; r < 3; r++) level.FillRing(r, brick);
-            Assert.AreEqual(12, level.placements.Count);
+            level.FillByDistance(0, brick);
+            level.FillByDistance(1, brick);
+            Assert.AreEqual(7, level.placements.Count);
 
-            level.ClearRing(1);
+            level.ClearByDistance(1);
 
-            Assert.IsTrue(level.placements.All(p => p.ring != 1),
-                "No placement should remain on the cleared ring.");
-            Assert.AreEqual(8, level.placements.Count,
-                "Only ring 1's 4 bricks should have been removed.");
+            Assert.IsTrue(level.placements.All(p => new HexCoordinate(p.q, p.r).DistanceFromOrigin() != 1),
+                "No placement should remain at the cleared distance.");
+            Assert.AreEqual(1, level.placements.Count,
+                "Only the 6 distance-1 bricks should have been removed, leaving the center.");
             yield return null;
         }
 
         [UnityTest]
-        public IEnumerator FillCheckerboard_AlternatesPerCellAndOffsetsPerRing()
+        public IEnumerator FillCheckerboard_AlternatesPerCell()
         {
+            // hexSize=1, outerWallRadius=3.5 keeps distances 0, 1 and 2 (max magnitude at
+            // distance 2 is sqrt(3)*2 ~= 3.46; distance 3's closest hexes sit at ~4.58).
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(2, 4, 4);
+            level.gridSettings = BuildGrid(1f, 3.5f);
             var brick = Create<StandardBrickType>();
 
             level.FillCheckerboard(brick);
 
-            var filled = new HashSet<(int, int)>(level.placements.Select(p => (p.ring, p.segment)));
-            for (int ring = 0; ring < 2; ring++)
+            var filled = new HashSet<(int, int)>(level.placements.Select(p => (p.q, p.r)));
+            foreach (var coord in level.gridSettings.EnumerateValidCoordinates())
             {
-                for (int seg = 0; seg < 4; seg++)
-                {
-                    bool shouldBeFilled = (ring + seg) % 2 == 0;
-                    Assert.AreEqual(shouldBeFilled, filled.Contains((ring, seg)),
-                        $"Cell (ring={ring}, seg={seg}) checkerboard state was wrong.");
-                }
+                bool shouldBeFilled = Mod2(coord.q + coord.r) == 0;
+                Assert.AreEqual(shouldBeFilled, filled.Contains((coord.q, coord.r)),
+                    $"Cell {coord} checkerboard state was wrong.");
             }
             yield return null;
         }
 
+        private static int Mod2(int value) => ((value % 2) + 2) % 2;
+
         [UnityTest]
-        public IEnumerator FillEveryNthRing_FillsOnlyMatchingRings()
+        public IEnumerator FillEveryNthDistance_FillsOnlyMatchingDistances()
         {
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(5, 4, 4, 4, 4, 4);
+            level.gridSettings = BuildGrid(1f, 3.5f); // distances 0, 1, 2 present
             var brick = Create<StandardBrickType>();
 
-            level.FillEveryNthRing(brick, interval: 2, offset: 1);
+            level.FillEveryNthDistance(brick, interval: 2, offset: 1);
 
-            var filledRings = new HashSet<int>(level.placements.Select(p => p.ring));
-            CollectionAssert.AreEquivalent(new[] { 1, 3 }, filledRings);
+            var filledDistances = new HashSet<int>(
+                level.placements.Select(p => new HexCoordinate(p.q, p.r).DistanceFromOrigin()));
+            CollectionAssert.AreEquivalent(new[] { 1 }, filledDistances);
+            Assert.AreEqual(6, level.placements.Count, "All 6 distance-1 hexes should be filled.");
             yield return null;
         }
 
         [UnityTest]
-        public IEnumerator FillBorderRings_FillsOnlyFirstAndLastRing()
+        public IEnumerator FillBorderHexes_FillsOnlyBoundaryHexes()
         {
+            // With outerWallRadius=2, only distance-1 hexes touch the boundary (each has at
+            // least one distance-2 neighbor, which falls outside the radius) - the center's
+            // neighbors are all valid distance-1 hexes, so it's never a boundary hex.
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(4, 4, 4, 4, 4);
+            level.gridSettings = BuildGrid(1f, 2f);
             var brick = Create<StandardBrickType>();
 
-            level.FillBorderRings(brick);
+            level.FillBorderHexes(brick);
 
-            var filledRings = new HashSet<int>(level.placements.Select(p => p.ring));
-            CollectionAssert.AreEquivalent(new[] { 0, 3 }, filledRings);
+            Assert.AreEqual(6, level.placements.Count);
+            Assert.IsFalse(level.placements.Any(p => p.q == 0 && p.r == 0),
+                "The center hex is never a boundary hex here.");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator FillWithinDistance_FillsEveryValidHex()
+        {
+            var level = Create<LevelSO>();
+            level.gridSettings = BuildGrid(1f, 2f);
+            var brick = Create<StandardBrickType>();
+
+            level.FillWithinDistance(brick);
+
+            int expected = level.gridSettings.EnumerateValidCoordinates().Count();
+            Assert.AreEqual(expected, level.placements.Count);
             yield return null;
         }
 
@@ -113,12 +139,13 @@ namespace PolarBreakout.Tests
         public IEnumerator GenerateRandomLevel_FullChanceFillsEveryCell()
         {
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(3, 4, 5, 6);
+            level.gridSettings = BuildGrid(1f, 3.5f);
             var pool = new List<BrickTypeSO> { Create<StandardBrickType>(), Create<StandardBrickType>() };
 
             level.GenerateRandomLevel(pool, fillChance: 1f, seed: 1);
 
-            Assert.AreEqual(4 + 5 + 6, level.placements.Count,
+            int expected = level.gridSettings.EnumerateValidCoordinates().Count();
+            Assert.AreEqual(expected, level.placements.Count,
                 "Every cell in the grid should be filled at fillChance=1.");
             yield return null;
         }
@@ -127,7 +154,7 @@ namespace PolarBreakout.Tests
         public IEnumerator GenerateRandomLevel_ZeroChanceFillsNothing()
         {
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(3, 4, 5, 6);
+            level.gridSettings = BuildGrid(1f, 3.5f);
             var pool = new List<BrickTypeSO> { Create<StandardBrickType>() };
 
             level.GenerateRandomLevel(pool, fillChance: 0f, seed: 1);
@@ -140,14 +167,14 @@ namespace PolarBreakout.Tests
         public IEnumerator GenerateRandomLevel_SameSeedProducesSameLayout()
         {
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(4, 6, 8, 10, 12);
+            level.gridSettings = BuildGrid(1f, 3.5f);
             var pool = new List<BrickTypeSO> { Create<StandardBrickType>(), Create<StandardBrickType>(), Create<StandardBrickType>() };
 
             level.GenerateRandomLevel(pool, fillChance: 0.5f, seed: 42);
-            var first = level.placements.Select(p => (p.ring, p.segment, p.brickType)).ToList();
+            var first = level.placements.Select(p => (p.q, p.r, p.brickType)).ToList();
 
             level.GenerateRandomLevel(pool, fillChance: 0.5f, seed: 42);
-            var second = level.placements.Select(p => (p.ring, p.segment, p.brickType)).ToList();
+            var second = level.placements.Select(p => (p.q, p.r, p.brickType)).ToList();
 
             CollectionAssert.AreEqual(first, second,
                 "The same seed should reproduce an identical layout, including brick type choices.");
@@ -158,11 +185,11 @@ namespace PolarBreakout.Tests
         public IEnumerator GenerateRandomLevel_ReplacesExistingPlacements()
         {
             var level = Create<LevelSO>();
-            level.gridSettings = BuildGrid(2, 4, 4);
+            level.gridSettings = BuildGrid(1f, 2f);
             var oldBrick = Create<StandardBrickType>();
             var pool = new List<BrickTypeSO> { Create<StandardBrickType>() };
 
-            level.FillRing(0, oldBrick);
+            level.FillByDistance(0, oldBrick);
             level.GenerateRandomLevel(pool, fillChance: 0f, seed: 1);
 
             Assert.AreEqual(0, level.placements.Count,
