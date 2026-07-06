@@ -20,4 +20,4 @@ MonoBehaviour:
   - type: 15
     value: 1
   artSprite: {fileID: 21300000, guid: 7d0e19665b5a4b84d8210b7734302bc9, type: 3}
-  artMaterialOverride: {fileID: 2100000, guid: 6d298f8f01679204ebf9bff0a646ebd4, type: 2}
+  artMaterialOverride: {fileID: 0}
