@@ -148,6 +148,10 @@ namespace PolarBreakout
                 foreach (var slot in slots)
                 {
                     if (!slot.gameObject.activeSelf) continue;
+                    // This is the game's own default selection, not a player pick - suppress the
+                    // one-shot 360 spin (see CardOfferSlot.SuppressNextSelectionSpin) so it only
+                    // plays once the player actually selects a (different) card afterward.
+                    slot.SuppressNextSelectionSpin();
                     EventSystem.current.SetSelectedGameObject(slot.button.gameObject);
                     break;
                 }

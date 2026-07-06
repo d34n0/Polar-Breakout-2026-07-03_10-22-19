@@ -86,6 +86,8 @@ namespace PolarBreakout
         private bool _flipping;
         private bool _wasSelected;
         private float _selectedSinceTime;
+        private bool _suppressNextSelectionSpin;
+        private bool _spinSuppressedForCurrentSelection;
         private float _wobbleSeedX, _wobbleSeedY, _wobbleSeedZ;
 
         private void Awake()
@@ -95,6 +97,12 @@ namespace PolarBreakout
             _wobbleSeedZ = Random.Range(0f, 100f);
         }
 
+        /// <summary>Call right before the very first, automatic post-reveal selection (see
+        /// CardOfferController.PlayRevealSequence) - the one-shot 360 spin should only play when
+        /// the player actually picks a new card, not for the default selection the game itself
+        /// applies the instant the reveal finishes.</summary>
+        public void SuppressNextSelectionSpin() => _suppressNextSelectionSpin = true;
+
         private void Update()
         {
             if (_flipping || !_revealed) return;
@@ -103,7 +111,12 @@ namespace PolarBreakout
             bool isSelected = EventSystem.current != null &&
                               EventSystem.current.currentSelectedGameObject == button.gameObject;
 
-            if (isSelected && !_wasSelected) _selectedSinceTime = Time.unscaledTime;
+            if (isSelected && !_wasSelected)
+            {
+                _selectedSinceTime = Time.unscaledTime;
+                _spinSuppressedForCurrentSelection = _suppressNextSelectionSpin;
+                _suppressNextSelectionSpin = false;
+            }
             _wasSelected = isSelected;
 
             Vector3 targetScale = Vector3.one * (isSelected ? selectedScale : 1f);
@@ -112,23 +125,27 @@ namespace PolarBreakout
             if (isSelected)
             {
                 float timeSinceSelected = Time.unscaledTime - _selectedSinceTime;
+                float spinDuration = _spinSuppressedForCurrentSelection ? 0f : selectionSpinDuration;
 
-                if (timeSinceSelected < selectionSpinDuration)
+                if (timeSinceSelected < spinDuration)
                 {
                     // One-shot 360-degree Y spin the instant this card becomes selected, at the
                     // same time as the scale-up above - eased in and out (SmoothStep) so it
                     // accelerates into the turn and settles cleanly facing forward, rather than
-                    // snapping straight into the wobble below.
-                    float spinT = Mathf.Clamp01(timeSinceSelected / Mathf.Max(0.0001f, selectionSpinDuration));
+                    // snapping straight into the wobble below. Skipped entirely for the game's own
+                    // default post-reveal selection (see SuppressNextSelectionSpin) - only a
+                    // genuine player pick should spin.
+                    float spinT = Mathf.Clamp01(timeSinceSelected / Mathf.Max(0.0001f, spinDuration));
                     rect.localRotation = Quaternion.Euler(0f, Mathf.SmoothStep(0f, 360f, spinT), 0f);
                 }
                 else if (idleWobbleDegrees > 0f)
                 {
                     // Ramp starts once the spin above finishes (not from the moment selection
                     // began), so the wobble eases in cleanly right where the spin left off -
-                    // facing forward - instead of racing ahead mid-spin.
+                    // facing forward - instead of racing ahead mid-spin. If the spin was
+                    // suppressed, spinDuration is 0 so the ramp starts immediately instead.
                     float rampT = wobbleRampInDuration > 0f
-                        ? Mathf.Clamp01((timeSinceSelected - selectionSpinDuration) / wobbleRampInDuration)
+                        ? Mathf.Clamp01((timeSinceSelected - spinDuration) / wobbleRampInDuration)
                         : 1f;
                     float amount = idleWobbleDegrees * rampT;
                     float t = Time.unscaledTime * idleWobbleSpeed;

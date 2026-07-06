@@ -256,5 +256,79 @@ namespace PolarBreakout.Tests
             controller.slots[0].button.onClick.Invoke();
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator DefaultPostRevealSelection_DoesNotSpin_ButPickingAnotherCardDoes()
+        {
+            var eventSystemGO = Track(new GameObject("TestEventSystem4"));
+            eventSystemGO.AddComponent<EventSystem>();
+
+            var canvasGO = Track(new GameObject("TestCanvas4"));
+            canvasGO.AddComponent<Canvas>();
+
+            var controllerGO = Track(new GameObject("TestCardOfferController4"));
+            var controller = controllerGO.AddComponent<CardOfferController>();
+
+            var panelGO = new GameObject("PanelRoot", typeof(RectTransform));
+            panelGO.transform.SetParent(canvasGO.transform, false);
+            panelGO.SetActive(false);
+            controller.panelRoot = panelGO;
+
+            var slotA = BuildSlot(panelGO.transform, "A", withCardBack: true);
+            var slotB = BuildSlot(panelGO.transform, "B", withCardBack: true);
+            foreach (var slot in new[] { slotA, slotB })
+            {
+                slot.faceDownHoldDuration = 0f;
+                slot.flipDuration = 0.05f;
+                slot.selectionSpinDuration = 0.3f;
+                slot.idleWobbleDegrees = 0f; // Isolate the spin from the selected-card wobble noise.
+            }
+            controller.slots = new[] { slotA, slotB };
+
+            var cards = new CardSO[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var card = ScriptableObject.CreateInstance<CardSO>();
+                card.displayName = $"Test Card {i}";
+                card.description = "Test description.";
+                card.rarity = CardRarity.Common;
+                cards[i] = card;
+            }
+            controller.allCards = cards;
+
+            controller.StartCoroutine(controller.ShowOffer());
+
+            // Wait for the reveal to finish and the game to apply its own default selection
+            // (slotA, since it's the first active slot) - see PlayRevealSequence.
+            GameObject selected = null;
+            float waitStart = Time.unscaledTime;
+            while (selected == null && Time.unscaledTime - waitStart < 2f)
+            {
+                yield return null;
+                selected = EventSystem.current.currentSelectedGameObject;
+            }
+            Assert.AreEqual(slotA.button.gameObject, selected);
+
+            // The default selection itself should never spin - sample across the whole spin
+            // window and confirm slotA stays at (or eases straight back to) identity throughout.
+            float checkStart = Time.unscaledTime;
+            while (Time.unscaledTime - checkStart < slotA.selectionSpinDuration + 0.1f)
+            {
+                yield return null;
+                Assert.Less(Quaternion.Angle(slotA.transform.localRotation, Quaternion.identity), 5f,
+                    "The game's own default post-reveal selection should not trigger the one-shot spin.");
+            }
+
+            // Now the player actually picks a different card - this SHOULD spin.
+            EventSystem.current.SetSelectedGameObject(slotB.button.gameObject);
+            float spinCheckStart = Time.unscaledTime;
+            while (Time.unscaledTime - spinCheckStart < slotB.selectionSpinDuration / 2f) yield return null;
+            float midSpinY = slotB.transform.localRotation.eulerAngles.y;
+            Assert.Greater(Mathf.Min(midSpinY, 360f - midSpinY), 30f,
+                "Selecting a different card after the default selection should play the one-shot spin.");
+
+            controller.slots[0].button.onClick.Invoke();
+            yield return null;
+        }
     }
 }

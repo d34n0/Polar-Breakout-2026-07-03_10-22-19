@@ -1841,7 +1841,7 @@
     "m_ObjectId": "bb93d509163049ba9086662675ec4095",
     "m_Title": "View Direction Based colour",
     "m_Position": {
-        "x": -963.0,
+        "x": -962.9999389648438,
         "y": 167.00001525878907
     }
 }
@@ -1877,8 +1877,8 @@
     "m_ObjectId": "bf044d68fed74540ac4791d8ad75f92b",
     "m_Title": "Foil Pattern",
     "m_Position": {
-        "x": -1047.0,
-        "y": 773.0
+        "x": -1046.9998779296875,
+        "y": 772.9999389648438
     }
 }
 
