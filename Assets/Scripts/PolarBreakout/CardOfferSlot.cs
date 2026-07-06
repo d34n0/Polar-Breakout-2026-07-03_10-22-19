@@ -88,6 +88,7 @@ namespace PolarBreakout
         private float _selectedSinceTime;
         private bool _suppressNextSelectionSpin;
         private bool _spinSuppressedForCurrentSelection;
+        private bool _spinShowingBack;
         private float _wobbleSeedX, _wobbleSeedY, _wobbleSeedZ;
 
         private void Awake()
@@ -136,32 +137,61 @@ namespace PolarBreakout
                     // default post-reveal selection (see SuppressNextSelectionSpin) - only a
                     // genuine player pick should spin.
                     float spinT = Mathf.Clamp01(timeSinceSelected / Mathf.Max(0.0001f, spinDuration));
-                    rect.localRotation = Quaternion.Euler(0f, Mathf.SmoothStep(0f, 360f, spinT), 0f);
+                    float angle = Mathf.SmoothStep(0f, 360f, spinT);
+                    rect.localRotation = Quaternion.Euler(0f, angle, 0f);
+
+                    // The UI shader doesn't cull backfaces, so without this the front content
+                    // (text/art/title/description/icon boxes) would still render - mirrored -
+                    // once the card rotates past edge-on. Swap to the card-back visual for the
+                    // half of the spin that's actually facing away from the camera, same as the
+                    // reveal flip does at its own edge-on midpoint (see PlayFlipReveal).
+                    bool showBack = angle > 90f && angle < 270f;
+                    if (showBack != _spinShowingBack)
+                    {
+                        SetCardBackVisible(showBack);
+                        _spinShowingBack = showBack;
+                    }
                 }
-                else if (idleWobbleDegrees > 0f)
+                else
                 {
-                    // Ramp starts once the spin above finishes (not from the moment selection
-                    // began), so the wobble eases in cleanly right where the spin left off -
-                    // facing forward - instead of racing ahead mid-spin. If the spin was
-                    // suppressed, spinDuration is 0 so the ramp starts immediately instead.
-                    float rampT = wobbleRampInDuration > 0f
-                        ? Mathf.Clamp01((timeSinceSelected - spinDuration) / wobbleRampInDuration)
-                        : 1f;
-                    float amount = idleWobbleDegrees * rampT;
-                    float t = Time.unscaledTime * idleWobbleSpeed;
-                    float x = (Mathf.PerlinNoise(_wobbleSeedX, t) * 2f - 1f) * amount;
-                    float y = (Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount;
-                    float z = (Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount;
-                    rect.localRotation = Quaternion.Euler(x, y, z);
-                }
-                else if (rect.localRotation != Quaternion.identity)
-                {
-                    rect.localRotation = Quaternion.Slerp(rect.localRotation, Quaternion.identity, Time.unscaledDeltaTime * selectionTransitionSpeed);
+                    if (_spinShowingBack)
+                    {
+                        SetCardBackVisible(false);
+                        _spinShowingBack = false;
+                    }
+
+                    if (idleWobbleDegrees > 0f)
+                    {
+                        // Ramp starts once the spin above finishes (not from the moment selection
+                        // began), so the wobble eases in cleanly right where the spin left off -
+                        // facing forward - instead of racing ahead mid-spin. If the spin was
+                        // suppressed, spinDuration is 0 so the ramp starts immediately instead.
+                        float rampT = wobbleRampInDuration > 0f
+                            ? Mathf.Clamp01((timeSinceSelected - spinDuration) / wobbleRampInDuration)
+                            : 1f;
+                        float amount = idleWobbleDegrees * rampT;
+                        float t = Time.unscaledTime * idleWobbleSpeed;
+                        float x = (Mathf.PerlinNoise(_wobbleSeedX, t) * 2f - 1f) * amount;
+                        float y = (Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount;
+                        float z = (Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount;
+                        rect.localRotation = Quaternion.Euler(x, y, z);
+                    }
+                    else if (rect.localRotation != Quaternion.identity)
+                    {
+                        rect.localRotation = Quaternion.Slerp(rect.localRotation, Quaternion.identity, Time.unscaledDeltaTime * selectionTransitionSpeed);
+                    }
                 }
             }
-            else if (rect.localRotation != Quaternion.identity)
+            else
             {
-                rect.localRotation = Quaternion.Slerp(rect.localRotation, Quaternion.identity, Time.unscaledDeltaTime * selectionTransitionSpeed);
+                if (_spinShowingBack)
+                {
+                    SetCardBackVisible(false);
+                    _spinShowingBack = false;
+                }
+
+                if (rect.localRotation != Quaternion.identity)
+                    rect.localRotation = Quaternion.Slerp(rect.localRotation, Quaternion.identity, Time.unscaledDeltaTime * selectionTransitionSpeed);
             }
         }
 
@@ -191,11 +221,26 @@ namespace PolarBreakout
         public void SetRevealed(bool revealed)
         {
             _revealed = revealed;
-            if (cardBackRoot != null) cardBackRoot.SetActive(!revealed);
-            rarityText.gameObject.SetActive(revealed);
-            nameText.gameObject.SetActive(revealed);
-            descriptionText.gameObject.SetActive(revealed);
-            if (artImage != null) artImage.gameObject.SetActive(revealed && _hasArt);
+            SetCardBackVisible(!revealed);
+        }
+
+        /// <summary>Shows either the card back (cardBackRoot) or all the front content - text,
+        /// art, and the title/icon/description box backgrounds - never both at once. Used both by
+        /// SetRevealed (the face-down/revealed states either side of a flip) and by the one-shot
+        /// selection spin (see Update), which needs to swap to the back mid-spin for the half of
+        /// the rotation that's actually facing away from the camera.</summary>
+        private void SetCardBackVisible(bool showBack)
+        {
+            if (cardBackRoot != null) cardBackRoot.SetActive(showBack);
+
+            bool showFront = !showBack;
+            rarityText.gameObject.SetActive(showFront);
+            nameText.gameObject.SetActive(showFront);
+            descriptionText.gameObject.SetActive(showFront);
+            if (artImage != null) artImage.gameObject.SetActive(showFront && _hasArt);
+            if (titleBoxImage != null) titleBoxImage.gameObject.SetActive(showFront);
+            if (iconCircleImage != null) iconCircleImage.gameObject.SetActive(showFront);
+            if (descriptionBoxImage != null) descriptionBoxImage.gameObject.SetActive(showFront);
         }
 
         /// <summary>Holds briefly at normal scale while face-down, then flips over - rotating
