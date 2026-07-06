@@ -16,11 +16,13 @@ namespace PolarBreakout
         public BrickGridManager brickGridManager;
         public ScoreManager scoreManager;
 
-        [Tooltip("Optional. When set, every new round is forced into a clean, deterministic " +
-                 "state after the new level builds: any multiball clones are cleared and the " +
-                 "primary ball is redocked to the paddle, regardless of whatever state it was " +
-                 "already in (including discarding a stray launch request). Leave unset for " +
-                 "isolated tests that don't need this.")]
+        [Tooltip("Optional. When set, the paddle dissolves out at the end of a cleared round " +
+                 "(before the card offer appears) and dissolves back in once the new level " +
+                 "builds, exactly like a life-lost respawn. Every new round is also forced into a " +
+                 "clean, deterministic state: any multiball clones are cleared and the primary " +
+                 "ball is redocked to the paddle, regardless of whatever state it was already in " +
+                 "(including discarding a stray launch request). Leave unset for isolated tests " +
+                 "that don't need this.")]
         public BallManager ballManager;
 
         [Tooltip("Levels to advance through in order (stage 1 = levels[0], stage 2 = levels[1], " +
@@ -80,15 +82,22 @@ namespace PolarBreakout
             if (brickGridManager != null && nextLevel != null)
                 brickGridManager.BuildLevel(nextLevel);
 
-            if (ballManager != null) ballManager.ResetForNewRound();
+            if (ballManager != null)
+            {
+                ballManager.ResetForNewRound();
+                yield return ballManager.PlayRoundStartDissolveIn();
+            }
         }
 
-        /// <summary>Runs right after a round ends and before the card offer appears - currently
-        /// just a pause (see endOfRoundDelay), but this is the natural place to plug in a future
-        /// end-of-round animation/effect (e.g. a "STAGE CLEAR" banner) ahead of the offer.</summary>
+        /// <summary>Runs right after a round ends and before the card offer appears - a brief
+        /// pause (see endOfRoundDelay) for the level-clear moment to breathe, then the paddle
+        /// dissolves out exactly like it does when a life is lost (see
+        /// BallManager.PlayRoundEndDissolveOut), so the card offer appears with the arena empty
+        /// rather than the paddle just sitting there mid-choice.</summary>
         private IEnumerator PlayEndOfRoundSequence()
         {
             yield return new WaitForSeconds(endOfRoundDelay);
+            if (ballManager != null) yield return ballManager.PlayRoundEndDissolveOut();
         }
 
         private LevelSO GetLevelForStage(int stage)

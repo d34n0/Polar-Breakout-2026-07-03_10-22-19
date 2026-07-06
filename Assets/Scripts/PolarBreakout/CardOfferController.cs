@@ -53,9 +53,9 @@ namespace PolarBreakout
         public InputActionAsset actions;
 
         [Header("Reveal Animation")]
-        [Tooltip("Delay between each slot starting its pop/flip reveal (see " +
-                 "CardOfferSlot.PlayPopAndFlipReveal), seconds - staggers them so cards flip " +
-                 "over one by one instead of all at once.")]
+        [Tooltip("Pause after each card finishes its pop/flip reveal (see " +
+                 "CardOfferSlot.PlayPopAndFlipReveal), before the next one starts, seconds - " +
+                 "cards turn over strictly one at a time, not overlapping.")]
         public float revealStaggerDelay = 0.15f;
 
         private CardSO _chosenCard;
@@ -114,25 +114,24 @@ namespace PolarBreakout
         }
 
         /// <summary>Pops each active slot up face-down, then flips it over to reveal its card,
-        /// one by one (see CardOfferSlot.PlayPopAndFlipReveal) - staggered by revealStaggerDelay
-        /// so they don't all flip in lockstep, giving each card's own material/shader a moment in
-        /// the spotlight. Every button (cards and Reroll alike) stays non-interactable for the
+        /// strictly one at a time (see CardOfferSlot.PlayPopAndFlipReveal) - each card's entire
+        /// pop/hold/flip finishes, then revealStaggerDelay passes, before the next one even
+        /// starts, giving each card's own material/shader its own moment in the spotlight rather
+        /// than overlapping. Every button (cards and Reroll alike) stays non-interactable for the
         /// whole sequence, so a trigger-happy click can't pick a card before its face is even
         /// showing, or reroll again mid-flip and overlap two reveals at once.</summary>
         private IEnumerator PlayRevealSequence()
         {
             SetOfferInteractable(false);
 
-            var running = new List<Coroutine>();
+            bool revealedAny = false;
             for (int i = 0; i < slots.Length; i++)
             {
                 if (!slots[i].gameObject.activeSelf) continue;
-                if (running.Count > 0) yield return new WaitForSecondsRealtime(revealStaggerDelay);
-                running.Add(StartCoroutine(slots[i].PlayPopAndFlipReveal()));
+                if (revealedAny) yield return new WaitForSecondsRealtime(revealStaggerDelay);
+                yield return slots[i].PlayPopAndFlipReveal();
+                revealedAny = true;
             }
-
-            foreach (var routine in running)
-                yield return routine;
 
             SetOfferInteractable(true);
 

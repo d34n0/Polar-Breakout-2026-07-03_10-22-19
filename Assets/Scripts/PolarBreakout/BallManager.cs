@@ -31,9 +31,11 @@ namespace PolarBreakout
         [Tooltip("How long to wait after the explosion before the ball/paddle respawn - gives " +
                  "the explosion effect room to play before everything resets.")]
         public float respawnDelay = 1f;
-        [Tooltip("How long the paddle takes to dissolve out immediately after losing the ball.")]
+        [Tooltip("How long the paddle takes to dissolve out - immediately after losing the ball, " +
+                 "or at the end of a cleared round (see PlayRoundEndDissolveOut).")]
         public float paddleDissolveOutDuration = 0.3f;
-        [Tooltip("How long the paddle and ball take to dissolve back into place once respawning.")]
+        [Tooltip("How long the paddle and ball take to dissolve back into place - on respawn " +
+                 "after a death, or at the start of a new round (see PlayRoundStartDissolveIn).")]
         public float dissolveInDuration = 0.6f;
 
         private readonly List<BallController> _clones = new List<BallController>();
@@ -155,13 +157,18 @@ namespace PolarBreakout
 
         /// <summary>Called at the start of every new round/stage (see
         /// LevelManager.AdvanceToNextStage) to guarantee a clean, deterministic start regardless
-        /// of whatever state the ball(s) were left in: any multiball clones from the previous
-        /// stage are destroyed and the primary ball is forced back to Docked. This also discards
-        /// any stray launch request - e.g. Unity's Input System re-checks already-actuated
-        /// controls the moment an action is re-enabled (see CardOfferController.ShowOffer), which
-        /// can fire Performed immediately if Fire happens to still be held when the card offer
-        /// closes, otherwise launching the ball before the player has actually pressed anything
-        /// for the new round.</summary>
+        /// of whatever state was left over from the stage just cleared: any multiball clones are
+        /// destroyed and the primary ball is forced back to Docked, and every leftover Bullet,
+        /// LaserBeam, and uncollected PowerUpCapsule still on screen is cleared away - none of
+        /// them should survive into a new round just because the player didn't use/catch them in
+        /// time. Deliberately does NOT touch PaddleAbilities' own ammo/autopilot state (unlike
+        /// PaddleAbilities.ResetAbilities, called on an actual death) - a round transition isn't a
+        /// death, so unspent Cannon ammo carries over as normal. This also discards any stray
+        /// launch request - e.g. Unity's Input System re-checks already-actuated controls the
+        /// moment an action is re-enabled (see CardOfferController.ShowOffer), which can fire
+        /// Performed immediately if Fire happens to still be held when the card offer closes,
+        /// otherwise launching the ball before the player has actually pressed anything for the
+        /// new round.</summary>
         public void ResetForNewRound()
         {
             foreach (var clone in _clones)
@@ -170,6 +177,41 @@ namespace PolarBreakout
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();
+
+            foreach (var bullet in FindObjectsByType<Bullet>(FindObjectsSortMode.None))
+                Destroy(bullet.gameObject);
+            foreach (var beam in FindObjectsByType<LaserBeam>(FindObjectsSortMode.None))
+                Destroy(beam.gameObject);
+            foreach (var capsule in FindObjectsByType<PowerUpCapsule>(FindObjectsSortMode.None))
+                Destroy(capsule.gameObject);
+        }
+
+        /// <summary>Called by LevelManager right after a round is cleared, before the card offer
+        /// appears - dissolves the paddle out exactly like it does when a life is lost (see
+        /// RespawnSequence), and hides the ball too (which RespawnSequence doesn't need to do
+        /// itself, since by that point the ball has already been lost/deactivated). Unlike a real
+        /// death, there's no explosion effect or respawnDelay here - the round just clears and
+        /// the paddle steps off-screen for the card choice.</summary>
+        public IEnumerator PlayRoundEndDissolveOut()
+        {
+            primaryBall.gameObject.SetActive(false);
+
+            var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
+            if (paddleDissolve != null)
+                yield return paddleDissolve.DissolveOut(paddleDissolveOutDuration);
+        }
+
+        /// <summary>Called by LevelManager once the new level has been built and ResetForNewRound
+        /// has already reactivated/redocked the ball - dissolves the paddle and ball back into
+        /// place together exactly like a respawn (see RespawnSequence), so the new round visually
+        /// arrives rather than just popping in.</summary>
+        public IEnumerator PlayRoundStartDissolveIn()
+        {
+            var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
+            var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
+
+            if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
+            if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
         /// <summary>Angle (degrees) of whichever active, launched ball is angularly closest
