@@ -52,6 +52,12 @@ namespace PolarBreakout
                  "menu - leave unset if not needed.")]
         public InputActionAsset actions;
 
+        [Header("Reveal Animation")]
+        [Tooltip("Delay between each slot starting its pop/flip reveal (see " +
+                 "CardOfferSlot.PlayPopAndFlipReveal), seconds - staggers them so cards flip " +
+                 "over one by one instead of all at once.")]
+        public float revealStaggerDelay = 0.15f;
+
         private CardSO _chosenCard;
         private bool _waitingForChoice;
         private int _rerollsUsedThisOffer;
@@ -67,10 +73,12 @@ namespace PolarBreakout
             SetGameplayActionsEnabled(false);
             if (panelRoot != null) panelRoot.SetActive(true);
 
+            yield return PlayRevealSequence();
+
             if (rerollButton != null)
             {
                 rerollButton.onClick.RemoveAllListeners();
-                rerollButton.onClick.AddListener(OnRerollClicked);
+                rerollButton.onClick.AddListener(() => StartCoroutine(RerollSequence()));
             }
             UpdateRerollUI();
 
@@ -91,14 +99,65 @@ namespace PolarBreakout
             _waitingForChoice = false;
         }
 
-        private void OnRerollClicked()
+        private IEnumerator RerollSequence()
         {
             int cost = CurrentRerollCost;
-            if (currencyManager == null || !currencyManager.TrySpend(cost)) return;
+            if (currencyManager == null || !currencyManager.TrySpend(cost)) yield break;
 
             _rerollsUsedThisOffer++;
             RefreshOfferCards();
             UpdateRerollUI();
+            yield return PlayRevealSequence();
+            // Re-asserted after the reveal restores every button's interactable flag to true -
+            // otherwise Reroll would stay clickable regardless of currency once the flip finishes.
+            UpdateRerollUI();
+        }
+
+        /// <summary>Pops each active slot up face-down, then flips it over to reveal its card,
+        /// one by one (see CardOfferSlot.PlayPopAndFlipReveal) - staggered by revealStaggerDelay
+        /// so they don't all flip in lockstep, giving each card's own material/shader a moment in
+        /// the spotlight. Every button (cards and Reroll alike) stays non-interactable for the
+        /// whole sequence, so a trigger-happy click can't pick a card before its face is even
+        /// showing, or reroll again mid-flip and overlap two reveals at once.</summary>
+        private IEnumerator PlayRevealSequence()
+        {
+            SetOfferInteractable(false);
+
+            var running = new List<Coroutine>();
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (!slots[i].gameObject.activeSelf) continue;
+                if (running.Count > 0) yield return new WaitForSecondsRealtime(revealStaggerDelay);
+                running.Add(StartCoroutine(slots[i].PlayPopAndFlipReveal()));
+            }
+
+            foreach (var routine in running)
+                yield return routine;
+
+            SetOfferInteractable(true);
+
+            // Selecting the first active card here, after the reveal, rather than relying on
+            // RefreshOfferCards' own selection call from before it - Selectable.interactable
+            // deselects a Selectable outright the instant it's set false while selected (see
+            // SetOfferInteractable(false) above), and nothing restores that selection
+            // automatically once interactable again, leaving gamepad/keyboard navigation with
+            // nothing selected to navigate from.
+            if (EventSystem.current != null)
+            {
+                foreach (var slot in slots)
+                {
+                    if (!slot.gameObject.activeSelf) continue;
+                    EventSystem.current.SetSelectedGameObject(slot.button.gameObject);
+                    break;
+                }
+            }
+        }
+
+        private void SetOfferInteractable(bool interactable)
+        {
+            foreach (var slot in slots)
+                if (slot.gameObject.activeSelf) slot.button.interactable = interactable;
+            if (rerollButton != null) rerollButton.interactable = interactable;
         }
 
         private int CurrentRerollCost => baseRerollCost + rerollCostIncrement * _rerollsUsedThisOffer;
@@ -115,8 +174,8 @@ namespace PolarBreakout
                 if (hasCard) slots[i].Initialize(offered[i], OnCardChosen);
             }
 
-            if (EventSystem.current != null && offered.Count > 0)
-                EventSystem.current.SetSelectedGameObject(slots[0].button.gameObject);
+            // Not selected here - PlayRevealSequence selects the first active card itself once
+            // the reveal finishes and buttons are interactable again (see its own comment).
         }
 
         private void UpdateRerollUI()
