@@ -7,11 +7,21 @@ namespace PolarBreakout.Editor
     [CustomEditor(typeof(LevelSO))]
     public class LevelSOEditor : UnityEditor.Editor
     {
+        private enum PatternType { Checkerboard, EveryNthRing, BorderRings }
+
         private BrickTypeSO _fillType;
         private int _fillRing;
 
         private BrickTypeSO _brush;
         private bool _paintModeEnabled;
+
+        private PatternType _patternType;
+        private int _patternInterval = 2;
+        private int _patternOffset;
+
+        private readonly List<BrickTypeSO> _randomBrickPool = new List<BrickTypeSO>();
+        private float _randomFillChance = 0.7f;
+        private int _randomSeed;
 
         public override void OnInspectorGUI()
         {
@@ -43,11 +53,84 @@ namespace PolarBreakout.Editor
                 }
             }
 
+            if (GUILayout.Button($"Clear Ring {_fillRing}"))
+            {
+                Undo.RecordObject(level, "Clear Ring");
+                level.ClearRing(_fillRing);
+                EditorUtility.SetDirty(level);
+            }
+
             if (GUILayout.Button("Clear All Bricks"))
             {
                 Undo.RecordObject(level, "Clear Level");
                 level.placements.Clear();
                 EditorUtility.SetDirty(level);
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Pattern Designer", EditorStyles.boldLabel);
+
+            _patternType = (PatternType)EditorGUILayout.EnumPopup("Pattern", _patternType);
+            if (_patternType == PatternType.EveryNthRing)
+            {
+                _patternInterval = Mathf.Max(1, EditorGUILayout.IntField("Interval", _patternInterval));
+                _patternOffset = Mathf.Max(0, EditorGUILayout.IntField("Offset", _patternOffset));
+            }
+
+            using (new EditorGUI.DisabledScope(_fillType == null || level.gridSettings == null))
+            {
+                if (GUILayout.Button("Apply Pattern"))
+                {
+                    Undo.RecordObject(level, "Apply Pattern");
+                    switch (_patternType)
+                    {
+                        case PatternType.Checkerboard:
+                            level.FillCheckerboard(_fillType);
+                            break;
+                        case PatternType.EveryNthRing:
+                            level.FillEveryNthRing(_fillType, _patternInterval, _patternOffset);
+                            break;
+                        case PatternType.BorderRings:
+                            level.FillBorderRings(_fillType);
+                            break;
+                    }
+                    EditorUtility.SetDirty(level);
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Random Level Designer", EditorStyles.boldLabel);
+
+            EditorGUILayout.LabelField("Brick Pool");
+            for (int i = 0; i < _randomBrickPool.Count; i++)
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    _randomBrickPool[i] = (BrickTypeSO)EditorGUILayout.ObjectField(
+                        _randomBrickPool[i], typeof(BrickTypeSO), false);
+                    if (GUILayout.Button("X", GUILayout.Width(20)))
+                    {
+                        _randomBrickPool.RemoveAt(i);
+                        break;
+                    }
+                }
+            }
+            if (GUILayout.Button("Add Brick Type"))
+                _randomBrickPool.Add(null);
+
+            _randomFillChance = EditorGUILayout.Slider("Fill Chance", _randomFillChance, 0f, 1f);
+            _randomSeed = EditorGUILayout.IntField("Seed", _randomSeed);
+
+            bool hasValidBrick = _randomBrickPool.Exists(b => b != null);
+            using (new EditorGUI.DisabledScope(!hasValidBrick || level.gridSettings == null))
+            {
+                if (GUILayout.Button("Generate Random Level"))
+                {
+                    Undo.RecordObject(level, "Generate Random Level");
+                    var pool = _randomBrickPool.FindAll(b => b != null);
+                    level.GenerateRandomLevel(pool, _randomFillChance, _randomSeed);
+                    EditorUtility.SetDirty(level);
+                }
             }
 
             EditorGUILayout.Space();
