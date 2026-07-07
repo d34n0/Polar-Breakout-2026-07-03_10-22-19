@@ -59,6 +59,10 @@ namespace PolarBreakout
         /// <summary>Fired on activation and every tick while a Survive stage is running - the
         /// remaining seconds. Drives SurviveTimerController's countdown text.</summary>
         public event Action<float> OnSurviveTimeChanged;
+        /// <summary>Fired once whenever any level activates (initial build-in or any stage
+        /// advance), right as the round-start dissolve-in begins - (objectiveType, surviveDuration,
+        /// surviveDuration is only meaningful for Survive). Drives the objective announcement popup.</summary>
+        public event Action<StageObjectiveType, float> OnObjectiveAnnounced;
 
         private LevelSO _activeLevel;
         private Coroutine _surviveTimerRoutine;
@@ -130,22 +134,25 @@ namespace PolarBreakout
                 return;
             }
 
-            // Immediately, before the end-of-round delay/dissolve/card-offer sequence even
-            // starts - otherwise a power-up capsule still falling near the paddle when the last
-            // brick dies could be legitimately caught during that window and carry its ability
-            // into the next stage, even though the player never used/caught it during the actual
-            // round that dropped it.
-            if (ballManager != null) ballManager.ClearTransientPickupsAndAbilities();
             BeginAdvanceToNextStage();
         }
 
         /// <summary>One-shot gate into AdvanceToNextStage - both a Clear stage's OnLevelCleared
         /// and a Survive stage's own timer expiry funnel through here, so they can't race and
-        /// double-trigger the same advance.</summary>
+        /// double-trigger the same advance, and so every trigger clears the screen the same way.</summary>
         private void BeginAdvanceToNextStage()
         {
             if (_stageAdvancing) return;
             _stageAdvancing = true;
+
+            // Immediately, before the end-of-round delay/dissolve/card-offer sequence even starts
+            // - otherwise a power-up capsule still falling near the paddle, or a stray bullet/
+            // laser beam still in flight, when the round ends could be legitimately caught/keep
+            // acting during that window and carry into the next stage, even though the player
+            // didn't use/catch it during the round it came from. Applies to every way a round can
+            // end - a Clear stage's last brick falling and a Survive stage's timer running out
+            // alike - so the screen always clears the same way regardless of which one triggered it.
+            if (ballManager != null) ballManager.ClearTransientPickupsAndAbilities();
 
             if (_surviveTimerRoutine != null)
             {
@@ -153,13 +160,22 @@ namespace PolarBreakout
                 _surviveTimerRoutine = null;
             }
 
+            // Hide the Survive timer immediately at round end rather than leaving it on screen
+            // (frozen at whatever value it last had) through the whole tear-down/card-offer/
+            // build-in sequence - ActivateLevel will show it again on its own once the next level
+            // activates, if that next level also turns out to be a Survive stage.
+            OnSurviveStageChanged?.Invoke(false, 0f);
+
             StartCoroutine(AdvanceToNextStage());
         }
 
         /// <summary>Ticks remaining down on scaled Time.deltaTime (so it naturally pauses whenever
         /// Time.timeScale is 0, e.g. a card offer - which can't overlap a running Survive timer
-        /// anyway, since offers only appear between stages), firing OnSurviveTimeChanged each
-        /// step, then advances the stage once it hits zero.</summary>
+        /// anyway, since offers only appear between stages) - and only while a ball is actually
+        /// in flight (see BallManager.IsAnyBallInPlay): docked-awaiting-launch and the death/
+        /// respawn sequence both freeze the countdown rather than let it bleed away while the
+        /// player isn't actively playing. Fires OnSurviveTimeChanged each step it does tick, then
+        /// advances the stage once it hits zero.</summary>
         private IEnumerator RunSurviveTimer(float duration)
         {
             float remaining = duration;
@@ -167,6 +183,8 @@ namespace PolarBreakout
             while (remaining > 0f)
             {
                 yield return null;
+                if (ballManager != null && !ballManager.IsAnyBallInPlay()) continue;
+
                 remaining -= Time.deltaTime;
                 OnSurviveTimeChanged?.Invoke(Mathf.Max(0f, remaining));
             }
@@ -194,6 +212,9 @@ namespace PolarBreakout
                 _surviveTimerRoutine = StartCoroutine(RunSurviveTimer(lvl.surviveDuration));
 
             OnSurviveStageChanged?.Invoke(isSurvive, lvl != null ? lvl.surviveDuration : 0f);
+
+            if (lvl != null)
+                OnObjectiveAnnounced?.Invoke(lvl.objectiveType, lvl.surviveDuration);
         }
 
         /// <summary>Computes and applies the soft clear threshold for Clear-type levels (advance

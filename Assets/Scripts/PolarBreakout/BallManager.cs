@@ -260,6 +260,23 @@ namespace PolarBreakout
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
+        /// <summary>True if any ball (the primary or a multiball clone) is currently active and
+        /// launched - i.e. genuinely in flight, as opposed to docked awaiting launch or lost and
+        /// mid-respawn. A clone is always launched the instant it's spawned (see SpawnCloneFrom),
+        /// so checking active+Launched uniformly covers both. Used by LevelManager's Survive-stage
+        /// timer to pause while the player isn't actively playing.</summary>
+        public bool IsAnyBallInPlay()
+        {
+            if (primaryBall != null && primaryBall.gameObject.activeSelf && primaryBall.State == BallState.Launched)
+                return true;
+
+            foreach (var clone in _clones)
+                if (clone != null && clone.gameObject.activeSelf && clone.State == BallState.Launched)
+                    return true;
+
+            return false;
+        }
+
         /// <summary>Angle (degrees) of whichever active, launched ball currently sits closest to
         /// the arena center - used by the Autopilot ability to decide which ball to track when
         /// multiball is in play. Prioritizing proximity to the center (rather than whichever ball

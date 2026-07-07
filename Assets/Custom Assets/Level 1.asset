@@ -649,7 +649,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: 0
     r: 13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
   - q: 1
     r: 12
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -664,7 +664,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: -13
     r: 13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
   - q: -12
     r: 12
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -679,7 +679,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: 13
     r: 0
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
   - q: 12
     r: 0
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -694,7 +694,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: 13
     r: -13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
   - q: 12
     r: -12
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -709,7 +709,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: 0
     r: -13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
   - q: 0
     r: -12
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
@@ -724,7 +724,7 @@ MonoBehaviour:
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: -13
     r: 0
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
   - q: -12
     r: 0
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}

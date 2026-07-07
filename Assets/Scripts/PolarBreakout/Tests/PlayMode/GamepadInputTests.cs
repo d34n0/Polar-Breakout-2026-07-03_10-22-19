@@ -369,10 +369,10 @@ namespace PolarBreakout.Tests
             var realSettings = AssetDatabase.LoadAssetAtPath<PolarGridSettings>(
                 "Assets/Custom Assets/PolarGridSettings.asset");
             var realLevel = AssetDatabase.LoadAssetAtPath<LevelSO>(
-                "Assets/Custom Assets/LevelDesigner.asset");
+                "Assets/Custom Assets/Level 1.asset");
             var realBrickPrefab = AssetDatabase.LoadAssetAtPath<Brick>("Assets/Prefabs/Brick.prefab");
             Assert.IsNotNull(realSettings, "Real PolarGridSettings asset should load.");
-            Assert.IsNotNull(realLevel, "Real Level0 asset should load.");
+            Assert.IsNotNull(realLevel, "Real Level 1 asset should load.");
             Assert.IsNotNull(realBrickPrefab, "Real Brick prefab should load.");
 
             var managerGO = new GameObject("RealManager");
