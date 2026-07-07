@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: PaddleSkin_Default
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.PaddleSkin
   displayName: Default
-  material: {fileID: 2100000, guid: fdea61bf83dc06a46ba786e45d3e1f5a, type: 2}
+  material: {fileID: 2100000, guid: 576da3a5f478e5d4584f38da46a6dfcb, type: 2}

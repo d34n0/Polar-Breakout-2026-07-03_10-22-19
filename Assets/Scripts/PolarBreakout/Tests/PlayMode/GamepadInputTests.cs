@@ -22,6 +22,12 @@ namespace PolarBreakout.Tests
         private BallController _ball;
         private Gamepad _gamepad;
 
+        // Ad-hoc GameObjects a test creates itself (outside the SetUp-provided rig above) register
+        // here so TearDown destroys them too, even if the test's own assertions throw first - a
+        // leaked real ball/paddle/full brick level would otherwise keep simulating physics into
+        // whichever test runs next.
+        private readonly System.Collections.Generic.List<GameObject> _extraSpawned = new();
+
         [SetUp]
         public void SetUp()
         {
@@ -84,6 +90,10 @@ namespace PolarBreakout.Tests
             if (_ballObject != null) Object.Destroy(_ballObject);
             if (_paddleObject != null) Object.Destroy(_paddleObject);
             if (_settings != null) Object.Destroy(_settings);
+
+            foreach (var go in _extraSpawned)
+                if (go != null) Object.Destroy(go);
+            _extraSpawned.Clear();
         }
 
         [UnityTest]
@@ -376,6 +386,7 @@ namespace PolarBreakout.Tests
             Assert.IsNotNull(realBrickPrefab, "Real Brick prefab should load.");
 
             var managerGO = new GameObject("RealManager");
+            _extraSpawned.Add(managerGO);
             var manager = managerGO.AddComponent<BrickGridManager>();
             manager.brickPrefab = realBrickPrefab;
             manager.BuildLevel(realLevel);
@@ -383,12 +394,14 @@ namespace PolarBreakout.Tests
             Assert.Greater(initialBrickCount, 0, "Precondition: the real level should have destructible bricks.");
 
             var paddleGO = new GameObject("RealPaddle");
+            _extraSpawned.Add(paddleGO);
             paddleGO.SetActive(false);
             var paddle = paddleGO.AddComponent<PaddleController>();
             paddle.settings = realSettings;
             paddleGO.SetActive(true);
 
             var ballGO = new GameObject("RealBall");
+            _extraSpawned.Add(ballGO);
             ballGO.SetActive(false);
             var ball = ballGO.AddComponent<BallController>();
             ball.settings = realSettings;

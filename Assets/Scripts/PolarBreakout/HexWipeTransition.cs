@@ -25,6 +25,17 @@ namespace PolarBreakout
         public Camera targetCamera;
         public BrickGridManager brickGridManager;
 
+        [Header("Sweep Tiling")]
+        [Tooltip("Hex size used to tile the full-screen sweep overlay, independent of the level's " +
+                 "own brick hexSize (PolarGridSettings.hexSize) - this is a cosmetic full-screen " +
+                 "effect, so it doesn't need to match brick-level granularity, and a coarser size " +
+                 "here keeps the total swept cell count (and therefore the cost of the whole " +
+                 "effect) low even when the level itself uses a small, dense hexSize. When a " +
+                 "single sweep cell covers more than one brick, they all pop in/out together the " +
+                 "instant that cell's own flash reveals it. 0 or less falls back to the level's " +
+                 "own hexSize (tiles 1:1 with bricks, the original behavior).")]
+        public float sweepHexSize = 1f;
+
         [Header("Flash")]
         [Tooltip("Leave unset for a runtime-generated white flash-and-fade. Assign a custom " +
                  "material (e.g. a dissolve shader) to override the look with zero code changes - " +
@@ -116,6 +127,23 @@ namespace PolarBreakout
         private Mesh _hexMesh;
         private Vector3[] _hexOutlinePositions;
         private bool _sweepRunning;
+        private PolarGridSettings _sweepSettings;
+
+        /// <summary>Lazily builds (and keeps reusing/updating) a small auxiliary PolarGridSettings
+        /// representing the sweep's own hex tiling - independent of the level's real brick hexSize
+        /// (see sweepHexSize) so a full-screen sweep over a dense, small-hex level doesn't have to
+        /// tile anywhere near as many cells. hexGap is always 0 here since this is a transient
+        /// overlay, not a real brick, so it never needs the brick grid's own visual gap. Only
+        /// hexSize is ever read off this instance (see EnumerateCoordinatesInRect/HexToWorld/
+        /// WorldToHex) - outerWallRadius is irrelevant to those, so it's never set.</summary>
+        private PolarGridSettings GetSweepSettings(PolarGridSettings levelSettings)
+        {
+            float effectiveHexSize = sweepHexSize > 0f ? sweepHexSize : levelSettings.hexSize;
+            if (_sweepSettings == null) _sweepSettings = ScriptableObject.CreateInstance<PolarGridSettings>();
+            _sweepSettings.hexSize = effectiveHexSize;
+            _sweepSettings.hexGap = 0f;
+            return _sweepSettings;
+        }
 
         public IEnumerator PlayBuildIn(LevelSO level)
         {
@@ -128,18 +156,30 @@ namespace PolarBreakout
             brickGridManager.level = level;
             brickGridManager.PrepareSharedGeometry(settings);
 
-            var placements = new Dictionary<HexCoordinate, BrickTypeSO>();
-            foreach (var (coord, type) in level.GetPlacements())
-                if (settings.IsValidCoordinate(coord)) placements[coord] = type;
+            var sweepSettings = GetSweepSettings(settings);
 
-            yield return RunSweep(settings, coord =>
+            // Grouped by the sweep's own (typically coarser) cell, not the level's fine brick grid
+            // - when sweepHexSize is larger than the level's hexSize, several bricks can share one
+            // sweep cell, and they all pop in together the instant that cell's own flash reveals it.
+            var placementsByCell = new Dictionary<HexCoordinate, List<(HexCoordinate coord, BrickTypeSO type)>>();
+            foreach (var (coord, type) in level.GetPlacements())
             {
-                if (placements.TryGetValue(coord, out var type))
+                if (!settings.IsValidCoordinate(coord)) continue;
+                HexCoordinate sweepCell = sweepSettings.WorldToHex(settings.HexToWorld(coord));
+                if (!placementsByCell.TryGetValue(sweepCell, out var list))
                 {
-                    brickGridManager.SpawnBrickAt(settings, coord, type);
-                    return true;
+                    list = new List<(HexCoordinate, BrickTypeSO)>();
+                    placementsByCell[sweepCell] = list;
                 }
-                return false;
+                list.Add((coord, type));
+            }
+
+            yield return RunSweep(sweepSettings, sweepCell =>
+            {
+                if (!placementsByCell.TryGetValue(sweepCell, out var list)) return false;
+                foreach (var (coord, type) in list)
+                    brickGridManager.SpawnBrickAt(settings, coord, type);
+                return true;
             });
 
             // Unlike BuildLevel (which snapshots this itself), progressive per-cell spawning via
@@ -154,16 +194,28 @@ namespace PolarBreakout
                 yield break;
 
             var settings = brickGridManager.level.gridSettings;
-            var existing = new HashSet<HexCoordinate>(brickGridManager.GetActiveBrickCoordinates());
+            var sweepSettings = GetSweepSettings(settings);
 
-            yield return RunSweep(settings, coord =>
+            // Same coarser-cell grouping as PlayBuildIn, so a sweep cell that covers several
+            // bricks removes all of them together the instant that cell is revealed.
+            var existingByCell = new Dictionary<HexCoordinate, List<HexCoordinate>>();
+            foreach (var coord in brickGridManager.GetActiveBrickCoordinates())
             {
-                if (existing.Contains(coord))
+                HexCoordinate sweepCell = sweepSettings.WorldToHex(settings.HexToWorld(coord));
+                if (!existingByCell.TryGetValue(sweepCell, out var list))
                 {
-                    brickGridManager.RemoveBrickQuietly(coord);
-                    return true;
+                    list = new List<HexCoordinate>();
+                    existingByCell[sweepCell] = list;
                 }
-                return false;
+                list.Add(coord);
+            }
+
+            yield return RunSweep(sweepSettings, sweepCell =>
+            {
+                if (!existingByCell.TryGetValue(sweepCell, out var list)) return false;
+                foreach (var coord in list)
+                    brickGridManager.RemoveBrickQuietly(coord);
+                return true;
             });
 
             // Safety net: quietly clear anything left over outside the swept screen rect (e.g. on
