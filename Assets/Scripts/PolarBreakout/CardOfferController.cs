@@ -55,6 +55,16 @@ namespace PolarBreakout
         private CardSO _chosenCard;
         private bool _waitingForChoice;
         private int _rerollsUsedThisOffer;
+        // Unity's InputSystemUIInputModule has its own Submit action, entirely separate from the
+        // "Fire" action above - but they're normally bound to the same physical controls (gamepad
+        // South, Space). SetGameplayActionsEnabled(false) only disables "Fire" itself, so Submit
+        // stays fully live throughout the offer. Since the first card slot is auto-selected the
+        // instant the reveal finishes (see PlayRevealSequence), a player who's still physically
+        // holding Fire from firing the cannon moments before the level cleared would otherwise
+        // have that same held press register as "Submit" on the just-selected card, silently
+        // picking it without ever consciously choosing anything. This flag suppresses exactly
+        // that: any card choice arriving before Fire's bound control has been freshly released.
+        private bool _suppressAutoConfirmUntilFireReleased;
 
         /// <summary>Shows the offer, blocks until the player picks one, applies it, then hides
         /// the panel again - call via `yield return cardOfferController.ShowOffer();`.</summary>
@@ -78,7 +88,12 @@ namespace PolarBreakout
 
             _chosenCard = null;
             _waitingForChoice = true;
-            while (_waitingForChoice) yield return null;
+            while (_waitingForChoice)
+            {
+                if (_suppressAutoConfirmUntilFireReleased && !IsFirePhysicallyHeld())
+                    _suppressAutoConfirmUntilFireReleased = false;
+                yield return null;
+            }
 
             if (panelRoot != null) panelRoot.SetActive(false);
             Time.timeScale = 1f;
@@ -89,8 +104,30 @@ namespace PolarBreakout
 
         private void OnCardChosen(CardSO card)
         {
+            // See _suppressAutoConfirmUntilFireReleased - ignore a choice that arrives from a
+            // Fire press already held over from before the offer's cards became selectable,
+            // rather than a fresh, deliberate press/click.
+            if (_suppressAutoConfirmUntilFireReleased) return;
+
             _chosenCard = card;
             _waitingForChoice = false;
+        }
+
+        /// <summary>True if whatever physical control(s) "Fire" is bound to are currently held
+        /// down, read directly off the resolved controls so this works regardless of which device
+        /// (gamepad, keyboard) is in use - independent of whether the Fire action itself is
+        /// currently enabled, since a disabled action's bound controls still report real hardware
+        /// state.</summary>
+        private bool IsFirePhysicallyHeld()
+        {
+            if (actions == null) return false;
+            var fire = actions.FindActionMap("Player")?.FindAction("Fire");
+            if (fire == null) return false;
+
+            foreach (var control in fire.controls)
+                if (control is UnityEngine.InputSystem.Controls.ButtonControl button && button.isPressed)
+                    return true;
+            return false;
         }
 
         private IEnumerator RerollSequence()
@@ -136,6 +173,12 @@ namespace PolarBreakout
                 yield return routine;
 
             SetOfferInteractable(true);
+
+            // Arm the guard the instant cards become selectable/submittable - if Fire is already
+            // held right now (e.g. the player was still firing the cannon when the last brick
+            // died), the auto-selection below would otherwise let that same held press register
+            // as an immediate Submit on the first card. See _suppressAutoConfirmUntilFireReleased.
+            _suppressAutoConfirmUntilFireReleased = IsFirePhysicallyHeld();
 
             // Selecting the first active card here, after the reveal, rather than relying on
             // RefreshOfferCards' own selection call from before it - Selectable.interactable

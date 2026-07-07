@@ -158,17 +158,16 @@ namespace PolarBreakout
         /// <summary>Called at the start of every new round/stage (see
         /// LevelManager.AdvanceToNextStage) to guarantee a clean, deterministic start regardless
         /// of whatever state was left over from the stage just cleared: any multiball clones are
-        /// destroyed and the primary ball is forced back to Docked, and every leftover Bullet,
-        /// LaserBeam, and uncollected PowerUpCapsule still on screen is cleared away - none of
-        /// them should survive into a new round just because the player didn't use/catch them in
-        /// time. Deliberately does NOT touch PaddleAbilities' own ammo/autopilot state (unlike
-        /// PaddleAbilities.ResetAbilities, called on an actual death) - a round transition isn't a
-        /// death, so unspent Cannon ammo carries over as normal. This also discards any stray
-        /// launch request - e.g. Unity's Input System re-checks already-actuated controls the
-        /// moment an action is re-enabled (see CardOfferController.ShowOffer), which can fire
-        /// Performed immediately if Fire happens to still be held when the card offer closes,
-        /// otherwise launching the ball before the player has actually pressed anything for the
-        /// new round.</summary>
+        /// destroyed and the primary ball is forced back to Docked, every leftover Bullet,
+        /// LaserBeam, and uncollected PowerUpCapsule still on screen is cleared away, and the
+        /// paddle's Cannon/Autopilot ability state is reset (see ClearTransientPickupsAndAbilities) -
+        /// none of it should survive into a new round just because the player didn't use/catch it
+        /// in time, or happened to catch a stray capsule while the previous round was already
+        /// wrapping up. This also discards any stray launch request - e.g. Unity's Input System
+        /// re-checks already-actuated controls the moment an action is re-enabled (see
+        /// CardOfferController.ShowOffer), which can fire Performed immediately if Fire happens to
+        /// still be held when the card offer closes, otherwise launching the ball before the
+        /// player has actually pressed anything for the new round.</summary>
         public void ResetForNewRound()
         {
             foreach (var clone in _clones)
@@ -177,6 +176,21 @@ namespace PolarBreakout
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();
+
+            ClearTransientPickupsAndAbilities();
+        }
+
+        /// <summary>Destroys every leftover Bullet, LaserBeam, and uncollected PowerUpCapsule, and
+        /// resets the paddle's Cannon/Autopilot ability state if present. Called immediately when
+        /// a round clears (see LevelManager.HandleLevelCleared) - before the end-of-round delay/
+        /// dissolve/card-offer sequence even starts - so a power-up capsule still falling near the
+        /// paddle at that exact moment can't be legitimately caught during the transition and
+        /// carry its ability into the next level. Also called again from ResetForNewRound itself
+        /// as a safety net.</summary>
+        public void ClearTransientPickupsAndAbilities()
+        {
+            var abilities = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<PaddleAbilities>() : null;
+            if (abilities != null) abilities.ResetAbilities();
 
             foreach (var bullet in FindObjectsByType<Bullet>(FindObjectsSortMode.None))
                 Destroy(bullet.gameObject);

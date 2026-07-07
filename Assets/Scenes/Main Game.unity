@@ -2718,8 +2718,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4bbca1395116ad244b3a21826f8ca996, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.HexArenaBoundary
+  activeBoundary: 1
   lineWidth: 0.08
+  lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   materialOverride: {fileID: 0}
+  outerCirclePadding: 0.15
+  outerCircleWidth: 0.06
+  outerCircleSegments: 96
+  outerCircleColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  outerCircleMaterialOverride: {fileID: 2100000, guid: cd35086b21c24884db1791254f258e8a, type: 2}
 --- !u!68 &452747084
 EdgeCollider2D:
   m_ObjectHideFlags: 0

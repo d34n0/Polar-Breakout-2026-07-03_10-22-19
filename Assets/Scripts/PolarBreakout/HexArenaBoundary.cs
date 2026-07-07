@@ -4,30 +4,52 @@ using UnityEngine;
 namespace PolarBreakout
 {
     /// <summary>
-    /// Builds a real physical wall around the play-area boundary: an EdgeCollider2D loop tracing
-    /// the outward-facing edges of every hex that touches the outer wall radius (a jagged
-    /// hex-silhouette ring, not a perfect circle). BrickGridManager calls BuildBoundary at the end
-    /// of every BuildLevel, so the wall always matches whatever hex layout was just built. Also
-    /// draws a LineRenderer tracing the same loop, so the boundary is visible rather than just a
-    /// physical collider.
+    /// Builds two candidate walls around the play-area boundary - a jagged EdgeCollider2D loop
+    /// tracing the outward-facing edges of every boundary hex, and a perfect-circle EdgeCollider2D
+    /// sized to contain every boundary hex corner - and switches which one is actually active (both
+    /// as the real physics wall and as the visible LineRenderer) via <see cref="activeBoundary"/>.
+    /// BrickGridManager calls BuildBoundary at the end of every BuildLevel, so both walls always
+    /// match whatever hex layout was just built.
     /// </summary>
     [RequireComponent(typeof(EdgeCollider2D))]
     [RequireComponent(typeof(LineRenderer))]
     public class HexArenaBoundary : MonoBehaviour
     {
+        public enum BoundaryShape { Jagged, Circle }
+
+        [Tooltip("Which wall is actually active - the real physics collider and the visible line. The other shape is built but disabled.")]
+        public BoundaryShape activeBoundary = BoundaryShape.Jagged;
+
+        [Header("Jagged Hex Boundary")]
         [Tooltip("Visual width of the boundary line, world units.")]
         public float lineWidth = 0.08f;
-        [Tooltip("Leave unset for a plain yellow unlit line - assign a custom material to override.")]
+        public Color lineColor = Color.yellow;
+        [Tooltip("Leave unset for a plain colored unlit line - assign a custom material to override.")]
         public Material materialOverride;
+
+        [Header("Outer Circle")]
+        [Tooltip("Extra clearance beyond the farthest boundary hex corner, world units.")]
+        public float outerCirclePadding = 0.15f;
+        [Tooltip("Visual width of the outer circle line, world units.")]
+        public float outerCircleWidth = 0.06f;
+        [Tooltip("Number of segments approximating the circle - higher looks smoother.")]
+        public int outerCircleSegments = 96;
+        public Color outerCircleColor = Color.yellow;
+        [Tooltip("Leave unset for a plain colored unlit line - assign a custom material to override.")]
+        public Material outerCircleMaterialOverride;
 
         private EdgeCollider2D _collider;
         private LineRenderer _lineRenderer;
+        private LineRenderer _outerCircleLine;
+        private EdgeCollider2D _outerCircleCollider;
+
+        private void OnValidate() => ApplyActiveBoundary();
 
         public void BuildBoundary(PolarGridSettings settings)
         {
             _collider ??= GetComponent<EdgeCollider2D>();
             _lineRenderer ??= GetComponent<LineRenderer>();
-            ConfigureLineRenderer(_lineRenderer);
+            ConfigureLineRenderer(_lineRenderer, materialOverride, lineColor, lineWidth);
 
             // Deliberately the full hexSize, NOT hexSize-hexGap like the brick mesh/collider -
             // adjacent boundary hexes' outward corners only coincide (letting the loop-stitcher
@@ -36,12 +58,20 @@ namespace PolarBreakout
             // its own hexGap-sized shrink but never touching its neighbor's edge.
             float hexRadius = settings.hexSize;
             var segments = new List<(Vector2 a, Vector2 b)>();
+            float maxCornerDistance = 0f;
 
             foreach (var coord in settings.EnumerateValidCoordinates())
             {
                 if (!settings.IsBoundaryHex(coord)) continue;
 
                 Vector2 center = settings.HexToWorld(coord);
+
+                // Every corner of a boundary hex, not just the ones on a wall-facing edge, is a
+                // candidate for the farthest point the outer circle needs to clear - a hex can
+                // have a non-wall corner poke out just as far depending on its orientation.
+                for (int i = 0; i < 6; i++)
+                    maxCornerDistance = Mathf.Max(maxCornerDistance, PolarMeshUtility.HexCorner(center, hexRadius, i).magnitude);
+
                 for (int dir = 0; dir < 6; dir++)
                 {
                     if (settings.IsValidCoordinate(coord.Neighbor(dir))) continue;
@@ -62,52 +92,107 @@ namespace PolarBreakout
             foreach (Transform child in transform)
                 if (child.name == "HexBoundaryLoop") Destroy(child.gameObject);
 
+            (_outerCircleLine, _outerCircleCollider) = GetOrCreateOuterCircleObjects();
+            BuildOuterCircle(_outerCircleLine, _outerCircleCollider, maxCornerDistance + outerCirclePadding);
+
             var loops = StitchLoops(segments);
 
             if (loops.Count == 0)
             {
                 Debug.LogWarning("HexArenaBoundary: no boundary loop found - is the grid empty?", this);
                 _lineRenderer.positionCount = 0;
-                return;
             }
-
-            _collider.points = ClosedLoopArray(loops[0]);
-            SetLoopPositions(_lineRenderer, loops[0]);
-
-            for (int i = 1; i < loops.Count; i++)
+            else
             {
-                var go = new GameObject("HexBoundaryLoop");
-                go.transform.SetParent(transform, false);
-                var edge = go.AddComponent<EdgeCollider2D>();
-                edge.points = ClosedLoopArray(loops[i]);
+                _collider.points = ClosedLoopArray(loops[0]);
+                SetLoopPositions(_lineRenderer, loops[0]);
 
-                var extraLine = go.AddComponent<LineRenderer>();
-                ConfigureLineRenderer(extraLine);
-                SetLoopPositions(extraLine, loops[i]);
+                for (int i = 1; i < loops.Count; i++)
+                {
+                    var go = new GameObject("HexBoundaryLoop");
+                    go.transform.SetParent(transform, false);
+                    var edge = go.AddComponent<EdgeCollider2D>();
+                    edge.points = ClosedLoopArray(loops[i]);
+
+                    var extraLine = go.AddComponent<LineRenderer>();
+                    ConfigureLineRenderer(extraLine, materialOverride, lineColor, lineWidth);
+                    SetLoopPositions(extraLine, loops[i]);
+                }
             }
+
+            ApplyActiveBoundary();
         }
 
-        /// <summary>Sets up a LineRenderer as a closed, world-space, unlit yellow loop (unless
-        /// materialOverride is assigned) - shared by both the main boundary loop and any extra
-        /// degenerate loops.</summary>
-        private void ConfigureLineRenderer(LineRenderer line)
+        /// <summary>Enables whichever shape is selected (both its collider and its line) and
+        /// disables the other - safe to call before BuildBoundary has ever run (e.g. from
+        /// OnValidate right after adding the component), since every reference is null-checked.</summary>
+        private void ApplyActiveBoundary()
+        {
+            bool jaggedActive = activeBoundary == BoundaryShape.Jagged;
+
+            if (_collider != null) _collider.enabled = jaggedActive;
+            if (_lineRenderer != null) _lineRenderer.enabled = jaggedActive;
+            if (_outerCircleCollider != null) _outerCircleCollider.enabled = !jaggedActive;
+            if (_outerCircleLine != null) _outerCircleLine.enabled = !jaggedActive;
+        }
+
+        private (LineRenderer line, EdgeCollider2D collider) GetOrCreateOuterCircleObjects()
+        {
+            var existing = transform.Find("HexOuterCircleBorder");
+            if (existing != null)
+                return (existing.GetComponent<LineRenderer>(), existing.GetComponent<EdgeCollider2D>());
+
+            var go = new GameObject("HexOuterCircleBorder");
+            go.transform.SetParent(transform, false);
+            return (go.AddComponent<LineRenderer>(), go.AddComponent<EdgeCollider2D>());
+        }
+
+        /// <summary>Draws a smooth, perfect circle of the given radius, centered on this
+        /// component's own position, and assigns the same points (closed) to its EdgeCollider2D -
+        /// an alternative real physics wall to the jagged hex loop, selectable via
+        /// activeBoundary.</summary>
+        private void BuildOuterCircle(LineRenderer line, EdgeCollider2D collider, float radius)
+        {
+            ConfigureLineRenderer(line, outerCircleMaterialOverride, outerCircleColor, outerCircleWidth);
+
+            int segments = Mathf.Max(3, outerCircleSegments);
+            var positions = new Vector3[segments];
+            var colliderPoints = new Vector2[segments + 1];
+            for (int i = 0; i < segments; i++)
+            {
+                float angleRad = i * Mathf.PI * 2f / segments;
+                Vector2 point = new Vector2(Mathf.Cos(angleRad) * radius, Mathf.Sin(angleRad) * radius);
+                positions[i] = new Vector3(point.x, point.y, -0.05f);
+                colliderPoints[i] = point;
+            }
+            colliderPoints[segments] = colliderPoints[0];
+
+            line.positionCount = positions.Length;
+            line.SetPositions(positions);
+            collider.points = colliderPoints;
+        }
+
+        /// <summary>Sets up a LineRenderer as a closed, world-space, unlit colored loop (unless
+        /// an override material is assigned) - shared by the main boundary loop, any extra
+        /// degenerate loops, and the cosmetic outer circle.</summary>
+        private static void ConfigureLineRenderer(LineRenderer line, Material overrideMaterial, Color color, float width)
         {
             line.useWorldSpace = true;
             line.loop = true;
-            line.widthMultiplier = lineWidth;
+            line.widthMultiplier = width;
             line.numCapVertices = 2;
             line.numCornerVertices = 2;
 
-            if (materialOverride != null)
+            if (overrideMaterial != null)
             {
-                line.sharedMaterial = materialOverride;
+                line.sharedMaterial = overrideMaterial;
                 return;
             }
 
             line.sharedMaterial = PolarMeshUtility.GetProceduralUnlitMaterial();
             var propBlock = new MaterialPropertyBlock();
-            propBlock.SetColor("_Color", Color.yellow);
-            propBlock.SetColor("_BaseColor", Color.yellow);
+            propBlock.SetColor("_Color", color);
+            propBlock.SetColor("_BaseColor", color);
             line.SetPropertyBlock(propBlock);
         }
 

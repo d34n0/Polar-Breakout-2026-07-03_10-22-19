@@ -59,6 +59,12 @@ namespace PolarBreakout
 
         private void HandleLevelCleared()
         {
+            // Immediately, before the end-of-round delay/dissolve/card-offer sequence even
+            // starts - otherwise a power-up capsule still falling near the paddle when the last
+            // brick dies could be legitimately caught during that window and carry its ability
+            // into the next stage, even though the player never used/caught it during the actual
+            // round that dropped it.
+            if (ballManager != null) ballManager.ClearTransientPickupsAndAbilities();
             StartCoroutine(AdvanceToNextStage());
         }
 
