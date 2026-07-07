@@ -106,5 +106,43 @@ namespace PolarBreakout
                 }
             }
         }
+
+        /// <summary>Every hex coordinate whose body could visually overlap the given world-space
+        /// rect, entirely independent of outerWallRadius - used by full-screen effects (e.g. the
+        /// hex wipe transition) that must tile the whole camera viewport, not just the circular
+        /// play area. The rect is padded by hexSize on every side first, since a hex's own corners
+        /// extend that far past its center - a hex whose center sits just outside the raw rect
+        /// could still have a corner poking into it.</summary>
+        public IEnumerable<HexCoordinate> EnumerateCoordinatesInRect(Vector2 rectMin, Vector2 rectMax)
+        {
+            Vector2 paddedMin = rectMin - new Vector2(hexSize, hexSize);
+            Vector2 paddedMax = rectMax + new Vector2(hexSize, hexSize);
+
+            // Convert all four padded-rect corners to axial space and take the q/r bounding box -
+            // a safe over-approximation (q/r vary monotonically enough with world x/y for this to
+            // fully cover the rect; the +-1 padding below absorbs any rounding slop at the edges),
+            // then filter precisely by each candidate hex's actual world-space center.
+            HexCoordinate a = WorldToHex(new Vector2(paddedMin.x, paddedMin.y));
+            HexCoordinate b = WorldToHex(new Vector2(paddedMax.x, paddedMin.y));
+            HexCoordinate c = WorldToHex(new Vector2(paddedMin.x, paddedMax.y));
+            HexCoordinate d = WorldToHex(new Vector2(paddedMax.x, paddedMax.y));
+
+            int qMin = Mathf.Min(Mathf.Min(a.q, b.q), Mathf.Min(c.q, d.q)) - 1;
+            int qMax = Mathf.Max(Mathf.Max(a.q, b.q), Mathf.Max(c.q, d.q)) + 1;
+            int rMin = Mathf.Min(Mathf.Min(a.r, b.r), Mathf.Min(c.r, d.r)) - 1;
+            int rMax = Mathf.Max(Mathf.Max(a.r, b.r), Mathf.Max(c.r, d.r)) + 1;
+
+            for (int q = qMin; q <= qMax; q++)
+            {
+                for (int r = rMin; r <= rMax; r++)
+                {
+                    var coord = new HexCoordinate(q, r);
+                    Vector2 center = HexToWorld(coord);
+                    if (center.x >= paddedMin.x && center.x <= paddedMax.x
+                        && center.y >= paddedMin.y && center.y <= paddedMax.y)
+                        yield return coord;
+                }
+            }
+        }
     }
 }

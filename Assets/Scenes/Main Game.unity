@@ -2691,6 +2691,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.BrickGridManager
   level: {fileID: 11400000, guid: dd5ff74814baf9747b9de5e6671974cc, type: 2}
   brickPrefab: {fileID: 6733217298509041570, guid: 7003f23bf6a53b1428c1cd28dd4fc047, type: 3}
+  skipAutoBuildOnStart: 0
 --- !u!4 &452747082
 Transform:
   m_ObjectHideFlags: 0
@@ -8131,6 +8132,118 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1472568387}
   m_CullTransparentMesh: 1
+--- !u!1 &1474923618
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1474923620}
+  - component: {fileID: 1474923619}
+  m_Layer: 0
+  m_Name: HexWipeTransition
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1474923619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1474923618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2105c07d64640924692921d26894abf8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.HexWipeTransition
+  targetCamera: {fileID: 330585545}
+  brickGridManager: {fileID: 452747081}
+  flashMaterialOverride: {fileID: 0}
+  perHexFlashDuration: 0.2
+  totalSweepDuration: 2
+  startTimeJitter: 0.15
+  poolSizeSafetyFactor: 0.5
+  fadeCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: -1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: -1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  outlineMaterialOverride: {fileID: 0}
+  outlineColor: {r: 1, g: 1, b: 1, a: 1}
+  outlineWidth: 0.04
+  outlineFadeDuration: 1
+  outlineFadeCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.3245497
+      value: 0.37128586
+      inSlope: -1.0000001
+      outSlope: -1.0000001
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0.06779661
+      outSlope: 0.06779661
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.273012
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!4 &1474923620
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1474923618}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1477615795
 GameObject:
   m_ObjectHideFlags: 0
@@ -13550,6 +13663,7 @@ MonoBehaviour:
   levelClearBonusPerStage: 1000
   cardOfferController: {fileID: 426865038}
   endOfRoundDelay: 1
+  hexWipeTransition: {fileID: 1474923619}
 --- !u!4 &1649802269
 Transform:
   m_ObjectHideFlags: 0
@@ -21946,3 +22060,4 @@ SceneRoots:
   - {fileID: 426865039}
   - {fileID: 1836741230}
   - {fileID: 445592114}
+  - {fileID: 1474923620}

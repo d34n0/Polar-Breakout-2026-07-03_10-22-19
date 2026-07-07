@@ -44,8 +44,23 @@ namespace PolarBreakout
                  "PlayEndOfRoundSequence).")]
         public float endOfRoundDelay = 1f;
 
+        [Tooltip("Optional. When set, a full-screen hex wipe plays on both the old level's tear-" +
+                 "down (after the round-end dissolve, before the card offer) and the new level's " +
+                 "build-in (after the card offer, replacing the instant BuildLevel call). Leave " +
+                 "unset to fall back to the plain instant BuildLevel path, e.g. for isolated tests.")]
+        public HexWipeTransition hexWipeTransition;
+
         public int CurrentStage { get; private set; } = 1;
         public event Action<int> OnStageChanged;
+
+        private void Awake()
+        {
+            // Guaranteed to run before BrickGridManager.Start() - Unity calls every object's
+            // Awake before any object's Start runs, regardless of GameObject/component order -
+            // so this flag is always set in time to suppress its own default instant auto-build.
+            if (hexWipeTransition != null && brickGridManager != null)
+                brickGridManager.skipAutoBuildOnStart = true;
+        }
 
         private void OnEnable()
         {
@@ -55,6 +70,34 @@ namespace PolarBreakout
         private void OnDisable()
         {
             if (brickGridManager != null) brickGridManager.OnLevelCleared -= HandleLevelCleared;
+        }
+
+        private void Start()
+        {
+            if (hexWipeTransition != null && brickGridManager != null && brickGridManager.level != null)
+                StartCoroutine(PlayInitialBuildIn());
+        }
+
+        /// <summary>Plays the same hex-wipe build-in used between stages, but for the very first
+        /// level at game start, so it doesn't just pop in instantly - skips the tear-down half
+        /// (nothing exists yet to tear down) and the score/stage-advance/card-offer steps (this
+        /// isn't a stage clear).</summary>
+        private IEnumerator PlayInitialBuildIn()
+        {
+            LevelSO initialLevel = brickGridManager.level;
+            HexArenaBoundary boundary = brickGridManager.GetComponent<HexArenaBoundary>();
+
+            boundary?.Hide();
+            if (ballManager != null) yield return ballManager.PlayRoundEndDissolveOut();
+
+            yield return hexWipeTransition.PlayBuildIn(initialLevel);
+            boundary?.BuildBoundary(initialLevel.gridSettings);
+
+            if (ballManager != null)
+            {
+                ballManager.ResetForNewRound();
+                yield return ballManager.PlayRoundStartDissolveIn();
+            }
         }
 
         private void HandleLevelCleared()
@@ -81,12 +124,33 @@ namespace PolarBreakout
 
             yield return PlayEndOfRoundSequence();
 
+            HexArenaBoundary boundary = brickGridManager != null ? brickGridManager.GetComponent<HexArenaBoundary>() : null;
+
+            if (hexWipeTransition != null)
+            {
+                boundary?.Hide();
+                yield return hexWipeTransition.PlayTearDown();
+            }
+
             if (cardOfferController != null)
                 yield return cardOfferController.ShowOffer();
 
             LevelSO nextLevel = GetLevelForStage(CurrentStage);
             if (brickGridManager != null && nextLevel != null)
-                brickGridManager.BuildLevel(nextLevel);
+            {
+                if (hexWipeTransition != null)
+                {
+                    yield return hexWipeTransition.PlayBuildIn(nextLevel);
+                    // Full rebuild (not just Show()) since the new level's grid settings - hex
+                    // size, wall radius - can differ from the old one; BuildBoundary already ends
+                    // by re-showing whichever shape is active via its own ApplyActiveBoundary call.
+                    boundary?.BuildBoundary(nextLevel.gridSettings);
+                }
+                else
+                {
+                    brickGridManager.BuildLevel(nextLevel);
+                }
+            }
 
             if (ballManager != null)
             {

@@ -38,9 +38,15 @@ namespace PolarBreakout
         // frame loop, discarding any destruction that already happened that frame.
         private bool _hasBuilt;
 
+        /// <summary>Set by LevelManager (in Awake, so it's guaranteed to land before this
+        /// component's own Start runs) when a HexWipeTransition is wired up, so the very first
+        /// level plays an animated build-in instead of this component's own default instant
+        /// auto-build.</summary>
+        public bool skipAutoBuildOnStart;
+
         private void Start()
         {
-            if (!_hasBuilt && level != null) BuildLevel(level);
+            if (!_hasBuilt && !skipAutoBuildOnStart && level != null) BuildLevel(level);
         }
 
         public void BuildLevel(LevelSO levelToBuild)
@@ -56,9 +62,7 @@ namespace PolarBreakout
                 return;
             }
 
-            float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
-            _sharedHexMesh = PolarMeshUtility.BuildHexMesh(hexRadius);
-            _sharedHexOutline = PolarMeshUtility.BuildHexOutlinePoints(hexRadius);
+            PrepareSharedGeometry(settings);
 
             foreach (var (coord, brickType) in level.GetPlacements())
             {
@@ -84,6 +88,59 @@ namespace PolarBreakout
             if (!type.isIndestructible)
                 RemainingDestructibleCount++;
         }
+
+        /// <summary>Builds _sharedHexMesh/_sharedHexOutline for the given settings without
+        /// spawning anything - lets a caller (e.g. HexWipeTransition.PlayBuildIn) ready the shared
+        /// geometry once, then spawn individual bricks progressively via SpawnBrickAt instead of
+        /// BuildLevel's normal all-at-once loop.</summary>
+        public void PrepareSharedGeometry(PolarGridSettings settings)
+        {
+            float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
+            _sharedHexMesh = PolarMeshUtility.BuildHexMesh(hexRadius);
+            _sharedHexOutline = PolarMeshUtility.BuildHexOutlinePoints(hexRadius);
+        }
+
+        /// <summary>Public per-cell counterpart to BuildLevel's internal spawn loop - spawns
+        /// exactly one brick at coord using whatever shared mesh/outline PrepareSharedGeometry (or
+        /// BuildLevel) already built. No-ops with a warning if neither has run yet.</summary>
+        public void SpawnBrickAt(PolarGridSettings settings, HexCoordinate coord, BrickTypeSO type)
+        {
+            if (_sharedHexMesh == null)
+            {
+                Debug.LogWarning("SpawnBrickAt called before PrepareSharedGeometry/BuildLevel - no shared mesh.", this);
+                return;
+            }
+            SpawnBrick(settings, coord, type);
+        }
+
+        /// <summary>Removes the brick at coord (if any) without firing OnBrickDestroyed/
+        /// OnLevelCleared or touching RemainingDestructibleCount - a presentation-only clear for
+        /// HexWipeTransition's tear-down wipe, which isn't player-driven destruction and shouldn't
+        /// award score or trigger level-cleared side effects.</summary>
+        public void RemoveBrickQuietly(HexCoordinate coord)
+        {
+            if (_activeBricks.TryGetValue(coord, out var brick) && brick != null)
+            {
+                _activeBricks.Remove(coord);
+                Destroy(brick.gameObject);
+            }
+        }
+
+        /// <summary>Bulk version of RemoveBrickQuietly - destroys every remaining active brick
+        /// with no events/score side effects. Called once at the end of HexWipeTransition's
+        /// tear-down as a safety net, so a brick sitting outside the swept screen rect (e.g. on an
+        /// unusual aspect ratio) can never survive a level transition.</summary>
+        public void ClearAllBricksQuietly()
+        {
+            foreach (var kv in _activeBricks)
+                if (kv.Value != null) Destroy(kv.Value.gameObject);
+            _activeBricks.Clear();
+        }
+
+        /// <summary>Snapshot (not a live view) of every active brick's coordinate - used by
+        /// HexWipeTransition's tear-down wipe to know which swept cells need the "brick
+        /// disappears" reveal branch.</summary>
+        public List<HexCoordinate> GetActiveBrickCoordinates() => new List<HexCoordinate>(_activeBricks.Keys);
 
         public void NotifyBrickDestroyed(Brick brick)
         {

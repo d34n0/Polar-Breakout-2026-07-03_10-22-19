@@ -440,6 +440,14 @@ namespace PolarBreakout
             speed = _initialSpeed * EffectiveSpeedMultiplier;
             Spin = 0f;
 
+            // Redocking teleports the ball from wherever it last was (a death, or a new level's
+            // starting position after the old one's gameplay) straight to the paddle - without
+            // clearing, both trails still hold their old recorded points and draw a single long
+            // streak connecting that old position to the new one, same class of bug the Awake
+            // comment above already guards against for the very first frame.
+            if (_trail != null) _trail.Clear();
+            if (_spinTrail != null) _spinTrail.Clear();
+
             // Discards any launch request that arrived while this ball's GameObject was
             // deactivated (BallManager.RespawnSequence deactivates it for the explosion/dissolve/
             // delay window before redocking). OnFirePerformed's event subscription stays live the

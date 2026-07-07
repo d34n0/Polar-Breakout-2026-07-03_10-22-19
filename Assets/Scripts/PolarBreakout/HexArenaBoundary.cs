@@ -136,6 +136,22 @@ namespace PolarBreakout
             if (_outerCircleLine != null) _outerCircleLine.enabled = !jaggedActive;
         }
 
+        /// <summary>Disables both boundary shapes' colliders and lines regardless of
+        /// activeBoundary - used by HexWipeTransition to hide the boundary for the whole
+        /// transition span. Safe since the boundary's geometry depends only on grid settings, not
+        /// brick placements, so hiding never needs a rebuild.</summary>
+        public void Hide()
+        {
+            if (_collider != null) _collider.enabled = false;
+            if (_lineRenderer != null) _lineRenderer.enabled = false;
+            if (_outerCircleCollider != null) _outerCircleCollider.enabled = false;
+            if (_outerCircleLine != null) _outerCircleLine.enabled = false;
+        }
+
+        /// <summary>Restores whichever shape activeBoundary currently points to - the counterpart
+        /// to Hide(), without a full geometry rebuild.</summary>
+        public void Show() => ApplyActiveBoundary();
+
         private (LineRenderer line, EdgeCollider2D collider) GetOrCreateOuterCircleObjects()
         {
             var existing = transform.Find("HexOuterCircleBorder");
