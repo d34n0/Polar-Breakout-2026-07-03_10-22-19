@@ -19,10 +19,11 @@ MonoBehaviour:
   scoreMultiplier: 1
   isIndestructible: 0
   color: {r: 1, g: 0.4, b: 0, a: 1}
-  sprite: {fileID: 0}
   materialOverride: {fileID: 0}
+  hitFlashColor: {r: 2, g: 2, b: 2, a: 1}
   powerUpDropChance: 0.15
   possiblePowerUps: 01000000
+  scaleDropChanceNearClear: 1
   shardDropChance: 0.15
   shardDropAmountMin: 1
   shardDropAmountMax: 3

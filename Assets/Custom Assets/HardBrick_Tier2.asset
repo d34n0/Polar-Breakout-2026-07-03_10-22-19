@@ -20,6 +20,7 @@ MonoBehaviour:
   isIndestructible: 0
   color: {r: 0.2735849, g: 0.21551263, b: 0.21551263, a: 1}
   materialOverride: {fileID: 0}
+  hitFlashColor: {r: 2, g: 2, b: 2, a: 1}
   powerUpDropChance: 0.15
   possiblePowerUps: 0200000000000000
   scaleDropChanceNearClear: 1

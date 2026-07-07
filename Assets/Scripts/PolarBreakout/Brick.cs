@@ -14,10 +14,10 @@ namespace PolarBreakout
     [RequireComponent(typeof(PolygonCollider2D))]
     public class Brick : MonoBehaviour
     {
-        [Tooltip("How long the white hit-flash lasts, in seconds, for both a surviving hit and the final destroying hit. " +
+        [Tooltip("How long the hit-flash (see BrickTypeSO.hitFlashColor) lasts, in seconds, for both a surviving hit and the final destroying hit. " +
                  "Overridden automatically for ExplodingBrickType bricks (see Initialize) to match their fuseDuration.")]
         public float flashDuration = 0.08f;
-        [Tooltip("How fast the destroying hit-flash blinks between white and the brick's own color, seconds per toggle.")]
+        [Tooltip("How fast the destroying hit-flash blinks between hitFlashColor and the brick's own color, seconds per toggle.")]
         public float blinkIntervalSeconds = 0.06f;
 
         public HexCoordinate Coordinate { get; private set; }
@@ -40,6 +40,7 @@ namespace PolarBreakout
         private MaterialPropertyBlock _propBlock;
         private PolygonCollider2D _collider;
         private Coroutine _flashCoroutine;
+        private Material _normalMaterial;
 
         public void Initialize(BrickGridManager manager, PolarGridSettings settings, HexCoordinate coord, BrickTypeSO type,
                                 Mesh sharedHexMesh, Vector2[] sharedHexOutline)
@@ -67,6 +68,9 @@ namespace PolarBreakout
             // Falls back to whatever material Brick.prefab already has (shared across every
             // brick type by default) unless this specific type opts into its own shader.
             if (type.materialOverride != null) _renderer.sharedMaterial = type.materialOverride;
+            // Snapshot whatever material is actually showing now - Hit()/DestroyAfterFlash swap
+            // to hitFlashMaterial and need to know exactly what to restore afterward.
+            _normalMaterial = _renderer.sharedMaterial;
             UpdateVisualColor();
         }
 
@@ -93,6 +97,15 @@ namespace PolarBreakout
             _renderer.SetPropertyBlock(_propBlock);
         }
 
+        // Swaps the renderer's actual Material (not just a property-block color) between the
+        // brick's normal material and BrickType.hitFlashMaterial - same shared-asset swap/restore
+        // pattern DissolveEffect uses, so no per-brick material instance ever gets created.
+        private void SetFlashMaterialShowing(bool flashing)
+        {
+            if (BrickType.hitFlashMaterial == null) return;
+            _renderer.sharedMaterial = flashing ? BrickType.hitFlashMaterial : _normalMaterial;
+        }
+
         /// <summary>Called by the ball's collision handling when it strikes this brick.</summary>
         public void Hit(GameObject ball)
         {
@@ -101,7 +114,8 @@ namespace PolarBreakout
             bool destroyed = BrickType.OnHit(this, ball);
 
             if (_flashCoroutine != null) StopCoroutine(_flashCoroutine);
-            SetRenderColor(Color.white);
+            SetFlashMaterialShowing(true);
+            SetRenderColor(BrickType.hitFlashColor);
 
             if (destroyed)
             {
@@ -128,11 +142,12 @@ namespace PolarBreakout
             // flash, but for a much longer fuse (see ExplodingBrickType.fuseDuration) it gives a
             // clear "about to explode" ticking effect instead of just staying lit the whole time.
             float elapsed = 0f;
-            bool showWhite = true;
+            bool showFlash = true;
             while (elapsed < flashDuration)
             {
-                SetRenderColor(showWhite ? Color.white : BrickType.color);
-                showWhite = !showWhite;
+                SetFlashMaterialShowing(showFlash);
+                SetRenderColor(showFlash ? BrickType.hitFlashColor : BrickType.color);
+                showFlash = !showFlash;
 
                 float step = Mathf.Min(blinkIntervalSeconds, flashDuration - elapsed);
                 yield return new WaitForSeconds(step);
@@ -146,6 +161,7 @@ namespace PolarBreakout
         private IEnumerator RevertColorAfterFlash()
         {
             yield return new WaitForSeconds(flashDuration);
+            SetFlashMaterialShowing(false);
             UpdateVisualColor();
             _flashCoroutine = null;
         }

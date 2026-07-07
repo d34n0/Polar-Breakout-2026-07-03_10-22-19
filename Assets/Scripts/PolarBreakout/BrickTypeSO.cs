@@ -32,6 +32,25 @@ namespace PolarBreakout
                  "shader for exploding bricks) rather than just a color tint. Leave unset to use " +
                  "whatever material is already on Brick.prefab.")]
         public Material materialOverride;
+        [Tooltip("Color the brick flashes to on every hit (both a surviving hit and the final " +
+                 "destroying hit - see Brick.flashDuration/blinkIntervalSeconds for timing). " +
+                 "Applied via MaterialPropertyBlock on top of whatever material is showing at the " +
+                 "time (materialOverride/hitFlashMaterial/the shared brick material), so it works " +
+                 "with any shader that reads _Color or _BaseColor. Push the HDR intensity slider " +
+                 "in the color picker above 1 to make the flash bloom (see the scene's " +
+                 "Volume > Bloom override) instead of just looking like a flat color swap.")]
+        [ColorUsage(true, true)]
+        public Color hitFlashColor = new Color(2f, 2f, 2f, 1f);
+        [Tooltip("Optional. When set, the brick's renderer actually swaps to this material for " +
+                 "the duration of the hit flash (see Brick.flashDuration), instead of just " +
+                 "tinting the brick's normal material via hitFlashColor above - use this for a " +
+                 "genuinely different shader while flashing (e.g. a dedicated glow/emissive " +
+                 "shader) rather than a brighter color on the same shader. hitFlashColor is still " +
+                 "applied via MaterialPropertyBlock on top of this material each flash, so a glow " +
+                 "shader that reads _Color/_BaseColor can still have its intensity tuned per " +
+                 "brick type from a single shared material asset. Leave unset to flash the " +
+                 "brick's normal material with just a color swap, as before.")]
+        public Material hitFlashMaterial;
 
         [Header("Power-Up Drop")]
         [Tooltip("Chance (0-1) that destroying a brick of this type drops a power-up capsule. " +
