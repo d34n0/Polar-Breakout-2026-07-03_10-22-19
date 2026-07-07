@@ -24,6 +24,12 @@ namespace PolarBreakout
                  "instead. Leave unset to always respawn (e.g. in isolated tests).")]
         public LivesManager livesManager;
 
+        [Tooltip("Optional. The central death zone's own DissolveEffect (see DeathZoneVisual) - " +
+                 "when set, it dissolves out/in in lockstep with the paddle everywhere the paddle " +
+                 "does (round start/end and a death respawn alike), rather than just sitting there " +
+                 "solid while everything else fades.")]
+        public DissolveEffect deathZoneDissolve;
+
         [Header("Respawn")]
         [Tooltip("Played at the arena center (the death zone) the moment every ball is lost. " +
                  "Leave unset to skip the effect.")]
@@ -135,8 +141,16 @@ namespace PolarBreakout
                 Instantiate(explosionEffectPrefab, Vector3.zero, Quaternion.identity);
 
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
-            if (paddleDissolve != null)
-                yield return paddleDissolve.DissolveOut(paddleDissolveOutDuration);
+            var paddleOutRoutine = paddleDissolve != null ? paddleDissolve.DissolveOut(paddleDissolveOutDuration) : null;
+            var deathZoneOutRoutine = deathZoneDissolve != null ? deathZoneDissolve.DissolveOut(paddleDissolveOutDuration) : null;
+            if (paddleOutRoutine != null) yield return paddleOutRoutine;
+            if (deathZoneOutRoutine != null) yield return deathZoneOutRoutine;
+
+            // Fully deactivate the paddle once it's done fading out - not just visually
+            // invisible, since a MonoBehaviour left active still runs Update/FixedUpdate and
+            // responds to Move input the instant it's re-enabled, well before the respawn dissolve-
+            // in is supposed to bring it back. Mirrors how primaryBall itself is already handled.
+            if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(false);
 
             // Game over: that was the player's last life, so there's no respawn - the paddle/ball
             // stay dissolved out and GameOverController's Retry/Quit panel takes over from here.
@@ -149,9 +163,11 @@ namespace PolarBreakout
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();
+            if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(true);
 
             var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
             if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
+            if (deathZoneDissolve != null) deathZoneDissolve.DissolveIn(dissolveInDuration);
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
@@ -176,6 +192,10 @@ namespace PolarBreakout
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();
+            // Reactivated here alongside the ball, right before PlayRoundStartDissolveIn plays -
+            // see PlayRoundEndDissolveOut for why the paddle is fully deactivated (not just
+            // dissolved) for the whole tear-down/card-offer/build-in window.
+            if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(true);
 
             ClearTransientPickupsAndAbilities();
         }
@@ -203,28 +223,40 @@ namespace PolarBreakout
         /// <summary>Called by LevelManager right after a round is cleared, before the card offer
         /// appears - dissolves the paddle out exactly like it does when a life is lost (see
         /// RespawnSequence), and hides the ball too (which RespawnSequence doesn't need to do
-        /// itself, since by that point the ball has already been lost/deactivated). Unlike a real
-        /// death, there's no explosion effect or respawnDelay here - the round just clears and
-        /// the paddle steps off-screen for the card choice.</summary>
+        /// itself, since by that point the ball has already been lost/deactivated). The death
+        /// zone dissolves out in lockstep with the paddle too (see deathZoneDissolve). Unlike a
+        /// real death, there's no explosion effect or respawnDelay here - the round just clears
+        /// and the paddle steps off-screen for the card choice.
+        ///
+        /// The paddle is fully deactivated once it's done fading out, not just left invisible -
+        /// otherwise, since its GameObject stays active, it keeps responding to Move input (re-
+        /// enabled the instant the card offer closes - see CardOfferController.ShowOffer) and
+        /// effectively "occupies the scene" for the entire tear-down/card-offer/build-in window,
+        /// well before ResetForNewRound/PlayRoundStartDissolveIn are supposed to bring it back.</summary>
         public IEnumerator PlayRoundEndDissolveOut()
         {
             primaryBall.gameObject.SetActive(false);
 
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
-            if (paddleDissolve != null)
-                yield return paddleDissolve.DissolveOut(paddleDissolveOutDuration);
+            var paddleOutRoutine = paddleDissolve != null ? paddleDissolve.DissolveOut(paddleDissolveOutDuration) : null;
+            var deathZoneOutRoutine = deathZoneDissolve != null ? deathZoneDissolve.DissolveOut(paddleDissolveOutDuration) : null;
+            if (paddleOutRoutine != null) yield return paddleOutRoutine;
+            if (deathZoneOutRoutine != null) yield return deathZoneOutRoutine;
+
+            if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(false);
         }
 
         /// <summary>Called by LevelManager once the new level has been built and ResetForNewRound
-        /// has already reactivated/redocked the ball - dissolves the paddle and ball back into
-        /// place together exactly like a respawn (see RespawnSequence), so the new round visually
-        /// arrives rather than just popping in.</summary>
+        /// has already reactivated/redocked the ball - dissolves the paddle and ball (and the
+        /// death zone - see deathZoneDissolve) back into place together exactly like a respawn
+        /// (see RespawnSequence), so the new round visually arrives rather than just popping in.</summary>
         public IEnumerator PlayRoundStartDissolveIn()
         {
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
             var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
 
             if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
+            if (deathZoneDissolve != null) deathZoneDissolve.DissolveIn(dissolveInDuration);
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 

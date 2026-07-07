@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.PolarGridSettings
   deathZoneRadius: 1
   paddleOrbitRadius: 1.2
-  hexSize: 0.4
-  hexGap: 0.01
+  hexSize: 0.2
+  hexGap: 0
   outerWallRadius: 10
   curveResolutionDegrees: 1

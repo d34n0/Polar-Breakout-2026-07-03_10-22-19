@@ -24,6 +24,26 @@ namespace PolarBreakout
         private Vector2[] _sharedHexOutline;
 
         public int RemainingDestructibleCount { get; private set; }
+
+        /// <summary>Snapshot of RemainingDestructibleCount taken once BuildLevel finishes
+        /// spawning every placement - the denominator for the soft clear threshold (see
+        /// ClearThreshold) and the power-up drop-rate surge (see BrickTypeSO.ComputeDropScale).</summary>
+        public int InitialDestructibleCount { get; private set; }
+
+        /// <summary>OnLevelCleared fires once RemainingDestructibleCount drops to this value or
+        /// below, not strictly zero - lets LevelManager implement a "soft clear" (advance once
+        /// only a handful of bricks remain, sweeping the rest via HexWipeTransition) instead of
+        /// requiring a literal 100% clear. Defaults to 0, preserving the exact old behavior for
+        /// any caller (tests, non-gauntlet scenes) that never calls SetClearThreshold.</summary>
+        public int ClearThreshold { get; private set; }
+
+        public void SetClearThreshold(int threshold) => ClearThreshold = Mathf.Max(0, threshold);
+
+        // Guards OnLevelCleared against firing more than once per level - once RemainingDestructibleCount
+        // is at or below a nonzero ClearThreshold, every further brick destroyed would otherwise
+        // re-satisfy the "<= ClearThreshold" check and re-invoke the event.
+        private bool _levelClearedFired;
+
         public event Action OnLevelCleared;
 
         /// <summary>Fired once per brick right when it's destroyed (never for indestructible
@@ -52,6 +72,7 @@ namespace PolarBreakout
         public void BuildLevel(LevelSO levelToBuild)
         {
             _hasBuilt = true;
+            _levelClearedFired = false;
             ClearGrid();
             level = levelToBuild;
 
@@ -74,8 +95,15 @@ namespace PolarBreakout
                 SpawnBrick(settings, coord, brickType);
             }
 
+            SnapshotInitialDestructibleCount();
             GetComponent<HexArenaBoundary>()?.BuildBoundary(settings);
         }
+
+        /// <summary>Snapshots RemainingDestructibleCount into InitialDestructibleCount - called at
+        /// the end of BuildLevel's own spawn loop, and also by HexWipeTransition.PlayBuildIn once
+        /// its progressive per-cell sweep finishes spawning every placement via SpawnBrickAt
+        /// (which, unlike BuildLevel, doesn't otherwise touch this snapshot at all).</summary>
+        public void SnapshotInitialDestructibleCount() => InitialDestructibleCount = RemainingDestructibleCount;
 
         private void SpawnBrick(PolarGridSettings settings, HexCoordinate coord, BrickTypeSO type)
         {
@@ -149,8 +177,11 @@ namespace PolarBreakout
             if (!brick.BrickType.isIndestructible)
             {
                 RemainingDestructibleCount--;
-                if (RemainingDestructibleCount <= 0)
+                if (!_levelClearedFired && RemainingDestructibleCount <= ClearThreshold)
+                {
+                    _levelClearedFired = true;
                     OnLevelCleared?.Invoke();
+                }
             }
 
             OnBrickDestroyed?.Invoke(brick);

@@ -11,7 +11,9 @@ namespace PolarBreakout
     /// cell should hold a brick, the brick appears right as the flash fades (PlayBuildIn); if a
     /// brick already exists there, it disappears the same way (PlayTearDown). Each swept hex also
     /// gets a colored outline that lingers and fades on its own, independent timeline, tracing
-    /// which cells the wave has already passed. Called from LevelManager.AdvanceToNextStage,
+    /// which cells the wave has already passed. A cell that actually gets/had a brick also plays
+    /// a short, separately-timed glow on top of that outline (see the "Brick Reveal Glow" fields)
+    /// - a swept cell with no brick never glows. Called from LevelManager.AdvanceToNextStage,
     /// around the card offer, with the paddle/ball already hidden by the existing round-
     /// transition dissolve sequence - callers are expected to hide/show the arena boundary
     /// themselves (see HexArenaBoundary.Hide/Show) since that's a presentation choice belonging
@@ -63,6 +65,24 @@ namespace PolarBreakout
                  "hex is swept (fully opaque), x=1 once fully faded. Defaults to a plain linear fade.")]
         public AnimationCurve outlineFadeCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
+        [Header("Brick Reveal Glow")]
+        [Tooltip("Leave unset for a plain colored unlit glow - assign a custom material to " +
+                 "override, driven the same way as the flash (see flashMaterialOverride). Only " +
+                 "plays on cells that actually get/had a brick - a swept empty cell never glows.")]
+        public Material glowMaterialOverride;
+        public Color glowColor = Color.yellow;
+        [Tooltip("Width of the glow outline, world units - independent of outlineWidth so the " +
+                 "glow can read as a thicker halo around the thinner plain outline.")]
+        public float glowWidth = 0.1f;
+        [Tooltip("How long the glow lasts on a brick cell, seconds, starting the instant the " +
+                 "brick is revealed (see reveal timing on ApplyCellVisual) - independent of " +
+                 "outlineFadeDuration, so it can be a short flourish distinct from the longer, " +
+                 "always-on trailing outline.")]
+        public float glowDuration = 0.25f;
+        [Tooltip("Shapes the glow's fade-out over glowDuration - x=0 right as the brick is " +
+                 "revealed (fully opaque), x=1 once fully faded. Defaults to a plain linear fade.")]
+        public AnimationCurve glowFadeCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
+
         private const int MinPoolSize = 64;
 
         private class WipeCell
@@ -73,20 +93,26 @@ namespace PolarBreakout
             public MaterialPropertyBlock propBlock;
             public LineRenderer outline;
             public MaterialPropertyBlock outlinePropBlock;
+            public LineRenderer glow;
+            public MaterialPropertyBlock glowPropBlock;
             public HexCoordinate coord;
             public float startTime;
             public bool revealApplied;
+            public bool hasGlow;
         }
 
         // Given a coordinate, perform whatever side effect this sweep needs (spawn a brick /
         // remove one) - the only thing that differs between PlayBuildIn and PlayTearDown; the
-        // per-cell flash animation itself (see ApplyCellVisual) is identical either way.
-        private delegate void RevealCallback(HexCoordinate coord);
+        // per-cell flash animation itself (see ApplyCellVisual) is identical either way. Returns
+        // true if a brick was actually placed/removed at that cell, which is what triggers the
+        // reveal glow - a swept cell with no brick never glows.
+        private delegate bool RevealCallback(HexCoordinate coord);
 
         private readonly Queue<WipeCell> _freeCells = new Queue<WipeCell>();
         private int _totalCellsCreated;
         private Material _defaultMaterial;
         private Material _defaultOutlineMaterial;
+        private Material _defaultGlowMaterial;
         private Mesh _hexMesh;
         private Vector3[] _hexOutlinePositions;
         private bool _sweepRunning;
@@ -109,8 +135,17 @@ namespace PolarBreakout
             yield return RunSweep(settings, coord =>
             {
                 if (placements.TryGetValue(coord, out var type))
+                {
                     brickGridManager.SpawnBrickAt(settings, coord, type);
+                    return true;
+                }
+                return false;
             });
+
+            // Unlike BuildLevel (which snapshots this itself), progressive per-cell spawning via
+            // SpawnBrickAt above never touches InitialDestructibleCount - do it here instead, once
+            // every placement has actually been spawned.
+            brickGridManager.SnapshotInitialDestructibleCount();
         }
 
         public IEnumerator PlayTearDown()
@@ -124,7 +159,11 @@ namespace PolarBreakout
             yield return RunSweep(settings, coord =>
             {
                 if (existing.Contains(coord))
+                {
                     brickGridManager.RemoveBrickQuietly(coord);
+                    return true;
+                }
+                return false;
             });
 
             // Safety net: quietly clear anything left over outside the swept screen rect (e.g. on
@@ -195,6 +234,7 @@ namespace PolarBreakout
                     cell.coord = coord;
                     cell.startTime = startTime;
                     cell.revealApplied = false;
+                    cell.hasGlow = false;
                     activeCells.Add(cell);
                     nextIndex++;
                 }
@@ -212,19 +252,30 @@ namespace PolarBreakout
 
                     // Reveal happens once, at the midpoint of this cell's own flash, while the
                     // flash is still opaque and covering it - masking the brick popping in/out
-                    // underneath regardless of which callback is wired in for this sweep.
+                    // underneath regardless of which callback is wired in for this sweep. Only a
+                    // cell that actually had a brick placed/removed (reveal returns true) glows.
                     if (!cell.revealApplied && progress >= 0.5f)
                     {
-                        reveal(cell.coord);
+                        cell.hasGlow = reveal(cell.coord);
                         cell.revealApplied = true;
                     }
 
-                    ApplyCellVisual(cell, progress, outlineProgress);
+                    // Starts counting from the same instant the reveal fired (negative, and
+                    // therefore clamped to 0, beforehand) - a short, independent timeline on top
+                    // of the always-on outline fade above.
+                    float glowProgress = 1f;
+                    if (cell.hasGlow)
+                    {
+                        float glowElapsed = localElapsed - perHexFlashDuration * 0.5f;
+                        glowProgress = glowDuration > 0f ? Mathf.Clamp01(glowElapsed / glowDuration) : 1f;
+                    }
 
-                    // A cell stays rented until BOTH the (usually quick) flash and the (usually
-                    // longer) outline fade have fully finished, so the outline can keep trailing
-                    // behind the moving flash band without its GameObject being recycled early.
-                    if (progress >= 1f && outlineProgress >= 1f)
+                    ApplyCellVisual(cell, progress, outlineProgress, glowProgress);
+
+                    // A cell stays rented until the (usually quick) flash, the (usually longer)
+                    // outline fade, AND any brick-reveal glow have all fully finished, so nothing
+                    // gets cut short by the GameObject being recycled early.
+                    if (progress >= 1f && outlineProgress >= 1f && (!cell.hasGlow || glowProgress >= 1f))
                     {
                         ReturnCell(cell);
                         activeCells.RemoveAt(i);
@@ -243,7 +294,7 @@ namespace PolarBreakout
         /// so it's driven the simple way too: fully opaque white for the first half, then fading
         /// alpha to 0 for the second - shaped by fadeCurve/outlineFadeCurve rather than a flat
         /// linear ramp, so the fade-out can ease independently of the sweep's own constant pace.</summary>
-        private void ApplyCellVisual(WipeCell cell, float progress, float outlineProgress)
+        private void ApplyCellVisual(WipeCell cell, float progress, float outlineProgress, float glowProgress)
         {
             // 0 right as fading starts (midpoint of the flash), 1 once it's fully faded - fed
             // through fadeCurve rather than used directly, so the fade-out's shape is whatever
@@ -266,6 +317,19 @@ namespace PolarBreakout
             cell.outlinePropBlock.SetColor("_Color", outlineCol);
             cell.outlinePropBlock.SetColor("_BaseColor", outlineCol);
             cell.outline.SetPropertyBlock(cell.outlinePropBlock);
+
+            // The glow only ever renders on cells that actually got/had a brick (see
+            // RevealCallback) - a swept empty cell's glow LineRenderer just stays disabled.
+            cell.glow.enabled = cell.hasGlow;
+            if (cell.hasGlow)
+            {
+                float glowAlpha = glowColor.a * glowFadeCurve.Evaluate(glowProgress);
+                Color glowCol = new Color(glowColor.r, glowColor.g, glowColor.b, glowAlpha);
+                cell.glowPropBlock.SetFloat("_DissolveProgress", glowProgress);
+                cell.glowPropBlock.SetColor("_Color", glowCol);
+                cell.glowPropBlock.SetColor("_BaseColor", glowCol);
+                cell.glow.SetPropertyBlock(cell.glowPropBlock);
+            }
         }
 
         /// <summary>0 at the rect's top-left corner, 1 at its bottom-right corner, linearly
@@ -320,6 +384,13 @@ namespace PolarBreakout
             return _defaultOutlineMaterial;
         }
 
+        private Material GetDefaultGlowMaterial()
+        {
+            if (_defaultGlowMaterial == null)
+                _defaultGlowMaterial = PolarMeshUtility.CreateTransparentUnlitMaterial(Color.white);
+            return _defaultGlowMaterial;
+        }
+
         private void EnsurePool(int totalCellCount)
         {
             int estimatedConcurrent = totalSweepDuration > 0f
@@ -346,6 +417,18 @@ namespace PolarBreakout
             outline.numCapVertices = 2;
             outline.numCornerVertices = 2;
 
+            // A GameObject can only ever host one LineRenderer, so the glow needs its own child
+            // GameObject rather than sitting alongside outline on go itself - SetParent(..., false)
+            // keeps it at the parent's local origin, so its local-space positions line up exactly
+            // the same as outline's.
+            var glowGO = new GameObject("Glow");
+            glowGO.transform.SetParent(go.transform, false);
+            var glow = glowGO.AddComponent<LineRenderer>();
+            glow.useWorldSpace = false;
+            glow.loop = true;
+            glow.numCapVertices = 2;
+            glow.numCornerVertices = 2;
+
             var cell = new WipeCell
             {
                 xform = go.transform,
@@ -354,6 +437,8 @@ namespace PolarBreakout
                 propBlock = new MaterialPropertyBlock(),
                 outline = outline,
                 outlinePropBlock = new MaterialPropertyBlock(),
+                glow = glow,
+                glowPropBlock = new MaterialPropertyBlock(),
             };
             return cell;
         }
@@ -372,6 +457,14 @@ namespace PolarBreakout
             cell.outline.SetPositions(_hexOutlinePositions);
             cell.outline.widthMultiplier = outlineWidth;
             cell.outline.sharedMaterial = outlineMaterialOverride != null ? outlineMaterialOverride : GetDefaultOutlineMaterial();
+
+            cell.glow.positionCount = _hexOutlinePositions.Length;
+            cell.glow.SetPositions(_hexOutlinePositions);
+            cell.glow.widthMultiplier = glowWidth;
+            cell.glow.sharedMaterial = glowMaterialOverride != null ? glowMaterialOverride : GetDefaultGlowMaterial();
+            // Only enabled once DriveSweep's reveal callback confirms this cell actually has a
+            // brick - left off here so a freshly-rented cell never shows a stale glow.
+            cell.glow.enabled = false;
 
             cell.xform.gameObject.SetActive(true);
             return cell;

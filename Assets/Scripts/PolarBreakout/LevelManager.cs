@@ -53,6 +53,22 @@ namespace PolarBreakout
         public int CurrentStage { get; private set; } = 1;
         public event Action<int> OnStageChanged;
 
+        /// <summary>Fired whenever a level activates (initial build-in or any stage advance) -
+        /// (isSurviveStage, duration). Drives SurviveTimerController's show/hide.</summary>
+        public event Action<bool, float> OnSurviveStageChanged;
+        /// <summary>Fired on activation and every tick while a Survive stage is running - the
+        /// remaining seconds. Drives SurviveTimerController's countdown text.</summary>
+        public event Action<float> OnSurviveTimeChanged;
+
+        private LevelSO _activeLevel;
+        private Coroutine _surviveTimerRoutine;
+        // Set by HandleLevelCleared when a Survive stage is fully cleared before its timer
+        // expires - consumed once, right before the next card offer, to guarantee it a Rare+ card.
+        private bool _fullClearBonusPending;
+        // Guards against AdvanceToNextStage starting twice for the same stage - a Survive stage's
+        // timer expiring and a stray OnLevelCleared could otherwise both try to trigger it.
+        private bool _stageAdvancing;
+
         private void Awake()
         {
             // Guaranteed to run before BrickGridManager.Start() - Unity calls every object's
@@ -93,6 +109,9 @@ namespace PolarBreakout
             yield return hexWipeTransition.PlayBuildIn(initialLevel);
             boundary?.BuildBoundary(initialLevel.gridSettings);
 
+            ApplyClearThreshold(initialLevel);
+            ActivateLevel(initialLevel);
+
             if (ballManager != null)
             {
                 ballManager.ResetForNewRound();
@@ -102,14 +121,97 @@ namespace PolarBreakout
 
         private void HandleLevelCleared()
         {
+            // Survive stages advance on their own timer, not on a brick clear - a full clear here
+            // just means bricks stay cleared for the rest of the timer and the bonus is banked
+            // (see AdvanceToNextStage's guaranteed-rare-card call), not an early advance.
+            if (_activeLevel != null && _activeLevel.objectiveType == StageObjectiveType.Survive)
+            {
+                _fullClearBonusPending = true;
+                return;
+            }
+
             // Immediately, before the end-of-round delay/dissolve/card-offer sequence even
             // starts - otherwise a power-up capsule still falling near the paddle when the last
             // brick dies could be legitimately caught during that window and carry its ability
             // into the next stage, even though the player never used/caught it during the actual
             // round that dropped it.
             if (ballManager != null) ballManager.ClearTransientPickupsAndAbilities();
+            BeginAdvanceToNextStage();
+        }
+
+        /// <summary>One-shot gate into AdvanceToNextStage - both a Clear stage's OnLevelCleared
+        /// and a Survive stage's own timer expiry funnel through here, so they can't race and
+        /// double-trigger the same advance.</summary>
+        private void BeginAdvanceToNextStage()
+        {
+            if (_stageAdvancing) return;
+            _stageAdvancing = true;
+
+            if (_surviveTimerRoutine != null)
+            {
+                StopCoroutine(_surviveTimerRoutine);
+                _surviveTimerRoutine = null;
+            }
+
             StartCoroutine(AdvanceToNextStage());
         }
+
+        /// <summary>Ticks remaining down on scaled Time.deltaTime (so it naturally pauses whenever
+        /// Time.timeScale is 0, e.g. a card offer - which can't overlap a running Survive timer
+        /// anyway, since offers only appear between stages), firing OnSurviveTimeChanged each
+        /// step, then advances the stage once it hits zero.</summary>
+        private IEnumerator RunSurviveTimer(float duration)
+        {
+            float remaining = duration;
+            OnSurviveTimeChanged?.Invoke(remaining);
+            while (remaining > 0f)
+            {
+                yield return null;
+                remaining -= Time.deltaTime;
+                OnSurviveTimeChanged?.Invoke(Mathf.Max(0f, remaining));
+            }
+
+            _surviveTimerRoutine = null;
+            BeginAdvanceToNextStage();
+        }
+
+        /// <summary>Marks lvl as the currently-live level: resets the full-clear bonus flag,
+        /// (re)starts or clears the Survive timer based on its objective type, and notifies
+        /// SurviveTimerController via OnSurviveStageChanged.</summary>
+        private void ActivateLevel(LevelSO lvl)
+        {
+            _activeLevel = lvl;
+            _fullClearBonusPending = false;
+
+            if (_surviveTimerRoutine != null)
+            {
+                StopCoroutine(_surviveTimerRoutine);
+                _surviveTimerRoutine = null;
+            }
+
+            bool isSurvive = lvl != null && lvl.objectiveType == StageObjectiveType.Survive;
+            if (isSurvive)
+                _surviveTimerRoutine = StartCoroutine(RunSurviveTimer(lvl.surviveDuration));
+
+            OnSurviveStageChanged?.Invoke(isSurvive, lvl != null ? lvl.surviveDuration : 0f);
+        }
+
+        /// <summary>Computes and applies the soft clear threshold for Clear-type levels (advance
+        /// once destructible bricks drop to this many or fewer - see BrickGridManager.ClearThreshold),
+        /// or clears it back to 0 for Survive-type levels, so their OnLevelCleared only fires on a
+        /// literal full clear (which doubles as the full-clear bonus condition, see HandleLevelCleared).</summary>
+        private void ApplyClearThreshold(LevelSO lvl)
+        {
+            if (brickGridManager == null) return;
+
+            if (lvl != null && lvl.objectiveType == StageObjectiveType.Clear)
+                brickGridManager.SetClearThreshold(ComputeClearThreshold(brickGridManager.InitialDestructibleCount));
+            else
+                brickGridManager.SetClearThreshold(0);
+        }
+
+        private static int ComputeClearThreshold(int initialCount) =>
+            Mathf.Max(3, Mathf.CeilToInt(0.05f * initialCount));
 
         private IEnumerator AdvanceToNextStage()
         {
@@ -132,6 +234,9 @@ namespace PolarBreakout
                 yield return hexWipeTransition.PlayTearDown();
             }
 
+            if (_fullClearBonusPending && cardOfferController != null)
+                cardOfferController.GuaranteeRareOrBetterNextOffer();
+
             if (cardOfferController != null)
                 yield return cardOfferController.ShowOffer();
 
@@ -150,7 +255,14 @@ namespace PolarBreakout
                 {
                     brickGridManager.BuildLevel(nextLevel);
                 }
+
+                ApplyClearThreshold(nextLevel);
+                ActivateLevel(nextLevel);
             }
+
+            // The new stage is fully live from here on - safe to let a future OnLevelCleared/timer
+            // expiry trigger another advance.
+            _stageAdvancing = false;
 
             if (ballManager != null)
             {

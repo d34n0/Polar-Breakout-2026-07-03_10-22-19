@@ -27,7 +27,6 @@ namespace PolarBreakout
 
         [Header("Visuals")]
         public Color color = Color.white;
-        public Sprite sprite;
         [Tooltip("Optional. Overrides the brick prefab's default material for bricks of this " +
                  "type, so different types can use entirely different shaders (e.g. a glowing " +
                  "shader for exploding bricks) rather than just a color tint. Leave unset to use " +
@@ -44,6 +43,11 @@ namespace PolarBreakout
                  "one is picked at random from this list each time. Irrelevant if " +
                  "powerUpDropChance is 0. Leave empty to never drop even with a nonzero chance.")]
         public PowerUpType[] possiblePowerUps = new PowerUpType[0];
+        [Tooltip("When enabled, powerUpDropChance scales up as the stage's remaining " +
+                 "destructible bricks dwindle toward its clear threshold - roughly 2x at 25% " +
+                 "bricks remaining, roughly 3x near the clear threshold itself. Leave off for " +
+                 "brick types that should always drop at a flat rate.")]
+        public bool scaleDropChanceNearClear = true;
 
         [Header("Shard Drop")]
         [Tooltip("Chance (0-1) that destroying a brick of this type drops crystal shards - the " +
@@ -89,12 +93,44 @@ namespace PolarBreakout
         {
             if (powerUpDropChance <= 0f) return;
             if (possiblePowerUps == null || possiblePowerUps.Length == 0) return;
-            if (Random.value > powerUpDropChance) return;
+
+            float effectiveChance = powerUpDropChance;
+            if (scaleDropChanceNearClear && brick.Manager != null)
+                effectiveChance *= ComputeDropScale(brick.Manager);
+
+            if (Random.value > Mathf.Clamp01(effectiveChance)) return;
 
             PowerUpType chosen = possiblePowerUps[Random.Range(0, possiblePowerUps.Length)];
             var capsuleObject = new GameObject($"PowerUpCapsule_{chosen}");
             var capsule = capsuleObject.AddComponent<PowerUpCapsule>();
             capsule.Initialize(brick.WorldPosition, chosen);
+        }
+
+        /// <summary>Interpolates the power-up drop-chance multiplier from 1x (at 100%+ bricks
+        /// remaining) up to 2x by 25% remaining, then up to 3x by the stage's clear threshold -
+        /// two linear segments joined at the 25% breakpoint, clamped at both ends. Runs after
+        /// BrickGridManager.NotifyBrickDestroyed has already decremented RemainingDestructibleCount
+        /// for the brick currently being destroyed, so this reflects the count *after* it.</summary>
+        private static float ComputeDropScale(BrickGridManager manager)
+        {
+            int initial = manager.InitialDestructibleCount;
+            if (initial <= 0) return 1f;
+
+            const float midFraction = 0.25f;
+            const float midMultiplier = 2f;
+            const float endMultiplier = 3f;
+
+            float remainingFraction = Mathf.Clamp01((float)manager.RemainingDestructibleCount / initial);
+            float thresholdFraction = Mathf.Min(midFraction * 0.999f, Mathf.Clamp01((float)manager.ClearThreshold / initial));
+
+            if (remainingFraction >= midFraction)
+            {
+                float t = Mathf.InverseLerp(1f, midFraction, remainingFraction);
+                return Mathf.Lerp(1f, midMultiplier, t);
+            }
+
+            float lowT = Mathf.InverseLerp(midFraction, thresholdFraction, remainingFraction);
+            return Mathf.Lerp(midMultiplier, endMultiplier, Mathf.Clamp01(lowT));
         }
 
         /// <summary>Rolls shardDropChance and, on success, spawns a ShardPickup worth a random

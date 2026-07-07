@@ -24,6 +24,12 @@ namespace PolarBreakout
         public PolarGridSettings gridSettings;
         public List<BrickPlacement> placements = new List<BrickPlacement>();
 
+        [Header("Stage Objective")]
+        public StageObjectiveType objectiveType = StageObjectiveType.Clear;
+        [Tooltip("Survive-type only: seconds the stage lasts before auto-advancing, regardless " +
+                 "of remaining bricks. Ignored for Clear-type stages.")]
+        public float surviveDuration = 30f;
+
         public IEnumerable<(HexCoordinate coord, BrickTypeSO type)> GetPlacements()
         {
             foreach (var p in placements)
@@ -126,6 +132,67 @@ namespace PolarBreakout
                 if (rng.NextDouble() > fillChance) continue;
                 var type = brickPool[rng.Next(brickPool.Count)];
                 SetBrick(coord, type);
+            }
+        }
+
+        /// <summary>Replaces the whole level with clustered "islands" of bricks instead of
+        /// GenerateRandomLevel's uniform per-cell scatter - picks seedCount random seed hexes,
+        /// then repeatedly grows each cluster outward to a random unclaimed neighbor (via
+        /// HexCoordinate.Neighbor) until the total filled-cell count reaches targetFillChance's
+        /// share of the grid (or no cluster has any growable frontier left). Seeded so the same
+        /// seed reproduces the same layout.</summary>
+        public void GenerateClusteredLevel(IList<BrickTypeSO> brickPool, float targetFillChance, int seedCount, int seed)
+        {
+            if (gridSettings == null || brickPool == null || brickPool.Count == 0 || seedCount <= 0) return;
+
+            var rng = new System.Random(seed);
+            placements.Clear();
+
+            var allCoords = new List<HexCoordinate>(gridSettings.EnumerateValidCoordinates());
+            if (allCoords.Count == 0) return;
+
+            int targetCount = Mathf.Clamp(
+                Mathf.RoundToInt(allCoords.Count * Mathf.Clamp01(targetFillChance)), 0, allCoords.Count);
+            if (targetCount == 0) return;
+
+            var filled = new HashSet<HexCoordinate>();
+            // Cells adjacent to at least one filled cell, not yet filled themselves. A plain List
+            // (not a HashSet) is deliberate - a cell touching multiple already-filled cells appears
+            // more than once and is proportionally more likely to be picked next, biasing growth
+            // toward round blobs rather than spindly tendrils, with no extra weighting math.
+            var frontier = new List<HexCoordinate>();
+
+            var remainingSeedCandidates = new List<HexCoordinate>(allCoords);
+            int actualSeedCount = Mathf.Min(seedCount, remainingSeedCandidates.Count, targetCount);
+            for (int i = 0; i < actualSeedCount; i++)
+            {
+                int index = rng.Next(remainingSeedCandidates.Count);
+                HexCoordinate seedCoord = remainingSeedCandidates[index];
+                remainingSeedCandidates.RemoveAt(index);
+                AddToCluster(seedCoord, filled, frontier);
+            }
+
+            while (filled.Count < targetCount && frontier.Count > 0)
+            {
+                int index = rng.Next(frontier.Count);
+                HexCoordinate next = frontier[index];
+                frontier.RemoveAt(index);
+                if (filled.Contains(next)) continue; // Stale duplicate - already filled via another entry.
+                AddToCluster(next, filled, frontier);
+            }
+
+            foreach (var coord in filled)
+                SetBrick(coord, brickPool[rng.Next(brickPool.Count)]);
+        }
+
+        private void AddToCluster(HexCoordinate coord, HashSet<HexCoordinate> filled, List<HexCoordinate> frontier)
+        {
+            filled.Add(coord);
+            for (int dir = 0; dir < HexCoordinate.Directions.Length; dir++)
+            {
+                HexCoordinate neighbor = coord.Neighbor(dir);
+                if (gridSettings.IsValidCoordinate(neighbor) && !filled.Contains(neighbor))
+                    frontier.Add(neighbor);
             }
         }
     }

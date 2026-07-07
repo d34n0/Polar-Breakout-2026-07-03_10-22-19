@@ -18,11 +18,11 @@ MonoBehaviour:
   scoreValue: 10
   scoreMultiplier: 2
   isIndestructible: 0
-  color: {r: 0.3773585, g: 0.3542186, b: 0.3542186, a: 1}
-  sprite: {fileID: 21300000, guid: fbe72a9a23f83d443985192e13cee403, type: 3}
+  color: {r: 0.2735849, g: 0.21551263, b: 0.21551263, a: 1}
   materialOverride: {fileID: 0}
   powerUpDropChance: 0.15
   possiblePowerUps: 0200000000000000
+  scaleDropChanceNearClear: 1
   shardDropChance: 0.2
   shardDropAmountMin: 2
   shardDropAmountMax: 3

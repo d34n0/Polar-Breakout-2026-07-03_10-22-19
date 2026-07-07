@@ -209,11 +209,21 @@ namespace PolarBreakout
             vertices[0] = Vector3.zero;
             uvs[0] = new Vector2(0.5f, 0.5f);
 
+            // A pointy-top hex's true corner-to-corner span is narrower on X than on Y
+            // (sqrt(3)*radius vs 2*radius) - dividing both axes by the same 2*radius would leave
+            // horizontal UV margin (~7% on each side) even though the mesh's own left/right edges
+            // sit there, so a texture whose hex art touches all four edges of its canvas (the
+            // standard way hex sprites are authored) would render inset from the actual mesh
+            // silhouette instead of lining up with it. Using each axis's own true extent maps the
+            // mesh's bounding box exactly onto the full 0-1 UV square instead.
+            float xExtent = radius * Mathf.Sqrt(3f);
+            float yExtent = radius * 2f;
+
             for (int i = 0; i < 6; i++)
             {
                 Vector2 corner = HexCorner(Vector2.zero, radius, i);
                 vertices[i + 1] = new Vector3(corner.x, corner.y, 0f);
-                uvs[i + 1] = new Vector2(corner.x / (radius * 2f) + 0.5f, corner.y / (radius * 2f) + 0.5f);
+                uvs[i + 1] = new Vector2(corner.x / xExtent + 0.5f, corner.y / yExtent + 0.5f);
             }
 
             for (int i = 0; i < 6; i++)

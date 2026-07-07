@@ -410,6 +410,7 @@ GameObject:
   - component: {fileID: 37882380}
   - component: {fileID: 37882379}
   - component: {fileID: 37882378}
+  - component: {fileID: 37882382}
   m_Layer: 0
   m_Name: DeathZoneVisual
   m_TagString: Untagged
@@ -506,6 +507,19 @@ Transform:
   - {fileID: 1598310003}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &37882382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 37882377}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44eb82ec97d115e4daac6ed151ad9599, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.DissolveEffect
+  dissolveMaterial: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
 --- !u!1 &85678310
 GameObject:
   m_ObjectHideFlags: 0
@@ -8229,6 +8243,34 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  glowMaterialOverride: {fileID: 0}
+  glowColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  glowWidth: 0.1
+  glowDuration: 0.25
+  glowFadeCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: -1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: -1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!4 &1474923620
 Transform:
   m_ObjectHideFlags: 0
@@ -13659,7 +13701,8 @@ MonoBehaviour:
   brickGridManager: {fileID: 452747081}
   scoreManager: {fileID: 1739309389}
   ballManager: {fileID: 1973265797}
-  levels: []
+  levels:
+  - {fileID: 11400000, guid: 278017f25e0e34b44ad91386f386ae6b, type: 2}
   levelClearBonusPerStage: 1000
   cardOfferController: {fileID: 426865038}
   endOfRoundDelay: 1
@@ -15705,6 +15748,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.BallManager
   primaryBall: {fileID: 1426727418}
   livesManager: {fileID: 1738842958}
+  deathZoneDissolve: {fileID: 37882382}
   explosionEffectPrefab: {fileID: 5965645815274214936, guid: 5ef09501eba14c242b03c91b8157d35a, type: 3}
   respawnDelay: 1
   paddleDissolveOutDuration: 0.3

@@ -66,6 +66,17 @@ namespace PolarBreakout
         // that: any card choice arriving before Fire's bound control has been freshly released.
         private bool _suppressAutoConfirmUntilFireReleased;
 
+        // Set by LevelManager when a Survive stage is fully cleared before its timer expires -
+        // consumed (and reset) the moment the next offer is picked, guaranteeing at least one
+        // Rare-or-better card in that offer regardless of the normal weighted roll.
+        private bool _guaranteeRareOrBetterNextOffer;
+
+        /// <summary>Called by LevelManager when a Survive stage is fully cleared before its timer
+        /// expires - the next ShowOffer() call guarantees at least one Rare-or-better card in one
+        /// of its slots, instead of the normal fully-weighted-random roll. One-shot: consumed and
+        /// reset the moment that next offer is picked, regardless of what the player chooses.</summary>
+        public void GuaranteeRareOrBetterNextOffer() => _guaranteeRareOrBetterNextOffer = true;
+
         /// <summary>Shows the offer, blocks until the player picks one, applies it, then hides
         /// the panel again - call via `yield return cardOfferController.ShowOffer();`.</summary>
         public IEnumerator ShowOffer()
@@ -257,25 +268,35 @@ namespace PolarBreakout
         }
 
         /// <summary>Picks slots.Length unique cards from allCards, weighted by rarity - each
-        /// pick removes that card from the pool so the same offer never repeats a card.</summary>
+        /// pick removes that card from the pool so the same offer never repeats a card. If
+        /// _guaranteeRareOrBetterNextOffer is set, the last slot is forced to a Rare-or-better
+        /// card unless an earlier slot already organically rolled one - see
+        /// GuaranteeRareOrBetterNextOffer.</summary>
         private List<CardSO> PickOffer()
         {
             var pool = new List<CardSO>(allCards);
             var picked = new List<CardSO>();
             int count = Mathf.Min(slots.Length, pool.Count);
 
+            bool guarantee = _guaranteeRareOrBetterNextOffer;
+            _guaranteeRareOrBetterNextOffer = false;
+
             for (int i = 0; i < count; i++)
             {
-                float totalWeight = 0f;
-                foreach (var c in pool) totalWeight += WeightFor(c.rarity);
+                bool forceRareThisSlot = guarantee && i == count - 1 &&
+                    !picked.Exists(c => c.rarity >= CardRarity.Rare);
 
-                float roll = Random.value * totalWeight;
-                float cumulative = 0f;
-                CardSO chosen = pool[pool.Count - 1];
-                foreach (var c in pool)
+                CardSO chosen;
+                if (forceRareThisSlot)
                 {
-                    cumulative += WeightFor(c.rarity);
-                    if (roll <= cumulative) { chosen = c; break; }
+                    var rareOrBetterPool = pool.FindAll(c => c.rarity >= CardRarity.Rare);
+                    chosen = rareOrBetterPool.Count > 0
+                        ? rareOrBetterPool[Random.Range(0, rareOrBetterPool.Count)]
+                        : WeightedPick(pool); // No Rare+ card available at all - fall back rather than error.
+                }
+                else
+                {
+                    chosen = WeightedPick(pool);
                 }
 
                 picked.Add(chosen);
@@ -283,6 +304,22 @@ namespace PolarBreakout
             }
 
             return picked;
+        }
+
+        private CardSO WeightedPick(List<CardSO> pool)
+        {
+            float totalWeight = 0f;
+            foreach (var c in pool) totalWeight += WeightFor(c.rarity);
+
+            float roll = Random.value * totalWeight;
+            float cumulative = 0f;
+            CardSO chosen = pool[pool.Count - 1];
+            foreach (var c in pool)
+            {
+                cumulative += WeightFor(c.rarity);
+                if (roll <= cumulative) { chosen = c; break; }
+            }
+            return chosen;
         }
 
         private float WeightFor(CardRarity rarity)

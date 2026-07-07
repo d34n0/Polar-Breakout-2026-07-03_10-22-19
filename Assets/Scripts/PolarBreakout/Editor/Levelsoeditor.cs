@@ -19,9 +19,13 @@ namespace PolarBreakout.Editor
         private int _patternInterval = 2;
         private int _patternOffset;
 
+        private enum RandomFillMode { Scatter, Clustered }
+
         private readonly List<BrickTypeSO> _randomBrickPool = new List<BrickTypeSO>();
         private float _randomFillChance = 0.7f;
         private int _randomSeed;
+        private RandomFillMode _randomFillMode;
+        private int _clusterSeedCount = 3;
 
         public override void OnInspectorGUI()
         {
@@ -117,17 +121,26 @@ namespace PolarBreakout.Editor
             if (GUILayout.Button("Add Brick Type"))
                 _randomBrickPool.Add(null);
 
-            _randomFillChance = EditorGUILayout.Slider("Fill Chance", _randomFillChance, 0f, 1f);
+            _randomFillMode = (RandomFillMode)EditorGUILayout.EnumPopup("Fill Mode", _randomFillMode);
+            _randomFillChance = EditorGUILayout.Slider(
+                _randomFillMode == RandomFillMode.Scatter ? "Fill Chance" : "Target Fill %", _randomFillChance, 0f, 1f);
+            if (_randomFillMode == RandomFillMode.Clustered)
+                _clusterSeedCount = Mathf.Max(1, EditorGUILayout.IntField("Seed Count", _clusterSeedCount));
             _randomSeed = EditorGUILayout.IntField("Seed", _randomSeed);
 
             bool hasValidBrick = _randomBrickPool.Exists(b => b != null);
             using (new EditorGUI.DisabledScope(!hasValidBrick || level.gridSettings == null))
             {
-                if (GUILayout.Button("Generate Random Level"))
+                string buttonLabel = _randomFillMode == RandomFillMode.Scatter
+                    ? "Generate Random Level" : "Generate Clustered Level";
+                if (GUILayout.Button(buttonLabel))
                 {
-                    Undo.RecordObject(level, "Generate Random Level");
+                    Undo.RecordObject(level, buttonLabel);
                     var pool = _randomBrickPool.FindAll(b => b != null);
-                    level.GenerateRandomLevel(pool, _randomFillChance, _randomSeed);
+                    if (_randomFillMode == RandomFillMode.Scatter)
+                        level.GenerateRandomLevel(pool, _randomFillChance, _randomSeed);
+                    else
+                        level.GenerateClusteredLevel(pool, _randomFillChance, _clusterSeedCount, _randomSeed);
                     EditorUtility.SetDirty(level);
                 }
             }
