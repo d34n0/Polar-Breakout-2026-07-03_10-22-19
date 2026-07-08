@@ -6,9 +6,10 @@ namespace PolarBreakout
     /// Spawned by BrickTypeSO.TryDropShards at a destroyed brick's position - falls toward the
     /// arena center and grants its shard amount to CurrencyManager if the paddle catches it along
     /// the way, exactly like PowerUpCapsule's "gravitate inward + sine wobble" motion and
-    /// distance/angle catch check. Kept as a separate, simpler type from PowerUpCapsule (a small
-    /// diamond shape, no per-type material hookup) since shards are a plain numeric currency, not
-    /// a paddle ability.
+    /// distance/angle catch check. Draws a plain procedural diamond mesh tinted by color, unless
+    /// CurrencyManager.shardSprite is assigned - see BuildVisual - in which case it swaps to a
+    /// real SpriteRenderer instead, the same "central skin lookup on the domain's own hub
+    /// component" pattern PowerUpCapsule uses via PaddleAbilities.
     /// </summary>
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
@@ -33,6 +34,7 @@ namespace PolarBreakout
 
         private PaddleController _paddle;
         private CurrencyManager _currencyManager;
+        private AudioManager _audioManager;
         private float _spawnAngleDegrees;
         private float _currentAngleDegrees;
         private float _radius;
@@ -42,6 +44,7 @@ namespace PolarBreakout
         {
             _paddle = FindFirstObjectByType<PaddleController>();
             _currencyManager = FindFirstObjectByType<CurrencyManager>();
+            _audioManager = FindFirstObjectByType<AudioManager>();
         }
 
         public void Initialize(Vector2 spawnWorldPosition, int amount)
@@ -55,6 +58,34 @@ namespace PolarBreakout
         }
 
         private void BuildVisual()
+        {
+            Sprite sprite = _currencyManager != null ? _currencyManager.shardSprite : null;
+            if (sprite != null)
+            {
+                BuildSpriteVisual(sprite);
+                return;
+            }
+
+            BuildProceduralVisual();
+        }
+
+        /// <summary>Swaps in real artwork (see CurrencyManager.shardSprite) instead of the plain
+        /// procedural diamond - disables the MeshRenderer (kept, not removed, since it's a
+        /// RequireComponent dependency) rather than leaving both drawing on top of each other.
+        /// Rendered at the sprite's own native colors, unmodified by the color field - that field
+        /// only ever tinted the plain procedural shape, matching how TurretSkin sprites aren't
+        /// tinted either.</summary>
+        private void BuildSpriteVisual(Sprite sprite)
+        {
+            GetComponent<MeshRenderer>().enabled = false;
+
+            var spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sprite = sprite;
+            if (_currencyManager.shardSpriteMaterialOverride != null)
+                spriteRenderer.sharedMaterial = _currencyManager.shardSpriteMaterialOverride;
+        }
+
+        private void BuildProceduralVisual()
         {
             GetComponent<MeshFilter>().mesh = BuildDiamondMesh(visualRadius);
 
@@ -108,6 +139,7 @@ namespace PolarBreakout
             if (IsCaughtByPaddle())
             {
                 if (_currencyManager != null) _currencyManager.AddShards(Amount);
+                _audioManager?.PlayShardPickup();
                 OnAnyShardCollected?.Invoke(Amount);
                 Destroy(gameObject);
             }

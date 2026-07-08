@@ -10,6 +10,17 @@ namespace PolarBreakout
     /// </summary>
     public class CurrencyManager : MonoBehaviour
     {
+        [Header("Shard Visual")]
+        [Tooltip("Optional. Assign real artwork for ShardPickup instances (see ShardPickup." +
+                 "BuildVisual) - spawned dynamically at runtime with no prefab of their own, so " +
+                 "this is the one central place to configure their look, the same role TurretSkin " +
+                 "plays for cannon barrels. Leave unset to fall back to the plain procedural " +
+                 "diamond mesh tinted by ShardPickup.color.")]
+        public Sprite shardSprite;
+        [Tooltip("Optional. Overrides the default sprite material when shardSprite is set, for a " +
+                 "custom shader/effect. Leave unset for standard sprite rendering.")]
+        public Material shardSpriteMaterialOverride;
+
         public int CurrentShards { get; private set; }
 
         public event System.Action<int> OnShardsChanged;

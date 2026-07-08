@@ -52,6 +52,24 @@ namespace PolarBreakout
         [Tooltip("Played once the player actually loses their ball (all balls gone - see " +
                  "BallManager.OnAllBallsLost), alongside the explosion effect.")]
         public AudioResource deathSound;
+        [Tooltip("Played once per Cannon shot fired (see PaddleAbilities.FireBarrel) - once per " +
+                 "barrel, not once per individual bullet in a fanned-out multi-bullet shot.")]
+        public AudioResource bulletSound;
+        [Tooltip("Played once per Laser Cannon beam fired (see PaddleAbilities.FireLaserBeam).")]
+        public AudioResource laserSound;
+        [Tooltip("Played whenever the ball bounces off the outer wall/screen edge (see " +
+                 "BallController.BounceOffScreenEdges/BounceOffCircularWall).")]
+        public AudioResource boundaryHitSound;
+        [Tooltip("Played whenever a launched ball collides with the paddle.")]
+        public AudioResource paddleHitSound;
+        [Tooltip("Played whenever the paddle catches a PowerUpCapsule.")]
+        public AudioResource capsulePickupSound;
+        [Tooltip("Played whenever the paddle catches a ShardPickup.")]
+        public AudioResource shardPickupSound;
+        [Tooltip("Played once whenever the ball enters its phasing/spin state (see " +
+                 "BallController.IsPhasing) - i.e. the moment |Spin| crosses the phase threshold, " +
+                 "not every frame it stays phasing. Leave unset for silence.")]
+        public AudioResource spinEnterSound;
         [Range(0f, 1f)]
         public float sfxVolume = 1f;
         [Tooltip("How many simultaneous one-shot SFX sources to keep ready - avoids cutting off " +
@@ -132,5 +150,12 @@ namespace PolarBreakout
         public void PlayDissolveIn() => PlaySfx(dissolveInSound);
         public void PlayDissolveOut() => PlaySfx(dissolveOutSound);
         public void PlayDeath() => PlaySfx(deathSound);
+        public void PlayBullet() => PlaySfx(bulletSound);
+        public void PlayLaser() => PlaySfx(laserSound);
+        public void PlayBoundaryHit() => PlaySfx(boundaryHitSound);
+        public void PlayPaddleHit() => PlaySfx(paddleHitSound);
+        public void PlayCapsulePickup() => PlaySfx(capsulePickupSound);
+        public void PlayShardPickup() => PlaySfx(shardPickupSound);
+        public void PlaySpinEnter() => PlaySfx(spinEnterSound);
     }
 }

@@ -33,6 +33,11 @@ namespace PolarBreakout
         [Tooltip("Optional. When set, losing this ball is routed through the manager (for " +
                  "Multiball) instead of redocking immediately. Leave unset for single-ball play.")]
         public BallManager ballManager;
+        [Tooltip("Optional. Plays AudioManager.boundaryHitSound on an outer-wall bounce and " +
+                 "AudioManager.paddleHitSound on a paddle collision. Leave unset for silence. " +
+                 "Serialized, so a clone Instantiated from this ball (see BallManager." +
+                 "SpawnCloneFrom) carries the same reference without extra wiring.")]
+        public AudioManager audioManager;
 
         [Header("Movement")]
         public float speed = 8f;
@@ -239,7 +244,9 @@ namespace PolarBreakout
 
         /// <summary>Decides which trail (none/normal/spin) should be showing right now and, on
         /// change, kicks off a cross-fade between whatever was showing before and the new one -
-        /// see CrossfadeTrails.</summary>
+        /// see CrossfadeTrails. Also the natural place to detect entering the Spin trail mode -
+        /// the ball just crossed into phasing (see IsPhasing) - and play a one-shot cue for it,
+        /// since this is already the single spot that tracks the previous/desired trail state.</summary>
         private void UpdateTrailEmission()
         {
             bool launched = State == BallState.Launched;
@@ -248,6 +255,8 @@ namespace PolarBreakout
 
             TrailMode previous = _currentTrailMode;
             _currentTrailMode = desired;
+
+            if (desired == TrailMode.Spin) audioManager?.PlaySpinEnter();
 
             if (_trailCrossfadeCoroutine != null) StopCoroutine(_trailCrossfadeCoroutine);
             _trailCrossfadeCoroutine = StartCoroutine(CrossfadeTrails(previous, desired));
@@ -412,6 +421,7 @@ namespace PolarBreakout
             pos.y = Mathf.Clamp(pos.y, bottomLimit, topLimit);
             _rb.position = pos;
             _rb.linearVelocity = vel;
+            audioManager?.PlayBoundaryHit();
         }
 
         /// <summary>Fallback used when there's no real camera to derive screen edges from (e.g.
@@ -426,7 +436,10 @@ namespace PolarBreakout
             Vector2 normal = pos.normalized;
             float outwardComponent = Vector2.Dot(_rb.linearVelocity, normal);
             if (outwardComponent > 0f)
+            {
                 _rb.linearVelocity -= 2f * outwardComponent * normal;
+                audioManager?.PlayBoundaryHit();
+            }
 
             _rb.position = normal * outerLimit;
         }
@@ -475,6 +488,7 @@ namespace PolarBreakout
                 // DockToPaddle), and a fast pre-launch swing shouldn't already be winding up spin
                 // before the player has actually released the ball.
                 Spin = Mathf.Clamp(hitPaddle.AngularVelocityDegreesPerSecond * spinTransferFactor, -maxSpin, maxSpin);
+                audioManager?.PlayPaddleHit();
             }
 
             if (IsPhasing && collision.collider.GetComponent<Brick>() != null)

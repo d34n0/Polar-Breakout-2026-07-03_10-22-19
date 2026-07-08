@@ -125,14 +125,13 @@ namespace PolarBreakout
 
         private void HandleLevelCleared()
         {
-            // Survive stages advance on their own timer, not on a brick clear - a full clear here
-            // just means bricks stay cleared for the rest of the timer and the bonus is banked
-            // (see AdvanceToNextStage's guaranteed-rare-card call), not an early advance.
+            // A Survive stage normally advances on its own timer, not on a brick clear - but
+            // destroying every brick before the timer expires is itself a win condition too, so it
+            // banks the same full-clear bonus (see AdvanceToNextStage's guaranteed-rare-card call)
+            // AND advances immediately, rather than making the player sit out the rest of the timer
+            // with nothing left to do.
             if (_activeLevel != null && _activeLevel.objectiveType == StageObjectiveType.Survive)
-            {
                 _fullClearBonusPending = true;
-                return;
-            }
 
             BeginAdvanceToNextStage();
         }

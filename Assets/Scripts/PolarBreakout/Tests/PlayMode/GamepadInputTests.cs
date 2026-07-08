@@ -282,6 +282,51 @@ namespace PolarBreakout.Tests
         }
 
         [UnityTest]
+        public IEnumerator PaddleFastSweep_EnteringPhaseState_PlaysSpinEnterSound()
+        {
+            var audioManagerGO = new GameObject("TestAudioManager");
+            _extraSpawned.Add(audioManagerGO);
+            var audioManager = audioManagerGO.AddComponent<AudioManager>();
+            audioManager.playMusicOnStart = false;
+            var testClip = AudioClip.Create("SpinEnterTestClip", 100, 1, 44100, false);
+            audioManager.spinEnterSound = testClip;
+            _ball.audioManager = audioManager;
+
+            // Same setup as PaddleFastSweep_ImpartsSpinToBallOnContact - the transferred spin
+            // there (paddle at default 720 deg/s * spinTransferFactor) comfortably clears
+            // phaseSpinThreshold (0.25 default), so this same contact should also flip IsPhasing.
+            float firstTickAngle = _paddle.turnSpeedDegreesPerSecond * Time.fixedDeltaTime;
+            float rad = firstTickAngle * Mathf.Deg2Rad;
+            Vector2 ballPos = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * _settings.paddleOrbitRadius;
+            _ball.LaunchAt(ballPos, Vector2.zero);
+
+            InputSystem.QueueDeltaStateEvent(_gamepad.leftStick, new Vector2(0f, 1f));
+            InputSystem.Update();
+
+            bool phased = false;
+            for (int i = 0; i < 5 && !phased; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                phased = _ball.IsPhasing;
+            }
+
+            Assert.IsTrue(phased, "Test precondition: the paddle strike should have pushed the ball into its phasing/spin state.");
+
+            // IsPhasing already reads true here (the physics collision that set Spin fires as a
+            // post-step callback, after the tick's own FixedUpdate already ran), but
+            // BallController.UpdateTrailEmission - the thing that actually fires the sound - only
+            // re-evaluates IsPhasing at the START of the NEXT FixedUpdate. One more tick lets it
+            // catch up before checking.
+            yield return new WaitForFixedUpdate();
+
+            bool soundFired = false;
+            foreach (var source in audioManager.GetComponents<AudioSource>())
+                if (source.resource == testClip) soundFired = true;
+
+            Assert.IsTrue(soundFired, "Entering the phasing/spin state should play AudioManager.spinEnterSound.");
+        }
+
+        [UnityTest]
         public IEnumerator Phasing_BallPassesThroughBrickWithoutBouncing_AndDestroysIt()
         {
             _settings.hexSize = 1f;

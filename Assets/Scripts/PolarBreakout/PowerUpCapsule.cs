@@ -43,6 +43,7 @@ namespace PolarBreakout
         public static event System.Action OnAnyCapsuleCollected;
 
         private PaddleController _paddle;
+        private AudioManager _audioManager;
         private float _spawnAngleDegrees;
         private float _currentAngleDegrees;
         private float _radius;
@@ -51,6 +52,7 @@ namespace PolarBreakout
         private void Awake()
         {
             _paddle = FindFirstObjectByType<PaddleController>();
+            _audioManager = FindFirstObjectByType<AudioManager>();
         }
 
         public void Initialize(Vector2 spawnWorldPosition, PowerUpType type)
@@ -206,6 +208,7 @@ namespace PolarBreakout
             {
                 var abilities = _paddle.GetComponent<PaddleAbilities>();
                 if (abilities != null) abilities.CollectPowerUp(Type);
+                _audioManager?.PlayCapsulePickup();
                 OnAnyCapsuleCollected?.Invoke();
                 Destroy(gameObject);
             }

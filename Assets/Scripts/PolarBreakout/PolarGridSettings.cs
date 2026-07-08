@@ -118,23 +118,26 @@ namespace PolarBreakout
             Vector2 paddedMin = rectMin - new Vector2(hexSize, hexSize);
             Vector2 paddedMax = rectMax + new Vector2(hexSize, hexSize);
 
-            // Convert all four padded-rect corners to axial space and take the q/r bounding box -
-            // a safe over-approximation (q/r vary monotonically enough with world x/y for this to
-            // fully cover the rect; the +-1 padding below absorbs any rounding slop at the edges),
-            // then filter precisely by each candidate hex's actual world-space center.
-            HexCoordinate a = WorldToHex(new Vector2(paddedMin.x, paddedMin.y));
-            HexCoordinate b = WorldToHex(new Vector2(paddedMax.x, paddedMin.y));
-            HexCoordinate c = WorldToHex(new Vector2(paddedMin.x, paddedMax.y));
-            HexCoordinate d = WorldToHex(new Vector2(paddedMax.x, paddedMax.y));
+            // r depends only on world y (HexToWorld's y = 1.5*hexSize*r), so this row range is
+            // already exact - no shear to correct for.
+            int rMin = Mathf.FloorToInt((2f / 3f * paddedMin.y) / hexSize) - 1;
+            int rMax = Mathf.CeilToInt((2f / 3f * paddedMax.y) / hexSize) + 1;
+            float qCoeff = 1f / (hexSize * Mathf.Sqrt(3f));
 
-            int qMin = Mathf.Min(Mathf.Min(a.q, b.q), Mathf.Min(c.q, d.q)) - 1;
-            int qMax = Mathf.Max(Mathf.Max(a.q, b.q), Mathf.Max(c.q, d.q)) + 1;
-            int rMin = Mathf.Min(Mathf.Min(a.r, b.r), Mathf.Min(c.r, d.r)) - 1;
-            int rMax = Mathf.Max(Mathf.Max(a.r, b.r), Mathf.Max(c.r, d.r)) + 1;
-
-            for (int q = qMin; q <= qMax; q++)
+            for (int r = rMin; r <= rMax; r++)
             {
-                for (int r = rMin; r <= rMax; r++)
+                // q depends on BOTH world x and r (HexToWorld's x = hexSize*(sqrt3*q + sqrt3/2*r)),
+                // so a single rect-wide q bounding box (the old approach, via WorldToHex on the 4
+                // corners) over-estimates by however far r's own range shears q - for a tall rect
+                // that shear can dwarf the rect's actual width, iterating well beyond the screen.
+                // Solving the exact x formula for q at this specific row's two x edges keeps every
+                // row's q range tight to the rect instead of padding for every other row's shear too.
+                float qAtMinX = paddedMin.x * qCoeff - r / 2f;
+                float qAtMaxX = paddedMax.x * qCoeff - r / 2f;
+                int qMin = Mathf.FloorToInt(Mathf.Min(qAtMinX, qAtMaxX)) - 1;
+                int qMax = Mathf.CeilToInt(Mathf.Max(qAtMinX, qAtMaxX)) + 1;
+
+                for (int q = qMin; q <= qMax; q++)
                 {
                     var coord = new HexCoordinate(q, r);
                     Vector2 center = HexToWorld(coord);

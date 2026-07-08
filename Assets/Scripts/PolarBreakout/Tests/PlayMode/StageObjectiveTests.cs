@@ -304,7 +304,7 @@ namespace PolarBreakout.Tests
         }
 
         [UnityTest]
-        public IEnumerator LevelManager_SurviveStage_DoesNotAdvance_OnFullClearBeforeTimerExpires()
+        public IEnumerator LevelManager_SurviveStage_Advances_OnFullClearBeforeTimerExpires()
         {
             var (lm, manager, level) = BuildSurviveStageRig(surviveDuration: 5f, brickCount: 3);
 
@@ -317,10 +317,11 @@ namespace PolarBreakout.Tests
             var coords = level.placements.Select(p => new HexCoordinate(p.q, p.r)).ToList();
             foreach (var c in coords) manager.GetBrickAt(c)?.Hit(null);
 
-            yield return WaitRealSeconds(1f); // well within the 5s survive timer
+            float start = Time.unscaledTime;
+            while (lm.CurrentStage == 1 && Time.unscaledTime - start < 3f) yield return null; // well within the 5s survive timer
 
-            Assert.AreEqual(1, lm.CurrentStage, "A Survive stage should not advance just because bricks were fully cleared.");
-            Assert.AreEqual(0, stageChanges);
+            Assert.AreEqual(2, lm.CurrentStage, "Clearing every brick should immediately satisfy the win condition, not wait for the timer.");
+            Assert.AreEqual(1, stageChanges);
         }
 
         [UnityTest]

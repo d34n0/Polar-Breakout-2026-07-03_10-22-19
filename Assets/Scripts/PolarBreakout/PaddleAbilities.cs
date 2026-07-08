@@ -13,6 +13,9 @@ namespace PolarBreakout
     {
         [Header("References")]
         public BallManager ballManager;
+        [Tooltip("Optional. Plays AudioManager.bulletSound once per barrel fired and " +
+                 "AudioManager.laserSound once per beam fired. Leave unset for silence.")]
+        public AudioManager audioManager;
 
         [Header("Cannon")]
         [Tooltip("How many shots (button presses) a Cannon pickup grants - each shot fires both " +
@@ -429,6 +432,8 @@ namespace PolarBreakout
                 return;
             }
 
+            audioManager?.PlayBullet();
+
             int ricochets = runModifiers != null ? Mathf.RoundToInt(runModifiers.GetBonus(ModifierType.BulletRicochetBonus)) : 0;
 
             // The equipped turret's own BulletSkin (if any) overrides the shared defaults below,
@@ -477,6 +482,7 @@ namespace PolarBreakout
             var beam = beamObject.AddComponent<LaserBeam>();
             beam.duration = laserBeamDuration;
             beam.Initialize(spawnPos, fireAngleDegrees, width, length, laserBeamMaterial);
+            audioManager?.PlayLaser();
         }
 
         /// <summary>Builds one cannon barrel as a sprite sticking straight outward from the given
