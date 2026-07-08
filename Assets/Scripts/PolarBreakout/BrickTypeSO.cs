@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Audio;
 
 namespace PolarBreakout
 {
@@ -51,6 +52,17 @@ namespace PolarBreakout
                  "brick type from a single shared material asset. Leave unset to flash the " +
                  "brick's normal material with just a color swap, as before.")]
         public Material hitFlashMaterial;
+
+        [Header("Audio")]
+        [Tooltip("Played on a hit that the brick survives (health above 0 afterward). Accepts a " +
+                 "plain AudioClip or an Audio Random Container asset (Window > Audio > Audio " +
+                 "Random Container) for per-hit pitch/volume/clip-choice variation. Leave unset " +
+                 "for a silent hit.")]
+        public AudioResource hitSound;
+        [Tooltip("Played on the hit that destroys the brick, instead of hitSound. Same " +
+                 "AudioClip-or-Audio-Random-Container flexibility as hitSound. Leave unset for a " +
+                 "silent destruction.")]
+        public AudioResource destroyedSound;
 
         [Header("Power-Up Drop")]
         [Tooltip("Chance (0-1) that destroying a brick of this type drops a power-up capsule. " +

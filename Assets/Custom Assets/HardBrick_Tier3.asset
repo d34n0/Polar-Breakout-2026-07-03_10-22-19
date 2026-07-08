@@ -18,9 +18,12 @@ MonoBehaviour:
   scoreValue: 10
   scoreMultiplier: 3
   isIndestructible: 0
-  color: {r: 0.25542894, g: 0.2596155, b: 0.26415092, a: 1}
+  color: {r: 0.40334642, g: 0.8301887, b: 0.7406568, a: 1}
   materialOverride: {fileID: 0}
-  hitFlashColor: {r: 2, g: 2, b: 2, a: 1}
+  hitFlashColor: {r: 1.6156863, g: 3.3254905, b: 2.964706, a: 1}
+  hitFlashMaterial: {fileID: 0}
+  hitSound: {fileID: 6418180475301049370, guid: 976604be06b86974faa65e2329ab1a2a, type: 2}
+  destroyedSound: {fileID: 6418180475301049370, guid: ee498138c6b29d44399d857a114c8399, type: 2}
   powerUpDropChance: 0.2
   possiblePowerUps: 000000000100000002000000
   scaleDropChanceNearClear: 1

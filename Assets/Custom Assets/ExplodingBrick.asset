@@ -20,7 +20,10 @@ MonoBehaviour:
   isIndestructible: 0
   color: {r: 1, g: 0.4, b: 0, a: 1}
   materialOverride: {fileID: 0}
-  hitFlashColor: {r: 2, g: 2, b: 2, a: 1}
+  hitFlashColor: {r: 4, g: 1.6, b: 0, a: 1}
+  hitFlashMaterial: {fileID: 0}
+  hitSound: {fileID: 8300000, guid: 1df2468ff2bfec746970f19a877e59de, type: 3}
+  destroyedSound: {fileID: 8300000, guid: 1df2468ff2bfec746970f19a877e59de, type: 3}
   powerUpDropChance: 0.15
   possiblePowerUps: 01000000
   scaleDropChanceNearClear: 1

@@ -15,6 +15,6 @@ MonoBehaviour:
   deathZoneRadius: 1
   paddleOrbitRadius: 1.2
   hexSize: 0.5
-  hexGap: 0
+  hexGap: 0.1
   outerWallRadius: 10
   curveResolutionDegrees: 1

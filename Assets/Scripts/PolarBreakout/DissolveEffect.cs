@@ -23,6 +23,9 @@ namespace PolarBreakout
         [Tooltip("The Dissolve shader graph material (e.g. Assets/Shaders/Dissolve.mat). Its " +
                  "_DissolveProgress property is what this component animates.")]
         public Material dissolveMaterial;
+        [Tooltip("Optional. Plays AudioManager.dissolveInSound/dissolveOutSound once per " +
+                 "DissolveIn/DissolveOut call. Leave unset for a silent dissolve.")]
+        public AudioManager audioManager;
 
         private Renderer[] _renderers;
         private Material[] _originalMaterials;
@@ -54,6 +57,7 @@ namespace PolarBreakout
         {
             if (_activeTransition != null) StopCoroutine(_activeTransition);
             RefreshRenderers();
+            audioManager?.PlayDissolveOut();
             _activeTransition = StartCoroutine(AnimateProgress(0f, 1f, duration, restoreOriginalAtEnd: false));
             return _activeTransition;
         }
@@ -63,6 +67,7 @@ namespace PolarBreakout
         public Coroutine DissolveIn(float duration)
         {
             if (_activeTransition != null) StopCoroutine(_activeTransition);
+            audioManager?.PlayDissolveIn();
             _activeTransition = StartCoroutine(AnimateProgress(1f, 0f, duration, restoreOriginalAtEnd: true));
             return _activeTransition;
         }

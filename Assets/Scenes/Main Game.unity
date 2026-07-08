@@ -519,6 +519,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.DissolveEffect
   dissolveMaterial: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
+  audioManager: {fileID: 0}
 --- !u!1 &85678310
 GameObject:
   m_ObjectHideFlags: 0
@@ -1563,7 +1564,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
+  m_BackGroundColor: {r: 0.24528301, g: 0.20016019, b: 0.20016019, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -3184,7 +3185,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &445592113
 SpriteRenderer:
   serializedVersion: 2
@@ -3235,7 +3236,7 @@ SpriteRenderer:
   m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 425c5023205e9f140b3ac4b5c6c42801, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -3296,6 +3297,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolarBreakout.BrickGridManager
   level: {fileID: 11400000, guid: 278017f25e0e34b44ad91386f386ae6b, type: 2}
   brickPrefab: {fileID: 6733217298509041570, guid: 7003f23bf6a53b1428c1cd28dd4fc047, type: 3}
+  audioManager: {fileID: 1693991714}
   skipAutoBuildOnStart: 0
 --- !u!4 &452747082
 Transform:
@@ -4630,6 +4632,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.DissolveEffect
   dissolveMaterial: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
+  audioManager: {fileID: 1693991714}
 --- !u!1 &702765689
 GameObject:
   m_ObjectHideFlags: 0
@@ -8310,6 +8313,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.DissolveEffect
   dissolveMaterial: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
+  audioManager: {fileID: 0}
 --- !u!96 &1426727423
 TrailRenderer:
   serializedVersion: 4
@@ -8463,7 +8467,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1445792820
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9018,6 +9022,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.HexWipeTransition
   targetCamera: {fileID: 330585545}
   brickGridManager: {fileID: 452747081}
+  audioManager: {fileID: 1693991714}
   sweepHexSize: 0.5
   flashMaterialOverride: {fileID: 0}
   perHexFlashDuration: 0.2
@@ -10117,6 +10122,61 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1682547122}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1693991713
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1693991715}
+  - component: {fileID: 1693991714}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1693991714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693991713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23132cb73cee87d42b6653113cf70b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.AudioManager
+  musicMixerGroup: {fileID: 0}
+  sfxMixerGroup: {fileID: 0}
+  backgroundMusic: {fileID: 8300000, guid: f2f8ceb1f63829940b43b47601ca64b2, type: 3}
+  musicVolume: 0.5
+  playMusicOnStart: 1
+  wipeTransitionSound: {fileID: 8300000, guid: a1fb273f92307a241a049d1f8e35c5c5, type: 3}
+  dissolveInSound: {fileID: 0}
+  dissolveOutSound: {fileID: 0}
+  deathSound: {fileID: 8300000, guid: f3a48323d5a3d5f46b12bb238c572b73, type: 3}
+  sfxVolume: 1
+  sfxPoolSize: 6
+--- !u!4 &1693991715
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693991713}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -12017,6 +12077,7 @@ MonoBehaviour:
   primaryBall: {fileID: 1426727418}
   livesManager: {fileID: 1738842958}
   deathZoneDissolve: {fileID: 37882382}
+  audioManager: {fileID: 1693991714}
   explosionEffectPrefab: {fileID: 5965645815274214936, guid: 5ef09501eba14c242b03c91b8157d35a, type: 3}
   respawnDelay: 1
   paddleDissolveOutDuration: 0.3
@@ -18375,3 +18436,4 @@ SceneRoots:
   - {fileID: 633487832}
   - {fileID: 1809062201}
   - {fileID: 445592114}
+  - {fileID: 1693991715}

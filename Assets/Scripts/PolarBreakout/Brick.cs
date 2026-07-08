@@ -16,7 +16,7 @@ namespace PolarBreakout
     {
         [Tooltip("How long the hit-flash (see BrickTypeSO.hitFlashColor) lasts, in seconds, for both a surviving hit and the final destroying hit. " +
                  "Overridden automatically for ExplodingBrickType bricks (see Initialize) to match their fuseDuration.")]
-        public float flashDuration = 0.08f;
+        public float flashDuration = 0.3f;//0.08f;
         [Tooltip("How fast the destroying hit-flash blinks between hitFlashColor and the brick's own color, seconds per toggle.")]
         public float blinkIntervalSeconds = 0.06f;
 
@@ -120,6 +120,7 @@ namespace PolarBreakout
             if (destroyed)
             {
                 IsDestroyed = true;
+                _manager.audioManager?.PlaySfx(BrickType.destroyedSound);
                 BrickType.OnDestroyed(this);
                 _manager.NotifyBrickDestroyed(this);
 
@@ -131,6 +132,7 @@ namespace PolarBreakout
             }
             else
             {
+                _manager.audioManager?.PlaySfx(BrickType.hitSound);
                 _flashCoroutine = StartCoroutine(RevertColorAfterFlash());
             }
         }

@@ -14,6 +14,9 @@ namespace PolarBreakout
     {
         public LevelSO level;
         public Brick brickPrefab;
+        [Tooltip("Optional. Routes each brick's hitSound/destroyedSound (see BrickTypeSO) - " +
+                 "read by Brick.Hit via Manager.audioManager. Leave unset for silent bricks.")]
+        public AudioManager audioManager;
 
         private readonly Dictionary<HexCoordinate, Brick> _activeBricks = new Dictionary<HexCoordinate, Brick>();
 

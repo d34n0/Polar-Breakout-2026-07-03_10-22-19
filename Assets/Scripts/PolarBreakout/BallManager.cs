@@ -30,6 +30,10 @@ namespace PolarBreakout
                  "solid while everything else fades.")]
         public DissolveEffect deathZoneDissolve;
 
+        [Tooltip("Optional. Plays AudioManager.deathSound the moment every ball is lost, " +
+                 "alongside explosionEffectPrefab. Leave unset for a silent death.")]
+        public AudioManager audioManager;
+
         [Header("Respawn")]
         [Tooltip("Played at the arena center (the death zone) the moment every ball is lost. " +
                  "Leave unset to skip the effect.")]
@@ -139,6 +143,7 @@ namespace PolarBreakout
 
             if (explosionEffectPrefab != null)
                 Instantiate(explosionEffectPrefab, Vector3.zero, Quaternion.identity);
+            audioManager?.PlayDeath();
 
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
             var paddleOutRoutine = paddleDissolve != null ? paddleDissolve.DissolveOut(paddleDissolveOutDuration) : null;
@@ -173,23 +178,17 @@ namespace PolarBreakout
 
         /// <summary>Called at the start of every new round/stage (see
         /// LevelManager.AdvanceToNextStage) to guarantee a clean, deterministic start regardless
-        /// of whatever state was left over from the stage just cleared: any multiball clones are
-        /// destroyed and the primary ball is forced back to Docked, every leftover Bullet,
-        /// LaserBeam, and uncollected PowerUpCapsule still on screen is cleared away, and the
-        /// paddle's Cannon/Autopilot ability state is reset (see ClearTransientPickupsAndAbilities) -
-        /// none of it should survive into a new round just because the player didn't use/catch it
-        /// in time, or happened to catch a stray capsule while the previous round was already
-        /// wrapping up. This also discards any stray launch request - e.g. Unity's Input System
-        /// re-checks already-actuated controls the moment an action is re-enabled (see
-        /// CardOfferController.ShowOffer), which can fire Performed immediately if Fire happens to
-        /// still be held when the card offer closes, otherwise launching the ball before the
-        /// player has actually pressed anything for the new round.</summary>
+        /// of whatever state was left over from the stage just cleared: the primary ball is
+        /// forced back to Docked, and any leftovers (multiball clones, Bullets, LaserBeams,
+        /// uncollected PowerUpCapsules, ability state - see ClearTransientPickupsAndAbilities) are
+        /// swept again as a safety net, since the real cleanup already happened immediately at
+        /// BeginAdvanceToNextStage, well before this point. This also discards any stray launch
+        /// request - e.g. Unity's Input System re-checks already-actuated controls the moment an
+        /// action is re-enabled (see CardOfferController.ShowOffer), which can fire Performed
+        /// immediately if Fire happens to still be held when the card offer closes, otherwise
+        /// launching the ball before the player has actually pressed anything for the new round.</summary>
         public void ResetForNewRound()
         {
-            foreach (var clone in _clones)
-                if (clone != null) Destroy(clone.gameObject);
-            _clones.Clear();
-
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();
             // Reactivated here alongside the ball, right before PlayRoundStartDissolveIn plays -
@@ -200,17 +199,24 @@ namespace PolarBreakout
             ClearTransientPickupsAndAbilities();
         }
 
-        /// <summary>Destroys every leftover Bullet, LaserBeam, and uncollected PowerUpCapsule, and
-        /// resets the paddle's Cannon/Autopilot ability state if present. Called immediately when
-        /// a round clears (see LevelManager.HandleLevelCleared) - before the end-of-round delay/
-        /// dissolve/card-offer sequence even starts - so a power-up capsule still falling near the
-        /// paddle at that exact moment can't be legitimately caught during the transition and
-        /// carry its ability into the next level. Also called again from ResetForNewRound itself
-        /// as a safety net.</summary>
+        /// <summary>Destroys any multiball clones, every leftover Bullet, LaserBeam, and
+        /// uncollected PowerUpCapsule, and resets the paddle's Cannon/Autopilot ability state if
+        /// present. Called immediately when a round clears/a Survive timer expires (see
+        /// LevelManager.BeginAdvanceToNextStage) - before the end-of-round delay/dissolve/card-
+        /// offer/build-in sequence even starts - so none of it visibly lingers through that whole
+        /// window (which can take several real seconds, e.g. while the player is choosing a card)
+        /// only to vanish once the next level has already appeared. This also means a power-up
+        /// capsule still falling near the paddle at that exact moment can't be legitimately caught
+        /// during the transition and carry its ability into the next level. Also called again from
+        /// ResetForNewRound itself as a safety net.</summary>
         public void ClearTransientPickupsAndAbilities()
         {
             var abilities = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<PaddleAbilities>() : null;
             if (abilities != null) abilities.ResetAbilities();
+
+            foreach (var clone in _clones)
+                if (clone != null) Destroy(clone.gameObject);
+            _clones.Clear();
 
             foreach (var bullet in FindObjectsByType<Bullet>(FindObjectsSortMode.None))
                 Destroy(bullet.gameObject);

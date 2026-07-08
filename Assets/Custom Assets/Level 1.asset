@@ -14,779 +14,356 @@ MonoBehaviour:
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.LevelSO
   gridSettings: {fileID: 11400000, guid: 657ddceca95ac3145a66cae7fdf4ba4c, type: 2}
   placements:
-  - q: -20
-    r: 0
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 1
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 2
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 3
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 4
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 5
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 6
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 7
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 8
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 9
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 10
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 11
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 12
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 13
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 14
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 15
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 16
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 17
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 18
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 19
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -20
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -19
-    r: -1
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -19
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -18
-    r: -2
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -18
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -17
-    r: -3
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -17
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -16
-    r: -4
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -16
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -15
-    r: -5
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -15
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -14
-    r: -6
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -14
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -13
-    r: -7
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -13
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -12
-    r: -8
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -12
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -11
-    r: -9
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -11
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -10
-    r: -10
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -10
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -9
-    r: -11
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -9
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -8
-    r: -12
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -8
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
   - q: -7
-    r: -13
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -7
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -6
-    r: -14
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -6
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -5
-    r: -15
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -5
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -4
-    r: -16
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -4
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -3
-    r: -17
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -3
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -2
-    r: -18
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -2
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -1
-    r: -19
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -1
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 0
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 0
-    r: 20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 1
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 1
-    r: 19
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 2
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 2
-    r: 18
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 3
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 3
-    r: 17
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 4
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 4
-    r: 16
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 5
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 5
-    r: 15
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 6
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 6
-    r: 14
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 7
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 7
-    r: 13
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 8
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 8
-    r: 12
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 9
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 9
-    r: 11
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 10
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 10
-    r: 10
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 11
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 11
-    r: 9
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 12
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 12
-    r: 8
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 13
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 13
-    r: 7
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 14
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 14
-    r: 6
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 15
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 15
-    r: 5
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 16
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 16
-    r: 4
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 17
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 17
-    r: 3
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 18
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 18
-    r: 2
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 19
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 19
-    r: 1
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -20
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -19
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -18
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -17
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -16
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -15
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -14
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -13
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -12
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -11
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -10
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -9
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -8
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -7
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -6
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -5
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -4
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -3
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -2
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
-    r: -1
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: 20
     r: 0
-    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
-  - q: -15
-    r: 0
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 1
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 2
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 3
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 4
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 5
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 6
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 7
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 8
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 9
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 10
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 11
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 14
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -15
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -14
-    r: -1
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -14
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -13
-    r: -2
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -13
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -12
-    r: -3
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -12
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -11
-    r: -4
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -11
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -10
-    r: -5
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -10
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -9
-    r: -6
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -9
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -8
-    r: -7
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -8
-    r: 15
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: -7
-    r: -8
+    r: 1
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: -7
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -6
-    r: -9
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -6
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -5
-    r: -10
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -5
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -4
-    r: -11
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -4
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -3
-    r: -12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -3
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -2
-    r: -13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -2
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -1
-    r: -14
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -1
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: 15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 1
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 1
-    r: 14
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 2
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 2
-    r: 13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 3
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 3
-    r: 12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 4
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 4
-    r: 11
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 5
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 5
-    r: 10
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 6
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 6
-    r: 9
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 7
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 7
-    r: 8
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 8
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 8
-    r: 7
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 9
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 9
-    r: 6
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 10
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 10
-    r: 5
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 11
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 11
-    r: 4
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 12
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 12
-    r: 3
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 13
-    r: -15
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 13
     r: 2
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 14
-    r: -15
+  - q: -7
+    r: 3
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 14
-    r: 1
+  - q: -7
+    r: 4
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -15
+  - q: -7
+    r: 5
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -14
+  - q: -7
+    r: 6
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -13
+  - q: -7
+    r: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -12
+  - q: -6
+    r: -1
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -11
+  - q: -6
+    r: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -10
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -9
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -8
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -7
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -6
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -5
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -4
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -3
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
+  - q: -5
     r: -2
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: -1
+  - q: -5
+    r: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 15
-    r: 0
+  - q: -4
+    r: -3
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: 14
+  - q: -4
+    r: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: 13
-    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
-  - q: 1
-    r: 12
+  - q: -3
+    r: -4
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: 12
+  - q: -3
+    r: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -1
-    r: 13
+  - q: -2
+    r: -5
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -14
-    r: 14
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -13
-    r: 13
-    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
-  - q: -12
-    r: 12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -12
-    r: 13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -13
-    r: 12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 14
-    r: 0
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 13
-    r: 0
-    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
-  - q: 12
-    r: 0
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 12
-    r: 1
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 13
-    r: -1
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 14
-    r: -14
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 13
-    r: -13
-    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
-  - q: 12
-    r: -12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 13
-    r: -12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 12
-    r: -13
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: -14
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 0
-    r: -13
-    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
-  - q: 0
-    r: -12
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 1
-    r: -13
+  - q: -2
+    r: 7
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
   - q: -1
-    r: -12
+    r: -6
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -14
+  - q: -1
+    r: 7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 0
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 0
+    r: 7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 1
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 1
+    r: 6
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 2
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 2
+    r: 5
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 3
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 3
+    r: 4
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 4
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 4
+    r: 3
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 5
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 5
+    r: 2
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 6
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 6
+    r: 1
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -7
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -6
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -5
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -4
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -3
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -2
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
+    r: -1
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 7
     r: 0
     brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -13
+  - q: 0
+    r: 4
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: -4
+    r: 4
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 0
+    r: -4
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 4
+    r: -4
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: 4
+    r: 0
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: -4
+    r: 0
+    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
+  - q: -8
     r: 0
     brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
-  - q: -12
-    r: 0
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -13
+  - q: -8
     r: 1
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: -12
-    r: -1
-    brickType: {fileID: 11400000, guid: 345b073c7a9acf342b19002906d6e4d7, type: 2}
-  - q: 1
-    r: 11
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 0
-    r: 11
+  - q: -8
+    r: 2
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -8
+    r: 3
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -8
+    r: 4
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -8
+    r: 5
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -8
+    r: 6
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -8
+    r: 7
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -8
+    r: 8
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
+  - q: -7
+    r: -1
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -7
+    r: 8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -6
+    r: -2
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -6
+    r: 8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -5
+    r: -3
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -5
+    r: 8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -4
+    r: -4
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -4
+    r: 8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -3
+    r: -5
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -3
+    r: 8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -2
+    r: -6
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: -2
+    r: 8
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
   - q: -1
-    r: 12
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: -12
-    r: 11
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: -11
-    r: 11
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: -11
-    r: 12
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: -11
-    r: -1
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: -11
-    r: 0
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: -12
-    r: 1
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 1
-    r: -12
-    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 0
-    r: -11
+    r: -7
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
   - q: -1
-    r: -11
+    r: 8
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 12
-    r: -11
+  - q: 0
+    r: -8
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
+  - q: 0
+    r: 8
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
+  - q: 1
+    r: -8
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 11
-    r: -11
+  - q: 1
+    r: 7
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 11
-    r: -12
+  - q: 2
+    r: -8
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 12
-    r: -1
+  - q: 2
+    r: 6
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 11
-    r: 0
+  - q: 3
+    r: -8
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
-  - q: 11
+  - q: 3
+    r: 5
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 4
+    r: -8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 4
+    r: 4
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 5
+    r: -8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 5
+    r: 3
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 6
+    r: -8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 6
+    r: 2
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 7
+    r: -8
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 7
     r: 1
     brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -8
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
+  - q: 8
+    r: -7
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -6
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -5
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -4
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -3
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -2
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: -1
+    brickType: {fileID: 11400000, guid: 80a43a90180ca3a42918e3914b5fa0cb, type: 2}
+  - q: 8
+    r: 0
+    brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
+  - q: -2
+    r: 4
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 4
+    r: -2
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: -2
+    r: -2
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 9
+    r: 0
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -9
+    r: 0
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 0
+    r: 9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 9
+    r: -9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 0
+    r: -9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -9
+    r: 9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 1
+    r: 8
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -1
+    r: 9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -8
+    r: 9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -9
+    r: 8
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -9
+    r: 1
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -8
+    r: -1
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 1
+    r: -9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: -1
+    r: -8
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 8
+    r: -9
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 9
+    r: -8
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 9
+    r: -1
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
+  - q: 8
+    r: 1
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
   objectiveType: 1
   surviveDuration: 60

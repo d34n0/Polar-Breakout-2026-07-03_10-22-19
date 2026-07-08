@@ -24,6 +24,9 @@ namespace PolarBreakout
         [Tooltip("Falls back to Camera.main if unset.")]
         public Camera targetCamera;
         public BrickGridManager brickGridManager;
+        [Tooltip("Optional. Plays AudioManager.wipeTransitionSound once per sweep (build-in or " +
+                 "tear-down), not once per individual hex cell. Leave unset for a silent wipe.")]
+        public AudioManager audioManager;
 
         [Header("Sweep Tiling")]
         [Tooltip("Hex size used to tile the full-screen sweep overlay, independent of the level's " +
@@ -240,6 +243,7 @@ namespace PolarBreakout
             }
 
             _sweepRunning = true;
+            audioManager?.PlayWipeTransition();
 
             GetCameraRect(cam, out Vector2 rectMin, out Vector2 rectMax);
 
