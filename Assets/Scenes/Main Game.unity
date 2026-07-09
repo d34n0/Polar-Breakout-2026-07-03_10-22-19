@@ -27720,6 +27720,9 @@ MonoBehaviour:
   spinCurveStrength: 140
   phaseSpinThreshold: 0.25
   trailCrossfadeDuration: 0.2
+  deathZonePullSpeed: 3
+  deathZoneArrivalThreshold: 0.05
+  deathFlashDuration: 0.2
   actions: {fileID: -944628639613478452, guid: 15fc222cce0af504096f7ef9a49a9c2a, type: 3}
   runModifiers: {fileID: 1682547123}
 --- !u!58 &1426727419
@@ -29712,7 +29715,7 @@ MonoBehaviour:
   dissolveInSound: {fileID: 0}
   dissolveOutSound: {fileID: 0}
   deathSound: {fileID: 8300000, guid: f3a48323d5a3d5f46b12bb238c572b73, type: 3}
-  bulletSound: {fileID: 8300000, guid: ea81f2f22a448284599a726f86dc248c, type: 3}
+  bulletSound: {fileID: 8300000, guid: 16f194bec6aabc04eb31b4d7f8077f28, type: 3}
   laserSound: {fileID: 0}
   boundaryHitSound: {fileID: 0}
   paddleHitSound: {fileID: 0}

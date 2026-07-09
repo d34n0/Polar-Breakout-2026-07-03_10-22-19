@@ -26,9 +26,12 @@ namespace PolarBreakout
 
         [Tooltip("Optional. The death zone's own portal reveal (see DeathZoneVisual/" +
                  "ScaleInOvershoot) - when set, it plays its scale-in-with-overshoot animation " +
-                 "right as the paddle/ball dissolve in, both on a death respawn and at the start " +
-                 "of a new round, instead of auto-playing on Start (which would fire before the " +
-                 "build-in/card-offer sequence even finishes). Leave unset for no portal reveal.")]
+                 "once at the start of a new round (see PlayRoundStartDissolveIn), instead of " +
+                 "auto-playing on Start (which would fire before the build-in/card-offer sequence " +
+                 "even finishes). Deliberately NOT replayed on an ordinary death respawn (see " +
+                 "RespawnSequence) - the death zone itself never went anywhere, only the ball did, " +
+                 "so it should stay visible rather than re-popping in every life lost. Leave unset " +
+                 "for no portal reveal.")]
         public ScaleInOvershoot deathZonePortal;
 
         [Tooltip("Optional. Plays AudioManager.deathSound the moment every ball is lost, " +
@@ -175,9 +178,6 @@ namespace PolarBreakout
             if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(true);
 
             var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
-            deathZonePortal?.Play();
-            if (deathZonePortal != null) yield return new WaitForSecondsRealtime(deathZonePortalLeadTime);
-
             if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }

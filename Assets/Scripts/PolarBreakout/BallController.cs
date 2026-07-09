@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 namespace PolarBreakout
 {
-    public enum BallState { Docked, Launched }
+    public enum BallState { Docked, Launched, Dying }
 
     /// <summary>
     /// Ball movement uses a real Rigidbody2D, and separation/reflection off the paddle and
@@ -69,6 +69,19 @@ namespace PolarBreakout
                  "flying and normal<->spin transitions alike.")]
         public float trailCrossfadeDuration = 0.2f;
 
+        [Header("Death Zone")]
+        [Tooltip("Fixed speed (units/sec) the ball is pulled toward dead center at once it crosses " +
+                 "deathZoneRadius, replacing normal flight physics entirely - a slower, readable " +
+                 "fall into the center instead of vanishing the instant it crosses the boundary.")]
+        public float deathZonePullSpeed = 3f;
+        [Tooltip("How close to dead center (world units) counts as \"arrived\" - once within this, " +
+                 "the ball flashes out of existence (see deathFlashDuration) and is actually " +
+                 "reported lost.")]
+        public float deathZoneArrivalThreshold = 0.05f;
+        [Tooltip("How long the flash-out takes once the ball reaches dead center - a quick scale " +
+                 "burst combined with a white color flash, then the ball is reported lost.")]
+        public float deathFlashDuration = 0.15f;
+
         [Header("Input")]
         [Tooltip("Optional. When set, launching reads from this asset's Player/Fire action " +
                  "(gamepad + keyboard) instead of polling Gamepad.current directly. Leave unset " +
@@ -122,6 +135,10 @@ namespace PolarBreakout
         private TrailMode _currentTrailMode = TrailMode.None;
         private Coroutine _trailCrossfadeCoroutine;
         private InputAction _fireAction;
+        private bool _dyingFlashStarted;
+        private Vector3 _dockScale;
+        private Renderer[] _renderers;
+        private MaterialPropertyBlock _flashPropBlock;
 
         private enum TrailMode { None, Normal, Spin }
 
@@ -174,6 +191,18 @@ namespace PolarBreakout
             // off and back on can leave the body's internal state stale enough to produce a
             // spurious velocity/position snap the instant simulation resumes.)
             _rb.bodyType = RigidbodyType2D.Kinematic;
+
+            // Captured once for the death-zone flash-out (see FlashThenReportLost) - excludes the
+            // TrailRenderers (already handled separately via emitting/widthMultiplier, and flashing
+            // a trail's gradient white would look wrong) and lets ResetToDocked restore the ball's
+            // own authored scale if a respawn interrupts the flash mid-animation.
+            _dockScale = transform.localScale;
+            var allRenderers = GetComponentsInChildren<Renderer>(true);
+            var visualRenderers = new System.Collections.Generic.List<Renderer>(allRenderers.Length);
+            foreach (var r in allRenderers)
+                if (!(r is TrailRenderer)) visualRenderers.Add(r);
+            _renderers = visualRenderers.ToArray();
+            _flashPropBlock = new MaterialPropertyBlock();
         }
 
         private void Update()
@@ -209,6 +238,13 @@ namespace PolarBreakout
 
                 _launchRequested = false;
                 _bounceOccurred = false;
+                UpdateTrailEmission();
+                return;
+            }
+
+            if (State == BallState.Dying)
+            {
+                HandleDying();
                 UpdateTrailEmission();
                 return;
             }
@@ -379,16 +415,110 @@ namespace PolarBreakout
             {
                 if (ballManager != null)
                 {
-                    _reportedLost = true;
-                    ballManager.NotifyBallLost(this);
+                    EnterDeathZone();
                 }
                 else
                 {
+                    // No manager (e.g. an isolated test running a single ball in isolation) -
+                    // preserves the original immediate-redock behavior rather than the slower
+                    // pull-to-center-then-flash below, so existing tests stay deterministic and
+                    // don't need to simulate several extra frames of the dying animation.
                     ResetToDocked();
+                    OnBallLost?.Invoke();
                 }
-
-                OnBallLost?.Invoke();
             }
+        }
+
+        /// <summary>Starts the death-zone sequence instead of instantly vanishing: switches to
+        /// Kinematic (so it stops responding to/generating physics bounces off walls, bricks, or
+        /// the paddle) and hands off to HandleDying, which pulls it toward dead center at a fixed
+        /// deathZonePullSpeed each FixedUpdate until it arrives, then flashes out (see
+        /// FlashThenReportLost) before actually being reported lost.</summary>
+        private void EnterDeathZone()
+        {
+            State = BallState.Dying;
+            _dyingFlashStarted = false;
+            _rb.linearVelocity = Vector2.zero;
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            if (_collider != null) _collider.enabled = false;
+        }
+
+        private void HandleDying()
+        {
+            if (_dyingFlashStarted) return;
+
+            Vector2 newPos = Vector2.MoveTowards(_rb.position, Vector2.zero, deathZonePullSpeed * Time.fixedDeltaTime);
+            _rb.MovePosition(newPos);
+
+            if (newPos.sqrMagnitude <= deathZoneArrivalThreshold * deathZoneArrivalThreshold)
+            {
+                _dyingFlashStarted = true;
+                StartCoroutine(FlashThenReportLost());
+            }
+        }
+
+        /// <summary>Quick scale-burst-plus-white-flash once the ball reaches dead center, then
+        /// actually reports the ball lost - so the moment it visually "pops out of existence" is
+        /// also the moment BallManager/OnBallLost fire, rather than either happening early while
+        /// the ball is still visible mid-flash.</summary>
+        private IEnumerator FlashThenReportLost()
+        {
+            float half = Mathf.Max(0.0001f, deathFlashDuration) * 0.5f;
+            Vector3 burstScale = _dockScale * 1.6f;
+
+            // Unscaled, matching every other cosmetic transition in this project (DissolveEffect,
+            // ScaleInOvershoot, HexWipeTransition) - a pause landing exactly mid-flash shouldn't
+            // leave the ball frozen half-scaled until the player happens to unpause.
+            SetFlashColor(Color.white);
+            float elapsed = 0f;
+            while (elapsed < half)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                transform.localScale = Vector3.Lerp(_dockScale, burstScale, elapsed / half);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < half)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                transform.localScale = Vector3.Lerp(burstScale, Vector3.zero, elapsed / half);
+                yield return null;
+            }
+
+            // Restored immediately (same synchronous continuation, before the next render) rather
+            // than left at zero - ResetToDocked also restores this independently, but resetting
+            // here too means a clone (which is destroyed rather than ever redocked) doesn't rely
+            // on that second safety net.
+            transform.localScale = _dockScale;
+            ClearFlashColor();
+
+            _reportedLost = true;
+            if (ballManager != null)
+                ballManager.NotifyBallLost(this);
+            else
+                ResetToDocked();
+            OnBallLost?.Invoke();
+        }
+
+        private void SetFlashColor(Color color)
+        {
+            foreach (var r in _renderers)
+            {
+                if (r == null) continue;
+                var mat = r.sharedMaterial;
+                if (mat == null) continue;
+                r.GetPropertyBlock(_flashPropBlock);
+                if (mat.HasProperty("_BaseColor")) _flashPropBlock.SetColor("_BaseColor", color);
+                else if (mat.HasProperty("_Color")) _flashPropBlock.SetColor("_Color", color);
+                r.SetPropertyBlock(_flashPropBlock);
+            }
+        }
+
+        private void ClearFlashColor()
+        {
+            foreach (var r in _renderers)
+                if (r != null) r.SetPropertyBlock(null);
         }
 
         /// <summary>Reflects the ball off the actual visible viewport (the camera's orthographic
@@ -452,6 +582,15 @@ namespace PolarBreakout
             _reportedLost = false;
             speed = _initialSpeed * EffectiveSpeedMultiplier;
             Spin = 0f;
+
+            // Safety net for a redock that interrupts the death-zone sequence mid-flight (e.g. a
+            // respawn triggered some other way while Dying) - restores the collider and authored
+            // scale/color FlashThenReportLost would otherwise have restored itself once it ran to
+            // completion.
+            if (_collider != null) _collider.enabled = true;
+            _dyingFlashStarted = false;
+            transform.localScale = _dockScale;
+            ClearFlashColor();
 
             // Redocking teleports the ball from wherever it last was (a death, or a new level's
             // starting position after the old one's gameplay) straight to the paddle - without
