@@ -29,6 +29,7 @@ namespace PolarBreakout
 
         private Renderer[] _renderers;
         private Material[] _originalMaterials;
+        private Color[] _originalColors;
         private MaterialPropertyBlock _propBlock;
         private Coroutine _activeTransition;
 
@@ -48,8 +49,25 @@ namespace PolarBreakout
         {
             _renderers = GetComponentsInChildren<Renderer>(true);
             _originalMaterials = new Material[_renderers.Length];
+            _originalColors = new Color[_renderers.Length];
             for (int i = 0; i < _renderers.Length; i++)
+            {
                 _originalMaterials[i] = _renderers[i].sharedMaterial;
+                _originalColors[i] = GetMaterialColor(_originalMaterials[i]);
+            }
+        }
+
+        /// <summary>Reads a material's own base tint (_BaseColor for Lit/Shader Graph materials,
+        /// _Color for Unlit/legacy ones), falling back to white if neither property exists - fed
+        /// into dissolveMaterial's _Tint_Color below so a renderer swapped onto the shared dissolve
+        /// material during a transition still reads as roughly its own color instead of the
+        /// dissolve shader's own flat grey default.</summary>
+        private static Color GetMaterialColor(Material mat)
+        {
+            if (mat == null) return Color.white;
+            if (mat.HasProperty("_BaseColor")) return mat.GetColor("_BaseColor");
+            if (mat.HasProperty("_Color")) return mat.GetColor("_Color");
+            return Color.white;
         }
 
         /// <summary>Animates from fully visible to fully dissolved over duration seconds.</summary>
@@ -75,7 +93,20 @@ namespace PolarBreakout
         private IEnumerator AnimateProgress(float from, float to, float duration, bool restoreOriginalAtEnd)
         {
             if (dissolveMaterial != null)
-                foreach (var r in _renderers) r.sharedMaterial = dissolveMaterial;
+            {
+                for (int i = 0; i < _renderers.Length; i++)
+                {
+                    var r = _renderers[i];
+                    r.sharedMaterial = dissolveMaterial;
+                    // Tints the shared dissolve material to this renderer's own real color for the
+                    // whole transition, via property block (not the shared asset), so e.g. the
+                    // death zone's dark red doesn't flash as the dissolve shader's flat grey
+                    // default before snapping to its real look once the transition ends.
+                    r.GetPropertyBlock(_propBlock);
+                    _propBlock.SetColor("_Tint_Color", _originalColors[i]);
+                    r.SetPropertyBlock(_propBlock);
+                }
+            }
 
             float elapsed = 0f;
             duration = Mathf.Max(0.0001f, duration);

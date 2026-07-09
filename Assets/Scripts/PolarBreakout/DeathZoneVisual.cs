@@ -9,6 +9,7 @@ namespace PolarBreakout
     /// </summary>
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
+    
     public class DeathZoneVisual : MonoBehaviour
     {
         public PolarGridSettings settings;
@@ -31,6 +32,7 @@ namespace PolarBreakout
             transform.position = Vector3.zero;
 
             GetComponent<MeshFilter>().mesh = PolarMeshUtility.BuildFilledCircleMesh(settings.deathZoneRadius, circleSegments);
+            
 
             var renderer = GetComponent<MeshRenderer>();
             renderer.sharedMaterial = materialOverride != null
@@ -39,6 +41,7 @@ namespace PolarBreakout
             // Drawn well behind bricks/paddle/ball (all left at the default sorting order) so it
             // never fights with anything actually sitting at the arena center.
             renderer.sortingOrder = -100;
+            
         }
     }
 }

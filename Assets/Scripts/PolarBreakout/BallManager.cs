@@ -24,11 +24,12 @@ namespace PolarBreakout
                  "instead. Leave unset to always respawn (e.g. in isolated tests).")]
         public LivesManager livesManager;
 
-        [Tooltip("Optional. The central death zone's own DissolveEffect (see DeathZoneVisual) - " +
-                 "when set, it dissolves out/in in lockstep with the paddle everywhere the paddle " +
-                 "does (round start/end and a death respawn alike), rather than just sitting there " +
-                 "solid while everything else fades.")]
-        public DissolveEffect deathZoneDissolve;
+        [Tooltip("Optional. The death zone's own portal reveal (see DeathZoneVisual/" +
+                 "ScaleInOvershoot) - when set, it plays its scale-in-with-overshoot animation " +
+                 "right as the paddle/ball dissolve in, both on a death respawn and at the start " +
+                 "of a new round, instead of auto-playing on Start (which would fire before the " +
+                 "build-in/card-offer sequence even finishes). Leave unset for no portal reveal.")]
+        public ScaleInOvershoot deathZonePortal;
 
         [Tooltip("Optional. Plays AudioManager.deathSound the moment every ball is lost, " +
                  "alongside explosionEffectPrefab. Leave unset for a silent death.")]
@@ -47,6 +48,11 @@ namespace PolarBreakout
         [Tooltip("How long the paddle and ball take to dissolve back into place - on respawn " +
                  "after a death, or at the start of a new round (see PlayRoundStartDissolveIn).")]
         public float dissolveInDuration = 0.6f;
+        [Tooltip("How long deathZonePortal gets to start opening before the paddle dissolve-in " +
+                 "begins (see PlayRoundStartDissolveIn) - a short head start so the portal is " +
+                 "already visibly popping open by the time the paddle appears, rather than both " +
+                 "starting on the exact same frame.")]
+        public float deathZonePortalLeadTime = 0.2f;
 
         private readonly List<BallController> _clones = new List<BallController>();
 
@@ -147,9 +153,7 @@ namespace PolarBreakout
 
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
             var paddleOutRoutine = paddleDissolve != null ? paddleDissolve.DissolveOut(paddleDissolveOutDuration) : null;
-            var deathZoneOutRoutine = deathZoneDissolve != null ? deathZoneDissolve.DissolveOut(paddleDissolveOutDuration) : null;
             if (paddleOutRoutine != null) yield return paddleOutRoutine;
-            if (deathZoneOutRoutine != null) yield return deathZoneOutRoutine;
 
             // Fully deactivate the paddle once it's done fading out - not just visually
             // invisible, since a MonoBehaviour left active still runs Update/FixedUpdate and
@@ -171,8 +175,10 @@ namespace PolarBreakout
             if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(true);
 
             var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
+            deathZonePortal?.Play();
+            if (deathZonePortal != null) yield return new WaitForSecondsRealtime(deathZonePortalLeadTime);
+
             if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
-            if (deathZoneDissolve != null) deathZoneDissolve.DissolveIn(dissolveInDuration);
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
@@ -229,10 +235,11 @@ namespace PolarBreakout
         /// <summary>Called by LevelManager right after a round is cleared, before the card offer
         /// appears - dissolves the paddle out exactly like it does when a life is lost (see
         /// RespawnSequence), and hides the ball too (which RespawnSequence doesn't need to do
-        /// itself, since by that point the ball has already been lost/deactivated). The death
-        /// zone dissolves out in lockstep with the paddle too (see deathZoneDissolve). Unlike a
+        /// itself, since by that point the ball has already been lost/deactivated). Unlike a
         /// real death, there's no explosion effect or respawnDelay here - the round just clears
-        /// and the paddle steps off-screen for the card choice.
+        /// and the paddle steps off-screen for the card choice. The death zone's own portal
+        /// reveal (see deathZonePortal) has no "close" animation, so it's left alone here and
+        /// only re-played on the way back in - see PlayRoundStartDissolveIn.
         ///
         /// The paddle is fully deactivated once it's done fading out, not just left invisible -
         /// otherwise, since its GameObject stays active, it keeps responding to Move input (re-
@@ -245,24 +252,28 @@ namespace PolarBreakout
 
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
             var paddleOutRoutine = paddleDissolve != null ? paddleDissolve.DissolveOut(paddleDissolveOutDuration) : null;
-            var deathZoneOutRoutine = deathZoneDissolve != null ? deathZoneDissolve.DissolveOut(paddleDissolveOutDuration) : null;
             if (paddleOutRoutine != null) yield return paddleOutRoutine;
-            if (deathZoneOutRoutine != null) yield return deathZoneOutRoutine;
 
             if (primaryBall.paddle != null) primaryBall.paddle.gameObject.SetActive(false);
         }
 
         /// <summary>Called by LevelManager once the new level has been built and ResetForNewRound
-        /// has already reactivated/redocked the ball - dissolves the paddle and ball (and the
-        /// death zone - see deathZoneDissolve) back into place together exactly like a respawn
-        /// (see RespawnSequence), so the new round visually arrives rather than just popping in.</summary>
+        /// has already reactivated/redocked the ball - dissolves the paddle and ball back into
+        /// place together exactly like a respawn (see RespawnSequence), so the new round visually
+        /// arrives rather than just popping in. Also plays the death zone's own portal reveal (see
+        /// deathZonePortal) a short deathZonePortalLeadTime beforehand, rather than having it
+        /// auto-play on Start (which would fire immediately at scene load, well before the paddle/
+        /// ball are actually ready to be seen) or exactly alongside the paddle (which reads as two
+        /// things happening at once rather than the portal opening first).</summary>
         public IEnumerator PlayRoundStartDissolveIn()
         {
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
             var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
 
+            deathZonePortal?.Play();
+            if (deathZonePortal != null) yield return new WaitForSecondsRealtime(deathZonePortalLeadTime);
+
             if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
-            if (deathZoneDissolve != null) deathZoneDissolve.DissolveIn(dissolveInDuration);
             if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
         }
 
