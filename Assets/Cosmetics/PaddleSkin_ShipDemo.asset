@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: PaddleSkin_ShipDemo
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.PaddleSkin
   displayName: Ship Demo
-  material: {fileID: 2100000, guid: 576da3a5f478e5d4584f38da46a6dfcb, type: 2}
+  material: {fileID: 2100000, guid: 7d103bc52c42b5d44a4eb9d6ec3c246f, type: 2}

@@ -59,6 +59,11 @@ namespace PolarBreakout
                 // size on the very first frame - Play() below is what actually starts it, at the
                 // right moment, sized from zero.
                 _particleSystems[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                // Unscaled, so the death zone's black hole keeps visibly swirling through every
+                // Time.timeScale freeze - the death beat (see BallManager.RespawnSequence), power-up
+                // focus zooms, card offers - matching this component's own unscaled reveal.
+                var main = _particleSystems[i].main;
+                main.useUnscaledTime = true;
             }
         }
 

@@ -147,11 +147,29 @@ namespace PolarBreakout
             // Also immediate rather than deferred to the end of the sequence - abilities (and any
             // bullets already in flight) shouldn't survive a death for the ~1s+ the rest of this
             // coroutine takes to play out, or the player can keep firing the Cannon after losing.
+            // ResetAbilities also aborts any power-up focus cinematic mid-flight (see
+            // PaddleAbilities.AbortFocusSequence), so it must run before the freeze below - the
+            // abort restores Time.timeScale to 1 as part of its cleanup.
             var abilities = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<PaddleAbilities>() : null;
             if (abilities != null) abilities.ResetAbilities();
 
+            // Death freeze: the whole scene halts for the death beat - only things explicitly on
+            // unscaled time keep moving, i.e. the death zone's black hole particles (see
+            // ScaleInOvershoot.Awake), the explosion below, and the paddle dissolve (DissolveEffect
+            // is already unscaled). Everything in this coroutine up to the unfreeze runs on
+            // realtime waits, so the sequence itself is immune to its own freeze.
+            Time.timeScale = 0f;
+
             if (explosionEffectPrefab != null)
-                Instantiate(explosionEffectPrefab, Vector3.zero, Quaternion.identity);
+            {
+                var explosion = Instantiate(explosionEffectPrefab, Vector3.zero, Quaternion.identity);
+                // The explosion IS the death feedback, so it plays through the freeze.
+                foreach (var ps in explosion.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    var main = ps.main;
+                    main.useUnscaledTime = true;
+                }
+            }
             audioManager?.PlayDeath();
 
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
@@ -166,12 +184,18 @@ namespace PolarBreakout
 
             // Game over: that was the player's last life, so there's no respawn - the paddle/ball
             // stay dissolved out and GameOverController's Retry/Quit panel takes over from here.
+            // Time stays frozen deliberately (the run is over; nothing should keep simulating
+            // behind the panel) - GameOverController's Retry/Quit both restore timeScale to 1.
             if (livesManager != null && livesManager.IsGameOver) yield break;
 
-            // Realtime rather than WaitForSeconds: if the player pauses (Time.timeScale = 0)
-            // during this window, the respawn shouldn't stall until they happen to unpause -
-            // it should just keep counting down in the background.
+            // Realtime rather than WaitForSeconds: the freeze above (and a player pause) must not
+            // stall the respawn countdown - it keeps counting down in the background regardless.
             yield return new WaitForSecondsRealtime(respawnDelay);
+
+            // Unfreeze before reactivating the ball/paddle: DockToPaddle only runs in FixedUpdate,
+            // which never ticks at timeScale 0 - left frozen, the ball would visibly dissolve in
+            // at the death zone's center and then teleport to the paddle on the first live frame.
+            Time.timeScale = 1f;
 
             primaryBall.gameObject.SetActive(true);
             primaryBall.Redock();

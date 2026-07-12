@@ -126,6 +126,13 @@ namespace PolarBreakout
         private Coroutine _cannonRevealCoroutine;
         private InputAction _fireAction;
         private bool _focusSequenceActive;
+        // The running focus cinematic plus everything it needs restored if it has to be torn down
+        // early (see AbortFocusSequence) - kept in fields rather than coroutine locals precisely
+        // so an abort from outside the coroutine can still put the camera/time/input back.
+        private Coroutine _focusSequenceCoroutine;
+        private Vector3 _focusOriginalCameraPosition;
+        private float _focusOriginalCameraSize;
+        private CameraShake _focusSuspendedCameraShake;
 
         /// <summary>turretSpacing plus any TurretSpacingBonus from acquired Cards - both the
         /// barrels' own built position and each shot's spawn/travel offset read this instead of
@@ -281,8 +288,14 @@ namespace PolarBreakout
         /// running, otherwise instantly, exactly as before this effect existed.</summary>
         public void CollectPowerUp(PowerUpType type)
         {
-            if (focusCamera != null && !_focusSequenceActive)
-                StartCoroutine(PlayPowerUpFocusSequence(type));
+            // The cinematic only plays while gameplay is genuinely live - a capsule caught in the
+            // window where the last ball is already dying (see BallState.Dying) must not start a
+            // pause/zoom that the imminent death sequence would tear down mid-flight (deactivating
+            // the paddle kills every coroutine on this component, which once left Time.timeScale
+            // stuck at 0 and froze the whole game).
+            bool gameplayLive = ballManager == null || ballManager.IsAnyBallInPlay();
+            if (focusCamera != null && !_focusSequenceActive && gameplayLive)
+                _focusSequenceCoroutine = StartCoroutine(PlayPowerUpFocusSequence(type));
             else
                 ApplyPowerUpEffect(type);
         }
@@ -322,23 +335,23 @@ namespace PolarBreakout
         {
             _focusSequenceActive = true;
 
-            Vector3 originalPosition = focusCamera.transform.position;
-            float originalOrthographicSize = focusCamera.orthographicSize;
+            _focusOriginalCameraPosition = focusCamera.transform.position;
+            _focusOriginalCameraSize = focusCamera.orthographicSize;
             // CameraShake's LateUpdate snaps the camera back to its captured rest position on
             // every zero-trauma frame, which would override this sequence's own position
             // animation the moment each frame's coroutine step finished - suspended for the
             // duration, same as CustomCam.
-            var cameraShake = focusCamera.GetComponent<CameraShake>();
-            if (cameraShake != null) cameraShake.enabled = false;
+            _focusSuspendedCameraShake = focusCamera.GetComponent<CameraShake>();
+            if (_focusSuspendedCameraShake != null) _focusSuspendedCameraShake.enabled = false;
             if (customCam != null) customCam.enabled = false;
 
             Time.timeScale = 0f;
             SetGameplayActionsEnabled(false);
 
             Vector3 targetPosition = GetPaddleWorldPosition();
-            targetPosition.z = originalPosition.z;
-            yield return AnimateCamera(originalPosition, targetPosition,
-                originalOrthographicSize, focusOrthographicSize, focusZoomInDuration);
+            targetPosition.z = _focusOriginalCameraPosition.z;
+            yield return AnimateCamera(_focusOriginalCameraPosition, targetPosition,
+                _focusOriginalCameraSize, focusOrthographicSize, focusZoomInDuration);
 
             ApplyPowerUpEffect(type);
 
@@ -347,15 +360,41 @@ namespace PolarBreakout
             else
                 yield return new WaitForSecondsRealtime(focusHoldDuration);
 
-            yield return AnimateCamera(focusCamera.transform.position, originalPosition,
-                focusCamera.orthographicSize, originalOrthographicSize, focusZoomOutDuration);
+            yield return AnimateCamera(focusCamera.transform.position, _focusOriginalCameraPosition,
+                focusCamera.orthographicSize, _focusOriginalCameraSize, focusZoomOutDuration);
 
+            RestoreFocusSequenceState();
+        }
+
+        /// <summary>Puts back everything PlayPowerUpFocusSequence changed - the shared tail of
+        /// both the normal end-of-sequence path and an early abort.</summary>
+        private void RestoreFocusSequenceState()
+        {
             SetGameplayActionsEnabled(true);
             Time.timeScale = 1f;
-            if (cameraShake != null) cameraShake.enabled = true;
+            if (_focusSuspendedCameraShake != null) _focusSuspendedCameraShake.enabled = true;
             if (customCam != null) customCam.enabled = true;
 
             _focusSequenceActive = false;
+            _focusSequenceCoroutine = null;
+            _focusSuspendedCameraShake = null;
+        }
+
+        /// <summary>Tears down a focus cinematic that can't be allowed to finish - called from
+        /// ResetAbilities, i.e. on death and on stage transitions. Without this, the death
+        /// sequence deactivating the paddle GameObject would silently kill the sequence's
+        /// coroutine partway through, leaving Time.timeScale stuck at 0 (a fully frozen game),
+        /// input disabled, and the camera stranded zoomed-in on the paddle. Snaps the camera
+        /// straight back to its original framing rather than animating - the death/transition
+        /// taking over has its own visual language, and a leisurely zoom-out would fight it.</summary>
+        private void AbortFocusSequence()
+        {
+            if (!_focusSequenceActive) return;
+
+            if (_focusSequenceCoroutine != null) StopCoroutine(_focusSequenceCoroutine);
+            focusCamera.transform.position = _focusOriginalCameraPosition;
+            focusCamera.orthographicSize = _focusOriginalCameraSize;
+            RestoreFocusSequenceState();
         }
 
         /// <summary>The paddle's actual on-screen position - unlike most objects, PaddleController
@@ -418,6 +457,11 @@ namespace PolarBreakout
         /// that's supposed to have just been reset, reading as "it persisted through death."</summary>
         public void ResetAbilities()
         {
+            // First, before anything else - if a power-up focus cinematic is mid-flight when a
+            // death/transition lands, it must be torn down cleanly (time/input/camera restored)
+            // before the sequence that called this starts deactivating objects out from under it.
+            AbortFocusSequence();
+
             _cannonAmmo = 0;
             _autopilotTimeRemaining = 0f;
             _paddle.AutopilotOverrideAngleDegrees = null;
