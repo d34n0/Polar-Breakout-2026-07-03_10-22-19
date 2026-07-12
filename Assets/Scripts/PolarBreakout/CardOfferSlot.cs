@@ -24,6 +24,10 @@ namespace PolarBreakout
         public Image artImage;
         public Button button;
 
+        [Header("Holo Card Setup")]
+        [Tooltip("The material used for the holographic background of legendary cards.")]
+        public Material holoCardMaterial;
+
         [Header("Layout (matches CardTemplateBase)")]
         [Tooltip("Optional. Background behind rarityText/nameText, sized/positioned to match " +
                  "CardTemplateBase's Title Box sprite - purely a visual frame, no logic reads it.")]
@@ -103,6 +107,7 @@ namespace PolarBreakout
         private bool _spinShowingBack;
         private float _wobbleSeedX, _wobbleSeedY, _wobbleSeedZ;
         private Material _rootMaterialInstance;
+        private Image _rootImage;
 
         private void Awake()
         {
@@ -110,15 +115,7 @@ namespace PolarBreakout
             _wobbleSeedY = Random.Range(0f, 100f);
             _wobbleSeedZ = Random.Range(0f, 100f);
 
-            // Instanced (not shared) so each card's own rotation drives its own tilt - setting
-            // the property straight on the shared material asset would make every card using it
-            // show whichever card last wrote to it.
-            var rootImage = GetComponent<Image>();
-            if (rootImage != null && rootImage.material != null && rootImage.material.HasProperty(SimulatedTiltId))
-            {
-                _rootMaterialInstance = new Material(rootImage.material);
-                rootImage.material = _rootMaterialInstance;
-            }
+            _rootImage = GetComponent<Image>();
         }
 
         /// <summary>Feeds the card's current rotation to the Holographic material as a simulated
@@ -245,6 +242,22 @@ namespace PolarBreakout
             rarityText.color = RarityColor(card.rarity);
             nameText.text = card.displayName;
             descriptionText.text = card.description;
+
+            bool isLegendary = card.rarity == CardRarity.Legendary;
+
+            if (_rootImage != null)
+            {
+                if (isLegendary && holoCardMaterial != null)
+                {
+                    _rootMaterialInstance = new Material(holoCardMaterial);
+                    _rootImage.material = _rootMaterialInstance;
+                }
+                else
+                {
+                    _rootImage.material = null;
+                    _rootMaterialInstance = null;
+                }
+            }
 
             _hasArt = card.artSprite != null || card.artMaterialOverride != null;
             if (artImage != null)

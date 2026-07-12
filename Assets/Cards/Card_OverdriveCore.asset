@@ -20,3 +20,5 @@ MonoBehaviour:
     value: 0.5
   - type: 9
     value: 0.5
+  artSprite: {fileID: 0}
+  artMaterialOverride: {fileID: 0}

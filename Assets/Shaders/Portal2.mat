@@ -70,7 +70,7 @@ Material:
     - _DstBlend: 10
     - _DstBlendAlpha: 10
     - _Erosion: 10.47
-    - _PortalSpeed: -0.04
+    - _PortalSpeed: -0.29
     - _QueueControl: 0
     - _QueueOffset: 0
     - _SrcBlend: 5
@@ -80,6 +80,6 @@ Material:
     - _ZWrite: 0
     - _ZWriteControl: 0
     m_Colors:
-    - _Color: {r: 1.720795, g: 1.720795, b: 1.720795, a: 1}
+    - _Color: {r: 6.229209, g: 3.305705, b: 10.459844, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

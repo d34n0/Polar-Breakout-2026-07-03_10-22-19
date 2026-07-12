@@ -18,3 +18,5 @@ MonoBehaviour:
   effects:
   - type: 10
     value: 2
+  artSprite: {fileID: 0}
+  artMaterialOverride: {fileID: 0}

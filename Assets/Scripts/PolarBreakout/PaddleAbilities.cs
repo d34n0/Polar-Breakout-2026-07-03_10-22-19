@@ -85,6 +85,33 @@ namespace PolarBreakout
         public Material autopilotCapsuleMaterial;
         public Material cannonCapsuleMaterial;
 
+        [Header("Power-Up Focus Effect")]
+        [Tooltip("Optional. The main arena camera - when set, catching any power-up capsule " +
+                 "pauses the game and zooms this camera in on the paddle (see " +
+                 "PlayPowerUpFocusSequence) before applying the power-up, holds there for that " +
+                 "type's own reveal, then zooms back out and resumes. Leave unset to apply " +
+                 "power-ups instantly with no camera effect at all, exactly as before - every " +
+                 "existing isolated test relies on this default.")]
+        public Camera focusCamera;
+        [Tooltip("Optional. Disabled for the duration of the focus effect so it doesn't fight " +
+                 "the zoom's own orthographicSize/position animation, then re-enabled once the " +
+                 "camera is back to its original framing. Leave unset if the scene doesn't use " +
+                 "CustomCam.")]
+        public CustomCam customCam;
+        [Tooltip("Orthographic size the camera zooms in to for the reveal - smaller is tighter.")]
+        public float focusOrthographicSize = 3f;
+        [Tooltip("How long the zoom in on the paddle takes, seconds.")]
+        public float focusZoomInDuration = 0.3f;
+        [Tooltip("How long the zoom back out to the camera's original framing takes, seconds.")]
+        public float focusZoomOutDuration = 0.3f;
+        [Tooltip("How long the camera holds on the zoomed-in paddle for a power-up type with no " +
+                 "reveal animation of its own yet (currently Multiball and Autopilot - Cannon " +
+                 "instead waits for RevealCannons to actually finish, however long that takes). " +
+                 "Replace this per type once a real animation/sound exists for it - e.g. an " +
+                 "Animator trigger keyed off PowerUpType, awaited here the same way RevealCannons " +
+                 "already is below.")]
+        public float focusHoldDuration = 0.6f;
+
         public int CannonAmmo => _cannonAmmo;
         public bool IsAutopilotActive => _autopilotTimeRemaining > 0f;
 
@@ -98,6 +125,7 @@ namespace PolarBreakout
         private GameObject _twinCannonRight;
         private Coroutine _cannonRevealCoroutine;
         private InputAction _fireAction;
+        private bool _focusSequenceActive;
 
         /// <summary>turretSpacing plus any TurretSpacingBonus from acquired Cards - both the
         /// barrels' own built position and each shot's spawn/travel offset read this instead of
@@ -231,9 +259,11 @@ namespace PolarBreakout
 
             // A launches the ball while docked (handled entirely inside BallController) and
             // fires the cannon once launched - the two never actually compete for the same
-            // press since BallController only acts on it while Docked.
-            bool ballInPlay = ballManager != null && ballManager.primaryBall != null
-                && ballManager.primaryBall.State == BallState.Launched;
+            // press since BallController only acts on it while Docked. Checked via
+            // IsAnyBallInPlay (any active launched ball, primary or clone) rather than the
+            // primary's own State - during multiball the primary can be dead/Dying while clones
+            // are still very much in play, and the cannon should keep firing for them.
+            bool ballInPlay = ballManager != null && ballManager.IsAnyBallInPlay();
             if (firePressed && _cannonAmmo > 0 && ballInPlay)
             {
                 // Laser Cannon spends the whole pickup on a single shot - a Cannon capsule
@@ -246,7 +276,18 @@ namespace PolarBreakout
             }
         }
 
+        /// <summary>Applies type's effect - via the full pause/zoom/reveal/resume cinematic (see
+        /// PlayPowerUpFocusSequence) when focusCamera is wired up and no such sequence is already
+        /// running, otherwise instantly, exactly as before this effect existed.</summary>
         public void CollectPowerUp(PowerUpType type)
+        {
+            if (focusCamera != null && !_focusSequenceActive)
+                StartCoroutine(PlayPowerUpFocusSequence(type));
+            else
+                ApplyPowerUpEffect(type);
+        }
+
+        private void ApplyPowerUpEffect(PowerUpType type)
         {
             switch (type)
             {
@@ -263,6 +304,109 @@ namespace PolarBreakout
                     if (_cannonRevealCoroutine != null) StopCoroutine(_cannonRevealCoroutine);
                     _cannonRevealCoroutine = StartCoroutine(RevealCannons());
                     break;
+            }
+        }
+
+        /// <summary>Pauses the game, zooms focusCamera in on the paddle, applies type's effect
+        /// framed by that zoom, holds on it for however long that type's own reveal takes -
+        /// Cannon waits for RevealCannons to actually finish; Multiball/Autopilot (no bespoke
+        /// reveal yet) just hold for focusHoldDuration as a placeholder until real
+        /// animations/sounds exist for them too - then zooms back out and resumes. Runs entirely
+        /// on unscaled time/WaitForSecondsRealtime, matching every other pause-safe effect in this
+        /// project (CardOfferController, DissolveEffect, ScaleInOvershoot), since Time.timeScale
+        /// is 0 for the whole thing. Guarded by _focusSequenceActive - CollectPowerUp only starts
+        /// this when nothing is currently running, so a second capsule caught mid-sequence (e.g.
+        /// right after a Multiball split lands two at once) just applies its effect immediately
+        /// instead of stacking another pause on top.</summary>
+        private IEnumerator PlayPowerUpFocusSequence(PowerUpType type)
+        {
+            _focusSequenceActive = true;
+
+            Vector3 originalPosition = focusCamera.transform.position;
+            float originalOrthographicSize = focusCamera.orthographicSize;
+            // CameraShake's LateUpdate snaps the camera back to its captured rest position on
+            // every zero-trauma frame, which would override this sequence's own position
+            // animation the moment each frame's coroutine step finished - suspended for the
+            // duration, same as CustomCam.
+            var cameraShake = focusCamera.GetComponent<CameraShake>();
+            if (cameraShake != null) cameraShake.enabled = false;
+            if (customCam != null) customCam.enabled = false;
+
+            Time.timeScale = 0f;
+            SetGameplayActionsEnabled(false);
+
+            Vector3 targetPosition = GetPaddleWorldPosition();
+            targetPosition.z = originalPosition.z;
+            yield return AnimateCamera(originalPosition, targetPosition,
+                originalOrthographicSize, focusOrthographicSize, focusZoomInDuration);
+
+            ApplyPowerUpEffect(type);
+
+            if (type == PowerUpType.Cannon && _cannonRevealCoroutine != null)
+                yield return _cannonRevealCoroutine;
+            else
+                yield return new WaitForSecondsRealtime(focusHoldDuration);
+
+            yield return AnimateCamera(focusCamera.transform.position, originalPosition,
+                focusCamera.orthographicSize, originalOrthographicSize, focusZoomOutDuration);
+
+            SetGameplayActionsEnabled(true);
+            Time.timeScale = 1f;
+            if (cameraShake != null) cameraShake.enabled = true;
+            if (customCam != null) customCam.enabled = true;
+
+            _focusSequenceActive = false;
+        }
+
+        /// <summary>The paddle's actual on-screen position - unlike most objects, PaddleController
+        /// itself never moves (it sits fixed at the arena center and only rotates, see its own
+        /// class doc comment), so its visual position has to be derived from CurrentAngleDegrees
+        /// and paddleOrbitRadius the same way BallController.DockToPaddle does, rather than just
+        /// reading transform.position.</summary>
+        private Vector3 GetPaddleWorldPosition()
+        {
+            float rad = _paddle.CurrentAngleDegrees * Mathf.Deg2Rad;
+            Vector2 pos = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * _paddle.settings.paddleOrbitRadius;
+            return new Vector3(pos.x, pos.y, focusCamera.transform.position.z);
+        }
+
+        private IEnumerator AnimateCamera(Vector3 fromPosition, Vector3 toPosition, float fromSize, float toSize, float duration)
+        {
+            float elapsed = 0f;
+            float safeDuration = Mathf.Max(0.0001f, duration);
+            while (elapsed < safeDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / safeDuration);
+                focusCamera.transform.position = Vector3.Lerp(fromPosition, toPosition, t);
+                focusCamera.orthographicSize = Mathf.Lerp(fromSize, toSize, t);
+                yield return null;
+            }
+            focusCamera.transform.position = toPosition;
+            focusCamera.orthographicSize = toSize;
+        }
+
+        /// <summary>Enables/disables Move and Fire for the duration of the focus effect - mirrors
+        /// CardOfferController.SetGameplayActionsEnabled exactly, since both freeze gameplay via
+        /// Time.timeScale and need the same guard against an eager press queuing up and firing
+        /// the instant control returns.</summary>
+        private void SetGameplayActionsEnabled(bool enabled)
+        {
+            if (_paddle.actions == null) return;
+
+            var playerMap = _paddle.actions.FindActionMap("Player");
+            var move = playerMap.FindAction("Move");
+            var fire = playerMap.FindAction("Fire");
+
+            if (enabled)
+            {
+                move.Enable();
+                fire.Enable();
+            }
+            else
+            {
+                move.Disable();
+                fire.Disable();
             }
         }
 
@@ -331,7 +475,10 @@ namespace PolarBreakout
             float duration = Mathf.Max(0.0001f, cannonRevealDuration);
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                // Unscaled: this plays during the power-up focus effect's pause (see
+                // PlayPowerUpFocusSequence, which holds Time.timeScale at 0 and waits on this
+                // very coroutine) - scaled deltaTime would freeze it there and deadlock the wait.
+                elapsed += Time.unscaledDeltaTime;
                 SetCannonGrowth(Mathf.Clamp01(elapsed / duration));
                 yield return null;
             }
