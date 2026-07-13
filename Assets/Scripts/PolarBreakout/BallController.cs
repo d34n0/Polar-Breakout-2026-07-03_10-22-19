@@ -370,8 +370,19 @@ namespace PolarBreakout
         {
             float dockRadius = settings.paddleOrbitRadius + paddle.radialThickness / 2f + WorldRadius + dockOffset;
             float rad = paddle.CurrentAngleDegrees * Mathf.Deg2Rad;
-            _rb.position = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * dockRadius;
+            Vector2 target = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * dockRadius;
+            _rb.position = target;
             _rb.linearVelocity = Vector2.zero;
+
+            // Physics2D.SyncTransforms() (see ResetToDocked) does not reliably push a kinematic
+            // Rigidbody2D.position write through to the rendered Transform the same frame it's
+            // set - the rigidbody's own internal position updates immediately, but
+            // transform.position can lag behind by several FixedUpdate ticks, which is exactly
+            // the stale-render-position bug ResetToDocked's own SyncTransforms call was meant to
+            // close. Setting transform.position directly here guarantees the ball is drawn at the
+            // dock spot the instant this call returns, regardless of that sync gap - safe for a
+            // Kinematic body since nothing else is driving its Transform between docks.
+            transform.position = target;
         }
 
         private void Launch()
@@ -640,9 +651,33 @@ namespace PolarBreakout
             // starting position after the old one's gameplay) straight to the paddle - without
             // clearing, both trails still hold their old recorded points and draw a single long
             // streak connecting that old position to the new one, same class of bug the Awake
-            // comment above already guards against for the very first frame.
-            if (_trail != null) _trail.Clear();
-            if (_spinTrail != null) _spinTrail.Clear();
+            // comment above already guards against for the very first frame. Also force emitting
+            // off and cancel any in-flight crossfade (rather than letting UpdateTrailEmission fade
+            // it out next FixedUpdate) - a redock should read as an instant, trail-free respawn,
+            // not a graceful fade-out of whatever trail was showing before. This matters a lot
+            // more now that a redock can be followed by a real-time pause (see LevelManager's
+            // level-start sequence) - FixedUpdate (and so UpdateTrailEmission/DockToPaddle below)
+            // doesn't run at all while Time.timeScale is 0, so without this the ball would
+            // otherwise sit at its stale old position with its old trail still flagged as
+            // emitting for the whole pause, then visibly snap/streak the instant it ends.
+            if (_trail != null)
+            {
+                _trail.emitting = false;
+                _trail.widthMultiplier = 1f;
+                _trail.Clear();
+            }
+            if (_spinTrail != null)
+            {
+                _spinTrail.emitting = false;
+                _spinTrail.widthMultiplier = 1f;
+                _spinTrail.Clear();
+            }
+            if (_trailCrossfadeCoroutine != null)
+            {
+                StopCoroutine(_trailCrossfadeCoroutine);
+                _trailCrossfadeCoroutine = null;
+            }
+            _currentTrailMode = TrailMode.None;
 
             // Discards any launch request that arrived while this ball's GameObject was
             // deactivated (BallManager.RespawnSequence deactivates it for the explosion/dissolve/
@@ -652,6 +687,20 @@ namespace PolarBreakout
             // during that window would otherwise sit pending and fire the instant the ball
             // reappears, launching it without an actual press after respawn.
             _launchRequested = false;
+
+            // Repositioned immediately rather than waiting for the next FixedUpdate's own
+            // DockToPaddle call - otherwise the ball visibly sits at its stale pre-redock position
+            // until physics next ticks, which (per the trail comment above) can now be a whole
+            // real-time pause away, making the eventual jump highly visible instead of imperceptible.
+            DockToPaddle();
+
+            // Rigidbody2D.position writes are queued internally and only propagate to
+            // transform.position on the next physics step - which, same as above, can be a whole
+            // real-time pause away while Time.timeScale is 0. Without this, the ball's actual
+            // rendered position stays stuck at its stale pre-redock spot for the entire pause (so
+            // e.g. LevelManager's GO! dissolve-in reveals it there, not at the paddle) and only
+            // visibly snaps once physics finally resumes. Forces that sync immediately instead.
+            Physics2D.SyncTransforms();
         }
 
         /// <summary>Public entry point for BallManager to bring the primary ball back into

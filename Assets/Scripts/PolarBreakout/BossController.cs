@@ -120,6 +120,17 @@ namespace PolarBreakout
                  "drive it.")]
         public Material dissolveMaterial;
 
+        [Header("Spawn")]
+        [Tooltip("Plays a dissolve-in (fully invisible to fully visible) the moment this boss " +
+                 "spawns, using the same dissolveMaterial as the phase 2 teleport - so a Boss-type " +
+                 "level's boss fades into existence instead of just popping in already there. " +
+                 "Leave off to appear instantly instead.")]
+        public bool dissolveInOnSpawn = true;
+        [Tooltip("How long the spawn dissolve-in takes, unscaled seconds - runs during " +
+                 "LevelManager's paused level-start beat, so it plays out fully before the level " +
+                 "actually unpauses regardless of this duration.")]
+        public float spawnDissolveInDuration = 0.8f;
+
         [Header("Idle Sound")]
         [Tooltip("Minimum seconds between plays of AudioManager.bossIdleSound while the boss is " +
                  "alive - paired with idleSoundIntervalMaxSeconds to pick a random wait each time " +
@@ -190,6 +201,11 @@ namespace PolarBreakout
             // boss fades together on a phase 2 teleport, not just the body.
             _dissolveEffect = gameObject.AddComponent<DissolveEffect>();
             _dissolveEffect.dissolveMaterial = dissolveMaterial;
+
+            // Hidden immediately, before the first frame ever renders, so the boss never pops in
+            // fully visible even for a single frame before Start() kicks off the real dissolve-in
+            // below - same reasoning as ScaleInOvershoot hiding in Awake and revealing in Play().
+            if (dissolveInOnSpawn) _dissolveEffect.SnapToDissolved();
         }
 
         /// <summary>Settings/maxHealth-dependent setup (health init, footprint sizing, initial
@@ -206,6 +222,11 @@ namespace PolarBreakout
             ApplyFootprintSize();
             InitializeWander();
             RollNewIdleSoundTimer();
+
+            // Runs on unscaled time (see DissolveEffect), so it plays out fully during
+            // LevelManager's paused level-start beat even though Time.timeScale is 0 for the
+            // whole duration.
+            if (dissolveInOnSpawn) _dissolveEffect.DissolveIn(spawnDissolveInDuration);
         }
 
         /// <summary>Scales the body sprite so the boss's world-space diameter matches

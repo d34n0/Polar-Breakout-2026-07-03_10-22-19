@@ -147,6 +147,15 @@ namespace PolarBreakout
 
         public void StopMusic() => _musicSource.Stop();
 
+        /// <summary>Pauses the music in place (preserving playback position) - paired with
+        /// ResumeMusic. Used by LevelManager to hold the music silent through its paused
+        /// "objective popup / GO!" level-start beat, rather than let it keep playing under a
+        /// frozen screen.</summary>
+        public void PauseMusic() => _musicSource.Pause();
+
+        /// <summary>Resumes music paused via PauseMusic from where it left off.</summary>
+        public void ResumeMusic() => _musicSource.UnPause();
+
         /// <summary>Fires a one-shot SFX - safe to call rapidly/overlapping (e.g. several bricks
         /// destroyed the same frame), since each call claims the next source in the round-robin
         /// pool rather than sharing one. resource can be a plain AudioClip or an Audio Random

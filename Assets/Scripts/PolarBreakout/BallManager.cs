@@ -409,23 +409,43 @@ namespace PolarBreakout
         }
 
         /// <summary>Called by LevelManager once the new level has been built and ResetForNewRound
-        /// has already reactivated/redocked the ball - dissolves the paddle and ball back into
-        /// place together exactly like a respawn (see RespawnSequence), so the new round visually
-        /// arrives rather than just popping in. Also plays the death zone's own portal reveal (see
-        /// deathZonePortal) a short deathZonePortalLeadTime beforehand, rather than having it
-        /// auto-play on Start (which would fire immediately at scene load, well before the paddle/
-        /// ball are actually ready to be seen) or exactly alongside the paddle (which reads as two
-        /// things happening at once rather than the portal opening first).</summary>
+        /// has already reactivated/redocked the ball - dissolves the paddle back into place, so
+        /// the new round visually arrives rather than just popping in. Also plays the death
+        /// zone's own portal reveal (see deathZonePortal) a short deathZonePortalLeadTime
+        /// beforehand, rather than having it auto-play on Start (which would fire immediately at
+        /// scene load, well before the paddle is actually ready to be seen) or exactly alongside
+        /// the paddle (which reads as two things happening at once rather than the portal opening
+        /// first). The ball is deliberately NOT revealed here - see HideBallForRoundStart/
+        /// PlayBallDissolveIn - LevelManager times its reveal separately so it finishes right as
+        /// the GO! text appears instead of immediately alongside the paddle.</summary>
         public IEnumerator PlayRoundStartDissolveIn()
         {
             var paddleDissolve = primaryBall.paddle != null ? primaryBall.paddle.GetComponent<DissolveEffect>() : null;
-            var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
 
             deathZonePortal?.Play();
             if (deathZonePortal != null) yield return new WaitForSecondsRealtime(deathZonePortalLeadTime);
 
-            if (paddleDissolve != null) paddleDissolve.DissolveIn(dissolveInDuration);
-            if (ballDissolve != null) yield return ballDissolve.DissolveIn(dissolveInDuration);
+            if (paddleDissolve != null) yield return paddleDissolve.DissolveIn(dissolveInDuration);
+        }
+
+        /// <summary>Snaps just the ball (not the paddle) to fully dissolved/invisible - called by
+        /// LevelManager immediately after ResetForNewRound so the ball doesn't sit fully visible
+        /// through the paused objective-popup beat before its own timed reveal (see
+        /// PlayBallDissolveIn) kicks in right before GO!.</summary>
+        public void HideBallForRoundStart()
+        {
+            var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
+            ballDissolve?.SnapToDissolved();
+        }
+
+        /// <summary>Reveals just the ball via its own dissolve-in (dissolveInDuration seconds),
+        /// separately from the paddle/portal reveal (see PlayRoundStartDissolveIn) - LevelManager
+        /// starts this late enough that it finishes exactly as the GO! text appears, rather than
+        /// the ball popping into view immediately at round start.</summary>
+        public Coroutine PlayBallDissolveIn()
+        {
+            var ballDissolve = primaryBall.GetComponent<DissolveEffect>();
+            return ballDissolve != null ? ballDissolve.DissolveIn(dissolveInDuration) : null;
         }
 
         /// <summary>True if any ball (the primary or a multiball clone) is currently active and

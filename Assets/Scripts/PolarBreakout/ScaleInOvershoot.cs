@@ -72,8 +72,10 @@ namespace PolarBreakout
             if (playOnStart) Play();
         }
 
-        /// <summary>(Re)starts the scale-in from zero - safe to call again mid-animation.</summary>
-        public void Play()
+        /// <summary>(Re)starts the scale-in from zero - safe to call again mid-animation. Returns
+        /// the running Coroutine so a caller can `yield return` it to wait for the reveal to
+        /// finish (e.g. LevelManager's GO! text beat).</summary>
+        public Coroutine Play()
         {
             if (_routine != null) StopCoroutine(_routine);
             transform.localScale = Vector3.zero;
@@ -89,6 +91,7 @@ namespace PolarBreakout
                 ps.Emit(1);
             }
             _routine = StartCoroutine(Animate());
+            return _routine;
         }
 
         private IEnumerator Animate()

@@ -50,6 +50,8 @@ namespace PolarBreakout
             {
                 case StageObjectiveType.Survive:
                     return "Survive for " + FormatTime(surviveDuration) + "!";
+                case StageObjectiveType.Boss:
+                    return "Defeat the Boss!";
                 case StageObjectiveType.Clear:
                 default:
                     return "Clear the Bricks!";

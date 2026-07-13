@@ -59,6 +59,21 @@ namespace PolarBreakout
                  "transform) if the scene has no dedicated arena root for it.")]
         public Transform bossSpawnParent;
 
+        [Header("Level Start Sequence")]
+        [Tooltip("Optional. A \"GO!\" UI text GameObject - activated and scaled in via " +
+                 "goScaleAnim right before a level's gameplay actually starts. Leave unset to skip " +
+                 "the GO! beat entirely (falls back to just unpausing after objectiveHoldDuration).")]
+        public GameObject goTextObject;
+        [Tooltip("Optional. Drives goTextObject's scale-up pop - should live on goTextObject (or a " +
+                 "child of it), with its own playOnStart left off since this triggers it manually.")]
+        public ScaleInOvershoot goScaleAnim;
+        [Tooltip("How long (unscaled seconds) the objective/win-condition popup is held, paused, " +
+                 "before the GO! text appears.")]
+        public float objectiveHoldDuration = 2f;
+        [Tooltip("How long (unscaled seconds) the GO! text holds at full size before gameplay " +
+                 "actually unpauses and starts.")]
+        public float goHoldDuration = 0.4f;
+
         public int CurrentStage { get; private set; } = 1;
         public event Action<int> OnStageChanged;
 
@@ -85,6 +100,12 @@ namespace PolarBreakout
         // The currently-spawned boss for a Boss-type stage, if any - tracked so it can be
         // unsubscribed/destroyed on cleanup (defeat, or the round otherwise ending early).
         private BossController _activeBoss;
+
+        // Tracks the currently-running PlayLevelStartSequence (if any) so a fresh one can cancel a
+        // still-running prior instance before starting - guards against two overlapping instances
+        // both trying to write Time.timeScale (which can't happen in real play, since gameplay is
+        // frozen for the duration of one, but is cheap insurance regardless).
+        private Coroutine _levelStartRoutine;
 
         private void Awake()
         {
@@ -129,11 +150,7 @@ namespace PolarBreakout
             ApplyClearThreshold(initialLevel);
             ActivateLevel(initialLevel);
 
-            if (ballManager != null)
-            {
-                ballManager.ResetForNewRound();
-                yield return ballManager.PlayRoundStartDissolveIn();
-            }
+            yield return RunLevelStartSequence();
         }
 
         private void HandleLevelCleared()
@@ -352,11 +369,77 @@ namespace PolarBreakout
             // expiry trigger another advance.
             _stageAdvancing = false;
 
-            if (ballManager != null)
-            {
-                ballManager.ResetForNewRound();
-                yield return ballManager.PlayRoundStartDissolveIn();
-            }
+            yield return RunLevelStartSequence();
+        }
+
+        /// <summary>Starts PlayLevelStartSequence as a tracked coroutine (cancelling any still-
+        /// running prior instance first - see _levelStartRoutine) and waits for it to finish.</summary>
+        private IEnumerator RunLevelStartSequence()
+        {
+            if (_levelStartRoutine != null) StopCoroutine(_levelStartRoutine);
+            _levelStartRoutine = StartCoroutine(PlayLevelStartSequence());
+            yield return _levelStartRoutine;
+        }
+
+        /// <summary>Runs at the start of every level (the very first level's build-in and every
+        /// stage advance alike) - docks the ball, freezes gameplay (Time.timeScale = 0), and
+        /// pauses the music, while the paddle's round-start dissolve-in and the objective/win-
+        /// condition popup (fired by ActivateLevel's own OnObjectiveAnnounced, just before this
+        /// runs) play out over the frozen screen. The ball itself stays invisible (see
+        /// BallManager.HideBallForRoundStart) until just before the GO! text appears - its own
+        /// dissolve-in (PlayBallDissolveIn) is timed to finish exactly as GO! shows up, rather
+        /// than popping into view immediately alongside the paddle. Once objectiveHoldDuration has
+        /// passed, pops the GO! text (see goTextObject/goScaleAnim) and only unpauses - resuming
+        /// the music too - once that's done, so a level never just snaps straight into motion the
+        /// instant it builds. Entirely driven by unscaled time so the pause itself can't stall it
+        /// (matches DissolveEffect/HexWipeTransition/ObjectiveAnnouncementController's own
+        /// reasoning).</summary>
+        private IEnumerator PlayLevelStartSequence()
+        {
+            if (ballManager != null) ballManager.ResetForNewRound();
+
+            Time.timeScale = 0f;
+            audioManager?.PauseMusic();
+
+            // Snapped invisible immediately (before the paddle reveal below even starts) so it
+            // never flashes visible for a frame while still sitting at whatever dissolve state it
+            // was left in from the previous round.
+            ballManager?.HideBallForRoundStart();
+
+            // Started as its own tracked coroutine (not a direct yield) so it can run alongside
+            // the objective-hold wait below instead of blocking it - the paddle fades in over the
+            // paused "get ready" screen rather than only starting once GO! already appeared. The
+            // ball's own reveal is deliberately separate - see below.
+            Coroutine paddleRevealRoutine = ballManager != null
+                ? StartCoroutine(ballManager.PlayRoundStartDissolveIn())
+                : null;
+
+            // The ball's dissolve-in is started late enough that it finishes exactly as GO!
+            // appears (objectiveHoldDuration from now), rather than immediately - clamped to 0 in
+            // case dissolveInDuration is longer than the hold itself, so it still starts right
+            // away rather than kicking off "in the past".
+            float ballRevealDuration = ballManager != null ? ballManager.dissolveInDuration : 0f;
+            float ballRevealDelay = Mathf.Max(0f, objectiveHoldDuration - ballRevealDuration);
+            if (ballRevealDelay > 0f) yield return new WaitForSecondsRealtime(ballRevealDelay);
+
+            Coroutine ballDissolveRoutine = ballManager?.PlayBallDissolveIn();
+
+            float remainingHold = objectiveHoldDuration - ballRevealDelay;
+            if (remainingHold > 0f) yield return new WaitForSecondsRealtime(remainingHold);
+
+            if (goTextObject != null) goTextObject.SetActive(true);
+            if (goScaleAnim != null) yield return goScaleAnim.Play();
+            yield return new WaitForSecondsRealtime(goHoldDuration);
+            if (goTextObject != null) goTextObject.SetActive(false);
+
+            // Safety net - guarantees the paddle/ball are fully visible before gameplay actually
+            // starts, even if a very long dissolveInDuration somehow outlasted the hold/GO! beats.
+            if (paddleRevealRoutine != null) yield return paddleRevealRoutine;
+            if (ballDissolveRoutine != null) yield return ballDissolveRoutine;
+
+            Time.timeScale = 1f;
+            audioManager?.ResumeMusic();
+            _levelStartRoutine = null;
         }
 
         /// <summary>Runs right after a round ends and before the card offer appears - a brief
