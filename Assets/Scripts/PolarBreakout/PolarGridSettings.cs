@@ -24,9 +24,13 @@ namespace PolarBreakout
         [Tooltip("Visual/collider shrink applied uniformly toward each hex's own center, world units. 0 = hexes touch edge-to-edge.")]
         public float hexGap = 0.04f;
 
+        public enum ArenaShape { Circle, Hexagon }
+
         [Header("Outer Wall")]
-        [Tooltip("Also doubles as the play-area boundary radius - a hex is part of the level only if its center falls within this radius.")]
+        [Tooltip("Also doubles as the play-area boundary radius - a hex is part of the level only if its center falls within this radius (Circle) or within a regular hexagon of this circumradius (Hexagon).")]
         public float outerWallRadius = 8f;
+        [Tooltip("Shape of the play-area boundary that gates which hexes are part of the level. Circle = radial distance test. Hexagon = a regular pointy-top hexagon (same orientation as the grid cells) with circumradius outerWallRadius.")]
+        public ArenaShape arenaShape = ArenaShape.Circle;
 
         [Header("Paddle Mesh")]
         [Tooltip("Smaller = smoother curved edges on the paddle's arc mesh, more triangles.")]
@@ -76,9 +80,33 @@ namespace PolarBreakout
             return new HexCoordinate(q, r);
         }
 
-        /// <summary>A hex is part of the level if its center falls within the outer wall radius -
+        /// <summary>A hex is part of the level if its center falls within the arena boundary -
         /// a hex is either fully in or fully out, never partially clipped.</summary>
-        public bool IsValidCoordinate(HexCoordinate coord) => HexToWorld(coord).magnitude <= outerWallRadius;
+        public bool IsValidCoordinate(HexCoordinate coord) => IsWithinArena(HexToWorld(coord));
+
+        /// <summary>True if a world-space point falls within the current arena shape - the single
+        /// membership test that both hex-grid validity and anything else wanting to match the
+        /// arena's outer boundary should go through.</summary>
+        public bool IsWithinArena(Vector2 world) =>
+            arenaShape == ArenaShape.Hexagon ? IsWithinHexagon(world) : world.magnitude <= outerWallRadius;
+
+        /// <summary>Point-in-regular-hexagon test via the standard 6-normal support-function form:
+        /// a point is inside iff its projection onto every edge's outward normal doesn't exceed the
+        /// apothem. Normals sit at 30/90/150/210/270/330 degrees and the apothem is
+        /// outerWallRadius*cos(30 deg), which together describe a flat-top hexagon - corners at
+        /// 0/60/120/180/240/300 degrees, circumradius outerWallRadius.</summary>
+        private bool IsWithinHexagon(Vector2 world)
+        {
+            const float Apothem = 0.8660254f; // cos(30 deg) == sqrt(3)/2
+            float apothem = outerWallRadius * Apothem;
+            for (int i = 0; i < 6; i++)
+            {
+                float angleRad = (i * 60f + 30f) * Mathf.Deg2Rad;
+                Vector2 normal = new Vector2(Mathf.Cos(angleRad), Mathf.Sin(angleRad));
+                if (Vector2.Dot(world, normal) > apothem) return false;
+            }
+            return true;
+        }
 
         /// <summary>True if this hex is part of the level but at least one of its 6 neighbors
         /// isn't - i.e. it touches the play-area boundary. Used both for the EdgeCollider2D

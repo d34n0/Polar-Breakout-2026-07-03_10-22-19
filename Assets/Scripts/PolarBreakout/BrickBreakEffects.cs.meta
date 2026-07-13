@@ -1,2 +1,14 @@
 fileFormatVersion: 2
 guid: 533d0354a53ff7a48bebb836fc58232b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - brickGridManager: {instanceID: 0}
+  - cameraShake: {instanceID: 0}
+  - breakParticlesPrefab: {fileID: 3527978499976578858, guid: 2f85bd998ef2bf846907372b5fb8f99e, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

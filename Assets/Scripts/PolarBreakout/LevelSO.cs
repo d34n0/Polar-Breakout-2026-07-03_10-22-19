@@ -30,6 +30,15 @@ namespace PolarBreakout
                  "of remaining bricks. Ignored for Clear-type stages.")]
         public float surviveDuration = 30f;
 
+        [Header("Boss")]
+        [Tooltip("Boss-type only. Prefab instantiated by LevelManager when this level activates - " +
+                 "ignored for every other objective type.")]
+        public BossController bossPrefab;
+        [Tooltip("Boss-type only. Applied to the spawned boss's CurrentHealth.")]
+        public float bossMaxHealth = 5f;
+        [Tooltip("Boss-type only. Seconds between the boss turret's shots.")]
+        public float bossFireInterval = 5f;
+
         public IEnumerable<(HexCoordinate coord, BrickTypeSO type)> GetPlacements()
         {
             foreach (var p in placements)

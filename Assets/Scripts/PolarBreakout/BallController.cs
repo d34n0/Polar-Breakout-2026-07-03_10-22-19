@@ -207,6 +207,15 @@ namespace PolarBreakout
 
         private void Update()
         {
+            // Runs from Update (not FixedUpdate) so the glide keeps moving through the death
+            // freeze - see HandleDying's own comment.
+            if (State == BallState.Dying)
+            {
+                HandleDying();
+                UpdateTrailEmission();
+                return;
+            }
+
             // Fallback path only - when an actions asset is assigned, OnFirePerformed (an
             // edge-triggered callback registered once in Awake) handles this instead, and is
             // strictly more robust than polling wasPressedThisFrame's single-Update validity
@@ -242,12 +251,10 @@ namespace PolarBreakout
                 return;
             }
 
-            if (State == BallState.Dying)
-            {
-                HandleDying();
-                UpdateTrailEmission();
-                return;
-            }
+            // Dying is handled from Update instead (see HandleDying) - the death freeze stops
+            // FixedUpdate entirely, so nothing dying-related can live here. Just bail before any
+            // launched-ball logic runs on a ball that's mid-death.
+            if (State == BallState.Dying) return;
 
             _launchRequested = false;
 
@@ -433,22 +440,43 @@ namespace PolarBreakout
         /// Kinematic (so it stops responding to/generating physics bounces off walls, bricks, or
         /// the paddle) and hands off to HandleDying, which pulls it toward dead center at a fixed
         /// deathZonePullSpeed each FixedUpdate until it arrives, then flashes out (see
-        /// FlashThenReportLost) before actually being reported lost.</summary>
-        private void EnterDeathZone()
+        /// FlashThenReportLost) before actually being reported lost. Public so an external hazard
+        /// (e.g. a boss bullet hitting the paddle - see BallManager.KillAllBallsInPlay) can force
+        /// this same sequence instead of only the ball's own outer-wall/death-zone check
+        /// triggering it. Guarded against double-entry - a ball already Dying (or already reported
+        /// lost) just no-ops.</summary>
+        public void EnterDeathZone()
         {
+            if (State == BallState.Dying || _reportedLost) return;
+            if (ballManager == null) return;
+
             State = BallState.Dying;
             _dyingFlashStarted = false;
             _rb.linearVelocity = Vector2.zero;
             _rb.bodyType = RigidbodyType2D.Kinematic;
             if (_collider != null) _collider.enabled = false;
+
+            // Tells the manager the death-zone sequence has begun - if this was the last ball in
+            // play, it freezes the whole scene (Time.timeScale = 0) right now, so everything else
+            // holds still while this ball glides in. The glide itself runs on unscaled time from
+            // Update (see HandleDying), so it's immune to that very freeze.
+            ballManager.NotifyBallDying(this);
         }
 
+        /// <summary>Driven from Update on unscaled time rather than FixedUpdate - the death
+        /// freeze (see BallManager.NotifyBallDying) sets Time.timeScale to 0 the moment the last
+        /// ball starts dying, and FixedUpdate never ticks at timeScale 0, so a FixedUpdate-driven
+        /// glide would deadlock its own freeze. Position is written to both the transform (what
+        /// the player sees, updated even with physics frozen) and the rigidbody (kept in sync so
+        /// nothing snaps when physics resumes) - the body is Kinematic with its collider disabled
+        /// for the whole glide, so no physics behavior depends on it.</summary>
         private void HandleDying()
         {
             if (_dyingFlashStarted) return;
 
-            Vector2 newPos = Vector2.MoveTowards(_rb.position, Vector2.zero, deathZonePullSpeed * Time.fixedDeltaTime);
-            _rb.MovePosition(newPos);
+            Vector2 newPos = Vector2.MoveTowards(_rb.position, Vector2.zero, deathZonePullSpeed * Time.unscaledDeltaTime);
+            _rb.position = newPos;
+            transform.position = newPos;
 
             if (newPos.sqrMagnitude <= deathZoneArrivalThreshold * deathZoneArrivalThreshold)
             {
@@ -485,6 +513,11 @@ namespace PolarBreakout
                 transform.localScale = Vector3.Lerp(burstScale, Vector3.zero, elapsed / half);
                 yield return null;
             }
+
+            // The teleport pop at the spot the ball just vanished from - the same burst everything
+            // else gets in the death flash-out (see BallManager.FlashOutTransientsAndPaddle), so a
+            // quiet multiball drain reads as a teleport-out too, not just a silent shrink.
+            TeleportFlash.Spawn(transform.position);
 
             // Restored immediately (same synchronous continuation, before the next render) rather
             // than left at zero - ResetToDocked also restores this independently, but resetting
@@ -552,6 +585,17 @@ namespace PolarBreakout
             _rb.position = pos;
             _rb.linearVelocity = vel;
             audioManager?.PlayBoundaryHit();
+        }
+
+        /// <summary>Reflects this ball's velocity off the given (already-normalized) surface
+        /// normal, same "bounce off a normal" formula as BounceOffCircularWall/Bullet.Ricochet -
+        /// exposed publicly (keeping the rigidbody itself private) so an external hazard like a
+        /// boss bullet can redirect the ball's trajectory on contact instead of just being ignored
+        /// since bullets use trigger colliders (no physics response of their own).</summary>
+        public void ReflectVelocity(Vector2 normal)
+        {
+            Vector2 velocity = _rb.linearVelocity;
+            _rb.linearVelocity = velocity - 2f * Vector2.Dot(velocity, normal) * normal;
         }
 
         /// <summary>Fallback used when there's no real camera to derive screen edges from (e.g.

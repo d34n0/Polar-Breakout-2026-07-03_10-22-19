@@ -23,9 +23,17 @@ namespace PolarBreakout
         [Tooltip("How long this brick flashes (see Brick.flashDuration) before it actually " +
                  "detonates and damages nearby bricks - roughly 0.2-0.5s reads as a short fuse.")]
         public float fuseDuration = 0.35f;
+        [Tooltip("Particle system spawned at the brick's position the moment it detonates, " +
+                 "tinted to this brick type's color field above. Distinct from the generic " +
+                 "break-particle burst in BrickBreakEffects (which still plays too, once this " +
+                 "brick is actually destroyed) - this one represents the blast itself. Leave " +
+                 "unset for no dedicated explosion burst.")]
+        public ParticleSystem explosionParticlesPrefab;
 
         public override void OnFlashComplete(Brick brick)
         {
+            SpawnExplosionParticles(brick);
+
             var nearby = brick.Manager.GetBricksInRadius(brick.WorldPosition, explosionRadius);
             foreach (var other in nearby)
             {
@@ -34,6 +42,19 @@ namespace PolarBreakout
                 // current BrickTypeSO.OnHit override reads it.
                 other.Hit(null);
             }
+        }
+
+        private void SpawnExplosionParticles(Brick brick)
+        {
+            if (explosionParticlesPrefab == null) return;
+
+            ParticleSystem instance = Instantiate(explosionParticlesPrefab, brick.WorldPosition, Quaternion.identity);
+            var main = instance.main;
+            // Force full opacity - see the matching comment in BrickBreakEffects.SpawnBreakParticles.
+            Color tint = color;
+            tint.a = 1f;
+            main.startColor = tint;
+            instance.Play();
         }
     }
 }

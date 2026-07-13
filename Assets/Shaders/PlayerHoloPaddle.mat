@@ -25,11 +25,19 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 1dc04381d156da343a2ebc10e236a38b, type: 3}
+        m_Texture: {fileID: 2800000, guid: f88677df267a41d6be1e7a6133e7d227, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask:
         m_Texture: {fileID: 2800000, guid: b211d445b442ec94fb0627789e4e78da, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask2:
+        m_Texture: {fileID: 2800000, guid: 9201b6ffc2f1f1945b8e125e781b2278, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Tex2:
+        m_Texture: {fileID: 2800000, guid: 1dc04381d156da343a2ebc10e236a38b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
@@ -52,6 +60,7 @@ Material:
     - _Color: {r: 0.8977454, g: 1.7169812, b: 0.15388034, a: 0}
     - _EdgeColour: {r: 1, g: 0, b: 0, a: 1}
     - _MaskColour: {r: 1.002106, g: 1.660377, b: 0.2114632, a: 0}
+    - _ScrollSpeed: {r: 0, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &2853827277833676745

@@ -20,11 +20,11 @@ MonoBehaviour:
   isIndestructible: 0
   color: {r: 0.9716981, g: 0.9716981, b: 0.9716981, a: 0}
   materialOverride: {fileID: 2100000, guid: 5f3abdde613834f4bb8179c444274dd1, type: 2}
-  hitFlashColor: {r: 3.6981132, g: 0.47311854, b: 0.40659878, a: 1}
+  hitFlashColor: {r: 4.9372716, g: 4.9372716, b: 4.9372716, a: 1}
   hitFlashMaterial: {fileID: 0}
   hitSound: {fileID: 6418180475301049370, guid: 976604be06b86974faa65e2329ab1a2a, type: 2}
   destroyedSound: {fileID: 6418180475301049370, guid: ee498138c6b29d44399d857a114c8399, type: 2}
-  powerUpDropChance: 0.009
+  powerUpDropChance: 0.002
   possiblePowerUps: 020000000100000000000000
   scaleDropChanceNearClear: 1
   shardDropChance: 0.12

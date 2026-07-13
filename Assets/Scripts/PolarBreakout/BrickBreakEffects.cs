@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace PolarBreakout
@@ -23,6 +24,16 @@ namespace PolarBreakout
         [Tooltip("Extra particles in the burst per point of maxHealth above 1, on top of the prefab's own burst count.")]
         public int particlesPerExtraHealth = 4;
 
+        [Header("Hit Stop")]
+        [Tooltip("How long gameplay freezes (Time.timeScale = 0) when a brick is destroyed, in " +
+                 "real seconds. Runs on unscaled/realtime waiting so it isn't affected by its own " +
+                 "freeze. Set to 0 to disable. If several bricks break within the same window " +
+                 "(e.g. an exploding brick's chain reaction), the freeze simply extends rather " +
+                 "than stacking multiple overlapping timescale resets.")]
+        public float hitStopDuration = 0.1f;
+
+        private Coroutine _hitStopCoroutine;
+
         private void OnEnable()
         {
             if (brickGridManager != null) brickGridManager.OnBrickDestroyed += HandleBrickDestroyed;
@@ -41,6 +52,23 @@ namespace PolarBreakout
                 cameraShake.AddTrauma(baseTrauma + traumaPerExtraHealth * (tier - 1));
 
             SpawnBreakParticles(brick, tier);
+            TriggerHitStop();
+        }
+
+        private void TriggerHitStop()
+        {
+            if (hitStopDuration <= 0f) return;
+
+            if (_hitStopCoroutine != null) StopCoroutine(_hitStopCoroutine);
+            _hitStopCoroutine = StartCoroutine(HitStopRoutine());
+        }
+
+        private IEnumerator HitStopRoutine()
+        {
+            Time.timeScale = 0f;
+            yield return new WaitForSecondsRealtime(hitStopDuration);
+            Time.timeScale = 1f;
+            _hitStopCoroutine = null;
         }
 
         private void SpawnBreakParticles(Brick brick, int tier)
@@ -50,7 +78,13 @@ namespace PolarBreakout
             ParticleSystem instance = Instantiate(breakParticlesPrefab, brick.WorldPosition, Quaternion.identity);
 
             var main = instance.main;
-            main.startColor = brick.BrickType.color;
+            // Force full opacity - BrickTypeSO.color's alpha channel is meaningless for the
+            // brick's own opaque mesh material, so some brick types leave it at 0. Left as-is,
+            // that alpha would carry straight into the particle's alpha-blended shader and make
+            // the whole burst invisible.
+            Color tint = brick.BrickType.color;
+            tint.a = 1f;
+            main.startColor = tint;
 
             int extraParticles = particlesPerExtraHealth * (tier - 1);
             if (extraParticles > 0)

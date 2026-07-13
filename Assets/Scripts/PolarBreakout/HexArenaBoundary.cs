@@ -5,9 +5,10 @@ namespace PolarBreakout
 {
     /// <summary>
     /// Builds two candidate walls around the play-area boundary - a jagged EdgeCollider2D loop
-    /// tracing the outward-facing edges of every boundary hex, and a perfect-circle EdgeCollider2D
-    /// sized to contain every boundary hex corner - and switches which one is actually active (both
-    /// as the real physics wall and as the visible LineRenderer) via <see cref="activeBoundary"/>.
+    /// tracing the outward-facing edges of every boundary hex, and a smooth EdgeCollider2D (a
+    /// circle, or a flat-top hexagon when the grid settings' arena shape is Hexagon) sized to
+    /// contain every boundary hex corner - and switches which one is actually active (both as the
+    /// real physics wall and as the visible LineRenderer) via <see cref="activeBoundary"/>.
     /// BrickGridManager calls BuildBoundary at the end of every BuildLevel, so both walls always
     /// match whatever hex layout was just built.
     /// </summary>
@@ -15,7 +16,7 @@ namespace PolarBreakout
     [RequireComponent(typeof(LineRenderer))]
     public class HexArenaBoundary : MonoBehaviour
     {
-        public enum BoundaryShape { Jagged, Circle }
+        public enum BoundaryShape { Jagged, Smooth }
 
         [Tooltip("Which wall is actually active - the real physics collider and the visible line. The other shape is built but disabled.")]
         public BoundaryShape activeBoundary = BoundaryShape.Jagged;
@@ -27,12 +28,12 @@ namespace PolarBreakout
         [Tooltip("Leave unset for a plain colored unlit line - assign a custom material to override.")]
         public Material materialOverride;
 
-        [Header("Outer Circle")]
+        [Header("Smooth Outer Boundary")]
         [Tooltip("Extra clearance beyond the farthest boundary hex corner, world units.")]
         public float outerCirclePadding = 0.15f;
-        [Tooltip("Visual width of the outer circle line, world units.")]
+        [Tooltip("Visual width of the outer boundary line, world units.")]
         public float outerCircleWidth = 0.06f;
-        [Tooltip("Number of segments approximating the circle - higher looks smoother.")]
+        [Tooltip("Number of segments approximating the circle - higher looks smoother. Ignored when the grid settings' arena shape is Hexagon, which always draws a flat 6-sided outline.")]
         public int outerCircleSegments = 96;
         public Color outerCircleColor = Color.yellow;
         [Tooltip("Leave unset for a plain colored unlit line - assign a custom material to override.")]
@@ -93,7 +94,7 @@ namespace PolarBreakout
                 if (child.name == "HexBoundaryLoop") Destroy(child.gameObject);
 
             (_outerCircleLine, _outerCircleCollider) = GetOrCreateOuterCircleObjects();
-            BuildOuterCircle(_outerCircleLine, _outerCircleCollider, maxCornerDistance + outerCirclePadding);
+            BuildSmoothOuterBoundary(_outerCircleLine, _outerCircleCollider, settings, maxCornerDistance + outerCirclePadding);
 
             var loops = StitchLoops(segments);
 
@@ -128,7 +129,7 @@ namespace PolarBreakout
         /// OnValidate right after adding the component), since every reference is null-checked.</summary>
         private void ApplyActiveBoundary()
         {
-            bool jaggedActive = activeBoundary == BoundaryShape.Jagged;
+            bool jaggedActive = activeBoundary != BoundaryShape.Smooth;
 
             if (_collider != null) _collider.enabled = jaggedActive;
             if (_lineRenderer != null) _lineRenderer.enabled = jaggedActive;
@@ -163,15 +164,18 @@ namespace PolarBreakout
             return (go.AddComponent<LineRenderer>(), go.AddComponent<EdgeCollider2D>());
         }
 
-        /// <summary>Draws a smooth, perfect circle of the given radius, centered on this
-        /// component's own position, and assigns the same points (closed) to its EdgeCollider2D -
-        /// an alternative real physics wall to the jagged hex loop, selectable via
-        /// activeBoundary.</summary>
-        private void BuildOuterCircle(LineRenderer line, EdgeCollider2D collider, float radius)
+        /// <summary>Draws a smooth outline of the given circumradius, centered on this component's
+        /// own position, and assigns the same points (closed) to its EdgeCollider2D - an
+        /// alternative real physics wall to the jagged hex loop, selectable via activeBoundary.
+        /// A perfect circle when settings.arenaShape is Circle; a flat-top regular hexagon
+        /// (matching PolarGridSettings.IsWithinHexagon's orientation) when it's Hexagon.</summary>
+        private void BuildSmoothOuterBoundary(LineRenderer line, EdgeCollider2D collider, PolarGridSettings settings, float radius)
         {
             ConfigureLineRenderer(line, outerCircleMaterialOverride, outerCircleColor, outerCircleWidth);
 
-            int segments = Mathf.Max(3, outerCircleSegments);
+            int segments = settings.arenaShape == PolarGridSettings.ArenaShape.Hexagon
+                ? 6
+                : Mathf.Max(3, outerCircleSegments);
             var positions = new Vector3[segments];
             var colliderPoints = new Vector2[segments + 1];
             for (int i = 0; i < segments; i++)

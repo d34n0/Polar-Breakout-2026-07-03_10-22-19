@@ -1955,7 +1955,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: HEX-OUT
+  m_text: Torin
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2843adbc303366e40af7600ba88ba881, type: 2}
   m_sharedMaterial: {fileID: -8777596224887843916, guid: 2843adbc303366e40af7600ba88ba881, type: 2}

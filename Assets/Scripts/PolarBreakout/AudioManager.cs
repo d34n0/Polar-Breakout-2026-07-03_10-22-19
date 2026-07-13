@@ -70,6 +70,22 @@ namespace PolarBreakout
                  "BallController.IsPhasing) - i.e. the moment |Spin| crosses the phase threshold, " +
                  "not every frame it stays phasing. Leave unset for silence.")]
         public AudioResource spinEnterSound;
+
+        [Header("Boss")]
+        [Tooltip("Played once per shot the boss turret fires - see BossTurret.Fire.")]
+        public AudioResource bossFireSound;
+        [Tooltip("Played every time the boss takes a hit (ball or player projectile) - see " +
+                 "BossController.Hit.")]
+        public AudioResource bossHitSound;
+        [Tooltip("Played once, the instant the boss is defeated - see BossController.Hit.")]
+        public AudioResource bossDeathSound;
+        [Tooltip("Played periodically while the boss is alive, at a random interval - see " +
+                 "BossController.idleSoundIntervalMinSeconds/idleSoundIntervalMaxSeconds.")]
+        public AudioResource bossIdleSound;
+        [Tooltip("Played once the boss turret finishes its post-boss-death linger and explodes in " +
+                 "turn - see BossTurret.Explode. Distinct from bossDeathSound, which covers the " +
+                 "boss body's own explosion.")]
+        public AudioResource bossTurretExplosionSound;
         [Range(0f, 1f)]
         public float sfxVolume = 1f;
         [Tooltip("How many simultaneous one-shot SFX sources to keep ready - avoids cutting off " +
@@ -157,5 +173,10 @@ namespace PolarBreakout
         public void PlayCapsulePickup() => PlaySfx(capsulePickupSound);
         public void PlayShardPickup() => PlaySfx(shardPickupSound);
         public void PlaySpinEnter() => PlaySfx(spinEnterSound);
+        public void PlayBossFire() => PlaySfx(bossFireSound);
+        public void PlayBossHit() => PlaySfx(bossHitSound);
+        public void PlayBossDeath() => PlaySfx(bossDeathSound);
+        public void PlayBossIdle() => PlaySfx(bossIdleSound);
+        public void PlayBossTurretExplosion() => PlaySfx(bossTurretExplosionSound);
     }
 }

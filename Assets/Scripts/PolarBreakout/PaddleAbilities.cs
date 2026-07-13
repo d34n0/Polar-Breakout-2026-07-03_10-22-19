@@ -86,12 +86,13 @@ namespace PolarBreakout
         public Material cannonCapsuleMaterial;
 
         [Header("Power-Up Focus Effect")]
-        [Tooltip("Optional. The main arena camera - when set, catching any power-up capsule " +
-                 "pauses the game and zooms this camera in on the paddle (see " +
-                 "PlayPowerUpFocusSequence) before applying the power-up, holds there for that " +
-                 "type's own reveal, then zooms back out and resumes. Leave unset to apply " +
-                 "power-ups instantly with no camera effect at all, exactly as before - every " +
-                 "existing isolated test relies on this default.")]
+        [Tooltip("Optional. The main arena camera - when set, catching a Cannon capsule pauses " +
+                 "the game and zooms this camera in on the paddle (see PlayPowerUpFocusSequence) " +
+                 "before applying the power-up, holds there until RevealCannons finishes, then " +
+                 "zooms back out and resumes. Multiball and Autopilot always apply instantly with " +
+                 "no camera effect, regardless of this setting. Leave unset to apply Cannon " +
+                 "instantly too, with no camera effect at all, exactly as before - every existing " +
+                 "isolated test relies on this default.")]
         public Camera focusCamera;
         [Tooltip("Optional. Disabled for the duration of the focus effect so it doesn't fight " +
                  "the zoom's own orthographicSize/position animation, then re-enabled once the " +
@@ -104,16 +105,19 @@ namespace PolarBreakout
         public float focusZoomInDuration = 0.3f;
         [Tooltip("How long the zoom back out to the camera's original framing takes, seconds.")]
         public float focusZoomOutDuration = 0.3f;
-        [Tooltip("How long the camera holds on the zoomed-in paddle for a power-up type with no " +
-                 "reveal animation of its own yet (currently Multiball and Autopilot - Cannon " +
-                 "instead waits for RevealCannons to actually finish, however long that takes). " +
-                 "Replace this per type once a real animation/sound exists for it - e.g. an " +
-                 "Animator trigger keyed off PowerUpType, awaited here the same way RevealCannons " +
-                 "already is below.")]
+        [Tooltip("Fallback hold time on the zoomed-in paddle if RevealCannons somehow isn't " +
+                 "running when the cinematic reaches this point - in practice Cannon (the only " +
+                 "type that triggers this cinematic) always waits for RevealCannons to finish " +
+                 "instead.")]
         public float focusHoldDuration = 0.6f;
 
         public int CannonAmmo => _cannonAmmo;
         public bool IsAutopilotActive => _autopilotTimeRemaining > 0f;
+
+        /// <summary>Fired whenever CannonAmmo changes (a fresh pickup, a stacked top-up, a shot
+        /// fired, or a reset to 0) - drives a HUD element that only shows while the cannon is
+        /// active (see CannonAmmoUIController).</summary>
+        public event System.Action<int> OnCannonAmmoChanged;
 
         private PaddleController _paddle;
         private int _cannonAmmo;
@@ -278,14 +282,28 @@ namespace PolarBreakout
                 // acquired cards granted, rather than letting it be re-fired repeatedly.
                 bool laserEnabled = runModifiers != null && runModifiers.GetBonus(ModifierType.LaserBeamEnabled) > 0f;
                 FireCannon();
-                _cannonAmmo = laserEnabled ? 0 : _cannonAmmo - 1;
+                SetCannonAmmo(laserEnabled ? 0 : _cannonAmmo - 1);
                 if (_cannonAmmo <= 0) SetCannonVisualsActive(false);
             }
         }
 
+        /// <summary>Sets CannonAmmo and raises OnCannonAmmoChanged - every place that touches
+        /// _cannonAmmo goes through here instead of assigning it directly, so the HUD (see
+        /// CannonAmmoUIController) always stays in sync.</summary>
+        private void SetCannonAmmo(int value)
+        {
+            _cannonAmmo = Mathf.Max(0, value);
+            OnCannonAmmoChanged?.Invoke(_cannonAmmo);
+        }
+
         /// <summary>Applies type's effect - via the full pause/zoom/reveal/resume cinematic (see
-        /// PlayPowerUpFocusSequence) when focusCamera is wired up and no such sequence is already
-        /// running, otherwise instantly, exactly as before this effect existed.</summary>
+        /// PlayPowerUpFocusSequence) when focusCamera is wired up, the type is Cannon, no such
+        /// sequence is already running, and the cannon isn't already active, otherwise instantly.
+        /// The zoom-in/turret-grow cinematic only exists to frame the very first reveal of the
+        /// barrels - a Cannon pickup caught while the cannon is already active (ammo still in
+        /// hand) skips it entirely and just tops up its ammo in place (see ApplyPowerUpEffect),
+        /// since the barrels are already visibly out. Multiball and Autopilot always apply
+        /// instantly with no camera effect.</summary>
         public void CollectPowerUp(PowerUpType type)
         {
             // The cinematic only plays while gameplay is genuinely live - a capsule caught in the
@@ -294,7 +312,8 @@ namespace PolarBreakout
             // the paddle kills every coroutine on this component, which once left Time.timeScale
             // stuck at 0 and froze the whole game).
             bool gameplayLive = ballManager == null || ballManager.IsAnyBallInPlay();
-            if (focusCamera != null && !_focusSequenceActive && gameplayLive)
+            bool cannonAlreadyActive = type == PowerUpType.Cannon && _cannonAmmo > 0;
+            if (type == PowerUpType.Cannon && focusCamera != null && !_focusSequenceActive && gameplayLive && !cannonAlreadyActive)
                 _focusSequenceCoroutine = StartCoroutine(PlayPowerUpFocusSequence(type));
             else
                 ApplyPowerUpEffect(type);
@@ -313,9 +332,19 @@ namespace PolarBreakout
                     break;
                 case PowerUpType.Cannon:
                     float ammoBonus = runModifiers != null ? runModifiers.GetBonus(ModifierType.CannonAmmoBonus) : 0f;
-                    _cannonAmmo = cannonAmmoPerPickup + Mathf.RoundToInt(ammoBonus);
-                    if (_cannonRevealCoroutine != null) StopCoroutine(_cannonRevealCoroutine);
-                    _cannonRevealCoroutine = StartCoroutine(RevealCannons());
+                    int grantedAmmo = cannonAmmoPerPickup + Mathf.RoundToInt(ammoBonus);
+                    if (_cannonAmmo > 0)
+                    {
+                        // Already active - stack ammo on top instead of replaying the reveal (the
+                        // barrels are already out) or resetting the count back down.
+                        SetCannonAmmo(_cannonAmmo + grantedAmmo);
+                    }
+                    else
+                    {
+                        SetCannonAmmo(grantedAmmo);
+                        if (_cannonRevealCoroutine != null) StopCoroutine(_cannonRevealCoroutine);
+                        _cannonRevealCoroutine = StartCoroutine(RevealCannons());
+                    }
                     break;
             }
         }
@@ -355,7 +384,7 @@ namespace PolarBreakout
 
             ApplyPowerUpEffect(type);
 
-            if (type == PowerUpType.Cannon && _cannonRevealCoroutine != null)
+            if (_cannonRevealCoroutine != null)
                 yield return _cannonRevealCoroutine;
             else
                 yield return new WaitForSecondsRealtime(focusHoldDuration);
@@ -462,7 +491,7 @@ namespace PolarBreakout
             // before the sequence that called this starts deactivating objects out from under it.
             AbortFocusSequence();
 
-            _cannonAmmo = 0;
+            SetCannonAmmo(0);
             _autopilotTimeRemaining = 0f;
             _paddle.AutopilotOverrideAngleDegrees = null;
             SetCannonVisualsActive(false);

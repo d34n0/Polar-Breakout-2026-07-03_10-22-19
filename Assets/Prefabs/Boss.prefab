@@ -1,0 +1,129 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2692451247907218444
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7906890666889934719}
+  - component: {fileID: 925095318924586392}
+  m_Layer: 0
+  m_Name: Turret
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7906890666889934719
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2692451247907218444}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3907363621930306396}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &925095318924586392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2692451247907218444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2214d024af98b8342bd3d70c3e20b362, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.BossTurret
+  turretSprite: {fileID: 21300000, guid: c82146ef7fca8174cb60219ea8b51f8e, type: 3}
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  fireInterval: 5
+  bulletSpeed: 6
+  bossBulletPrefab: {fileID: 8326734492859646417, guid: 3055e2b5b69bed8478d25d437ab281e9, type: 3}
+  explosionParticlesPrefab: {fileID: 3527978499976578858, guid: 54d19c50999a9f7478c1e5e79a7aa666, type: 3}
+  rotationSpeedDegrees: 240
+  maxSpeedMultiplier: 2
+  minFireIntervalMultiplier: 0.4
+  ballManager: {fileID: 0}
+  settings: {fileID: 0}
+  audioManager: {fileID: 0}
+--- !u!1 &8175498582660975098
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3907363621930306396}
+  - component: {fileID: 4304067348857374771}
+  m_Layer: 0
+  m_Name: Boss
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3907363621930306396
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8175498582660975098}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7906890666889934719}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4304067348857374771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8175498582660975098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60e0bec047227ca46ad4e561b88c3474, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.BossController
+  bodySprite: {fileID: 21300000, guid: 19deb57e79369864a9415b62ac3076b1, type: 3}
+  footprintHexWidths: 3
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  maxHealth: 5
+  flashDuration: 0.15
+  hitFlashColor: {r: 2.670157, g: 0, b: 0, a: 1}
+  hitFlashMaterial: {fileID: 0}
+  explosionParticlesPrefab: {fileID: 4175979075884359705, guid: 00c9b0d8b4b003346a5dea39a1f58f43, type: 3}
+  slowMoTimeScale: 0.5
+  slowMoDuration: 2
+  hoverCenterAngleDegrees: 90
+  hoverArcDegrees: 40
+  hoverRadiusInsetMin: 1
+  hoverRadiusInsetMax: 3
+  wanderTargetIntervalMin: 1.5
+  wanderTargetIntervalMax: 4
+  wanderSpeedMin: 1.5
+  wanderSpeedMax: 4
+  wanderTurnRateDegrees: 150
+  wanderArrivalThreshold: 0.5
+  idleSoundIntervalMinSeconds: 4
+  idleSoundIntervalMaxSeconds: 10
+  settings: {fileID: 0}
+  ballManager: {fileID: 0}
+  audioManager: {fileID: 0}
+  turret: {fileID: 925095318924586392}

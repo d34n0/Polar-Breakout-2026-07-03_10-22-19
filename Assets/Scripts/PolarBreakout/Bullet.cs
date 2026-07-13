@@ -169,9 +169,14 @@ namespace PolarBreakout
         private void OnTriggerEnter2D(Collider2D other)
         {
             var brick = other.GetComponent<Brick>();
-            if (brick == null) return;
+            // The boss's hit collider lives on its "Body" child (see BossController.Awake), not
+            // its root, so it needs GetComponentInParent rather than GetComponent to find it.
+            var boss = brick == null ? other.GetComponentInParent<BossController>() : null;
+            if (brick == null && boss == null) return;
 
-            brick.Hit(gameObject);
+            if (brick != null) brick.Hit(gameObject);
+            else boss.Hit(gameObject);
+
             if (_pierce) return;
 
             if (_ricochetsRemaining > 0)

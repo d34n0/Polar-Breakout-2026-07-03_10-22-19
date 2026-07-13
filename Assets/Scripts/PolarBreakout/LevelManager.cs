@@ -25,6 +25,10 @@ namespace PolarBreakout
                  "that don't need this.")]
         public BallManager ballManager;
 
+        [Tooltip("Optional. Passed down to a spawned Boss-type level's boss/turret (see " +
+                 "SpawnBoss) for its hit/fire/death/idle sounds. Leave unset for a silent boss.")]
+        public AudioManager audioManager;
+
         [Tooltip("Levels to advance through in order (stage 1 = levels[0], stage 2 = levels[1], " +
                  "etc.). Once exhausted, the last entry is regenerated instead of erroring.")]
         public LevelSO[] levels;
@@ -50,6 +54,11 @@ namespace PolarBreakout
                  "unset to fall back to the plain instant BuildLevel path, e.g. for isolated tests.")]
         public HexWipeTransition hexWipeTransition;
 
+        [Tooltip("Boss-type levels only. Parent transform a spawned LevelSO.bossPrefab instance " +
+                 "is instantiated under - leave unset (falls back to this GameObject's own " +
+                 "transform) if the scene has no dedicated arena root for it.")]
+        public Transform bossSpawnParent;
+
         public int CurrentStage { get; private set; } = 1;
         public event Action<int> OnStageChanged;
 
@@ -72,6 +81,10 @@ namespace PolarBreakout
         // Guards against AdvanceToNextStage starting twice for the same stage - a Survive stage's
         // timer expiring and a stray OnLevelCleared could otherwise both try to trigger it.
         private bool _stageAdvancing;
+
+        // The currently-spawned boss for a Boss-type stage, if any - tracked so it can be
+        // unsubscribed/destroyed on cleanup (defeat, or the round otherwise ending early).
+        private BossController _activeBoss;
 
         private void Awake()
         {
@@ -193,8 +206,8 @@ namespace PolarBreakout
         }
 
         /// <summary>Marks lvl as the currently-live level: resets the full-clear bonus flag,
-        /// (re)starts or clears the Survive timer based on its objective type, and notifies
-        /// SurviveTimerController via OnSurviveStageChanged.</summary>
+        /// (re)starts or clears the Survive timer based on its objective type, spawns/tears down a
+        /// Boss-type level's boss, and notifies SurviveTimerController via OnSurviveStageChanged.</summary>
         private void ActivateLevel(LevelSO lvl)
         {
             _activeLevel = lvl;
@@ -212,8 +225,63 @@ namespace PolarBreakout
 
             OnSurviveStageChanged?.Invoke(isSurvive, lvl != null ? lvl.surviveDuration : 0f);
 
+            DestroyActiveBoss();
+            if (lvl != null && lvl.objectiveType == StageObjectiveType.Boss)
+                SpawnBoss(lvl);
+
             if (lvl != null)
                 OnObjectiveAnnounced?.Invoke(lvl.objectiveType, lvl.surviveDuration);
+        }
+
+        /// <summary>Instantiates lvl.bossPrefab (under bossSpawnParent, or this GameObject's own
+        /// transform if unset), wires its settings/ballManager references (and its turret's, plus
+        /// the fire interval from lvl), and subscribes OnDefeated to advance the stage the same
+        /// way a Clear-type level's OnLevelCleared does today.</summary>
+        private void SpawnBoss(LevelSO lvl)
+        {
+            if (lvl.bossPrefab == null) return;
+
+            Transform parent = bossSpawnParent != null ? bossSpawnParent : transform;
+            _activeBoss = Instantiate(lvl.bossPrefab, parent);
+            _activeBoss.settings = lvl.gridSettings;
+            _activeBoss.ballManager = ballManager;
+            _activeBoss.audioManager = audioManager;
+            _activeBoss.maxHealth = lvl.bossMaxHealth;
+
+            if (_activeBoss.turret != null)
+            {
+                _activeBoss.turret.settings = lvl.gridSettings;
+                _activeBoss.turret.ballManager = ballManager;
+                _activeBoss.turret.audioManager = audioManager;
+                _activeBoss.turret.fireInterval = lvl.bossFireInterval;
+                // Snapshots the just-assigned fireInterval (and this prefab's own bulletSpeed) as
+                // the "full health" baseline SetHealthFraction scales from as the boss takes
+                // damage - must happen after the line above, not before.
+                _activeBoss.turret.CaptureBaseline();
+            }
+
+            _activeBoss.OnDefeated += HandleBossDefeated;
+        }
+
+        /// <summary>Unsubscribes and destroys the current boss instance, if any - called before
+        /// spawning the next level's boss (in case it somehow wasn't cleared already) and as a
+        /// safety net whenever a round ends (see PlayEndOfRoundSequence), so a boss can never
+        /// linger into a level that no longer wants one. Leaves an already-defeated boss alone -
+        /// it's mid its own slow-mo/explosion death sequence (see BossController.PlayDefeatSequence)
+        /// and will destroy itself once that finishes; force-destroying it here would cut that
+        /// sequence off mid-flight and leave Time.timeScale stuck at its slow-mo value forever.</summary>
+        private void DestroyActiveBoss()
+        {
+            if (_activeBoss == null || _activeBoss.IsDefeated) return;
+
+            _activeBoss.OnDefeated -= HandleBossDefeated;
+            Destroy(_activeBoss.gameObject);
+            _activeBoss = null;
+        }
+
+        private void HandleBossDefeated()
+        {
+            BeginAdvanceToNextStage();
         }
 
         /// <summary>Computes and applies the soft clear threshold for Clear-type levels (advance
@@ -298,6 +366,12 @@ namespace PolarBreakout
         /// rather than the paddle just sitting there mid-choice.</summary>
         private IEnumerator PlayEndOfRoundSequence()
         {
+            // Safety net: a boss round should normally already be gone by the time this runs (its
+            // own Hit() destroys it on defeat), but this guarantees one can never linger into the
+            // next round if some future path (e.g. a boss stage that also has a Survive timer)
+            // ever ends the round another way.
+            DestroyActiveBoss();
+
             yield return new WaitForSeconds(endOfRoundDelay);
             if (ballManager != null) yield return ballManager.PlayRoundEndDissolveOut();
         }

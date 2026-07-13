@@ -17,4 +17,5 @@ MonoBehaviour:
   hexSize: 0.5
   hexGap: 0.1
   outerWallRadius: 10
+  arenaShape: 1
   curveResolutionDegrees: 0.2

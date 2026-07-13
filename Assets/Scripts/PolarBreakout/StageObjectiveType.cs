@@ -14,5 +14,10 @@ namespace PolarBreakout
         /// clear before the timer runs out still grants the guaranteed-rare card bonus (see
         /// LevelManager.HandleLevelCleared) but doesn't end the stage early on its own.</summary>
         Survive,
+
+        /// <summary>Advance once the level's spawned BossController fires OnDefeated. Bricks are
+        /// irrelevant for this objective - falls into LevelManager.ApplyClearThreshold's existing
+        /// non-Clear branch (threshold stays 0) the same way Survive does.</summary>
+        Boss,
     }
 }

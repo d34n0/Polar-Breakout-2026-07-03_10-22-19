@@ -157,6 +157,11 @@ namespace PolarBreakout
             // its `levels` array is empty) reads BrickGridManager.level expecting it to reflect
             // whichever level is currently active.
             brickGridManager.level = level;
+            // Matches BuildLevel's own reset - without it, the guard stays latched true forever
+            // after the first level that ever clears (since this progressive per-cell spawn path
+            // never goes through BuildLevel), silently preventing every later Clear-type level
+            // from ever firing OnLevelCleared again.
+            brickGridManager.ResetLevelClearedGuard();
             brickGridManager.PrepareSharedGeometry(settings);
 
             var sweepSettings = GetSweepSettings(settings);

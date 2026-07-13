@@ -1122,6 +1122,7 @@ GameObject:
   - component: {fileID: 111438530}
   - component: {fileID: 111438535}
   - component: {fileID: 111438536}
+  - component: {fileID: 111438537}
   m_Layer: 0
   m_Name: HUDCanvas
   m_TagString: Untagged
@@ -1235,6 +1236,7 @@ RectTransform:
   - {fileID: 2118210223}
   - {fileID: 1578785408}
   - {fileID: 1037911056}
+  - {fileID: 1461870339}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1273,6 +1275,21 @@ MonoBehaviour:
   objectiveText: {fileID: 1037911057}
   displayDuration: 2.5
   fadeOutDuration: 0.5
+--- !u!114 &111438537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 111438529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: daaf390f7c45c6b4e8cf36d48aac6464, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.CannonAmmoUIController
+  paddleAbilities: {fileID: 674392002}
+  ammoRoot: {fileID: 1461870338}
+  ammoText: {fileID: 1461870341}
 --- !u!1 &150084966
 GameObject:
   m_ObjectHideFlags: 0
@@ -15322,10 +15339,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.BrickBreakEffects
   brickGridManager: {fileID: 452747081}
   cameraShake: {fileID: 330585548}
-  breakParticlesPrefab: {fileID: 804500764355357061, guid: 5ef09501eba14c242b03c91b8157d35a, type: 3}
+  breakParticlesPrefab: {fileID: 3527978499976578858, guid: 2f85bd998ef2bf846907372b5fb8f99e, type: 3}
   baseTrauma: 0.15
   traumaPerExtraHealth: 0.12
   particlesPerExtraHealth: 4
+  hitStopDuration: 0.05
 --- !u!4 &837740392
 Transform:
   m_ObjectHideFlags: 0
@@ -28100,6 +28118,143 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &1461870338
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1461870339}
+  - component: {fileID: 1461870342}
+  - component: {fileID: 1461870341}
+  m_Layer: 0
+  m_Name: CannonAmmoText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &1461870339
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461870338}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 111438534}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -540}
+  m_SizeDelta: {x: 240, y: 70}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1461870341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461870338}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_text: 'Bullets: 0'
+  m_isRightToLeft: 0
+  m_fontAsset: {fileID: 11400000, guid: 2843adbc303366e40af7600ba88ba881, type: 2}
+  m_sharedMaterial: {fileID: 2100000, guid: 37a88b2a2c18f184d9aa57426fdc111e, type: 2}
+  m_fontSharedMaterials: []
+  m_fontMaterial: {fileID: 0}
+  m_fontMaterials: []
+  m_fontColor32:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_enableVertexGradient: 0
+  m_colorMode: 3
+  m_fontColorGradient:
+    topLeft: {r: 1, g: 1, b: 1, a: 1}
+    topRight: {r: 1, g: 1, b: 1, a: 1}
+    bottomLeft: {r: 1, g: 1, b: 1, a: 1}
+    bottomRight: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColorGradientPreset: {fileID: 0}
+  m_spriteAsset: {fileID: 0}
+  m_tintAllSprites: 0
+  m_StyleSheet: {fileID: 0}
+  m_TextStyleHashCode: -1183493901
+  m_overrideHtmlColors: 0
+  m_faceColor:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontSize: 24
+  m_fontSizeBase: 24
+  m_fontWeight: 400
+  m_enableAutoSizing: 0
+  m_fontSizeMin: 18
+  m_fontSizeMax: 72
+  m_fontStyle: 0
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
+  m_textAlignment: 65535
+  m_characterSpacing: 0
+  m_characterHorizontalScale: 1
+  m_wordSpacing: 0
+  m_lineSpacing: 0
+  m_lineSpacingMax: 0
+  m_paragraphSpacing: 0
+  m_charWidthMaxAdj: 0
+  m_TextWrappingMode: 1
+  m_wordWrappingRatios: 0.4
+  m_overflowMode: 0
+  m_linkedTextComponent: {fileID: 0}
+  parentLinkedComponent: {fileID: 0}
+  m_enableKerning: 0
+  m_ActiveFontFeatures: 6e72656b
+  m_enableExtraPadding: 0
+  checkPaddingRequired: 0
+  m_isRichText: 1
+  m_EmojiFallbackSupport: 1
+  m_parseCtrlCharacters: 1
+  m_isOrthographic: 1
+  m_isCullingEnabled: 0
+  m_horizontalMapping: 0
+  m_verticalMapping: 0
+  m_uvLineOffset: 0
+  m_geometrySortingOrder: 0
+  m_IsTextObjectScaleStatic: 0
+  m_VertexBufferAutoSizeReduction: 0
+  m_useMaxVisibleDescender: 1
+  m_pageToDisplay: 1
+  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_isUsingLegacyAnimationComponent: 0
+  m_isVolumetricText: 0
+  m_hasFontAssetChanged: 0
+  m_baseMaterial: {fileID: 0}
+  m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!222 &1461870342
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461870338}
+  m_CullTransparentMesh: 1
 --- !u!1 &1464441067
 GameObject:
   m_ObjectHideFlags: 0
@@ -29386,12 +29541,16 @@ MonoBehaviour:
   brickGridManager: {fileID: 452747081}
   scoreManager: {fileID: 1739309389}
   ballManager: {fileID: 1973265797}
+  audioManager: {fileID: 1693991714}
   levels:
   - {fileID: 11400000, guid: 278017f25e0e34b44ad91386f386ae6b, type: 2}
+  - {fileID: 11400000, guid: 8f30c18daf521b34b8cd7d35cda07fbe, type: 2}
+  - {fileID: 11400000, guid: e226540368921fb47a5f18c62cb577a5, type: 2}
   levelClearBonusPerStage: 1000
   cardOfferController: {fileID: 426865038}
   endOfRoundDelay: 1
   hexWipeTransition: {fileID: 1474923619}
+  bossSpawnParent: {fileID: 1685890434}
 --- !u!4 &1649802269
 Transform:
   m_ObjectHideFlags: 0
@@ -29686,6 +29845,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1685890433
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1685890434}
+  m_Layer: 0
+  m_Name: BossSpawnParent
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1685890434
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1685890433}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1775400326}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1693991713
 GameObject:
   m_ObjectHideFlags: 0
@@ -29726,11 +29916,16 @@ MonoBehaviour:
   deathSound: {fileID: 8300000, guid: f3a48323d5a3d5f46b12bb238c572b73, type: 3}
   bulletSound: {fileID: 8300000, guid: 16f194bec6aabc04eb31b4d7f8077f28, type: 3}
   laserSound: {fileID: 0}
-  boundaryHitSound: {fileID: 0}
-  paddleHitSound: {fileID: 0}
+  boundaryHitSound: {fileID: 8300000, guid: 1df2468ff2bfec746970f19a877e59de, type: 3}
+  paddleHitSound: {fileID: 8300000, guid: 1df2468ff2bfec746970f19a877e59de, type: 3}
   capsulePickupSound: {fileID: 8300000, guid: 9900f487c9fafe0499033d6f9bb3bd79, type: 3}
   shardPickupSound: {fileID: 8300000, guid: f102fee08ea5ebf45b140291df881ec6, type: 3}
-  spinEnterSound: {fileID: 0}
+  spinEnterSound: {fileID: 8300000, guid: fe0a6160712588249aa79c6b7e198557, type: 3}
+  bossFireSound: {fileID: 8300000, guid: ea81f2f22a448284599a726f86dc248c, type: 3}
+  bossHitSound: {fileID: 0}
+  bossDeathSound: {fileID: 8300000, guid: ac2830292270fdf4494cb362c6efe102, type: 3}
+  bossIdleSound: {fileID: 8300000, guid: 547f091dc6caa6d4a9ae4e8eec0065a0, type: 3}
+  bossTurretExplosionSound: {fileID: 8300000, guid: 701a158961045e24899c24be1dcbee0b, type: 3}
   sfxVolume: 1
   sfxPoolSize: 6
 --- !u!4 &1693991715
@@ -30321,6 +30516,7 @@ Transform:
   - {fileID: 674391996}
   - {fileID: 1426727417}
   - {fileID: 1996536057}
+  - {fileID: 1685890434}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1794988094
@@ -30376,7 +30572,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1809062199
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31683,6 +31879,7 @@ MonoBehaviour:
   paddleDissolveOutDuration: 0.3
   dissolveInDuration: 0.6
   deathZonePortalLeadTime: 0.2
+  transientFlashDuration: 0.15
 --- !u!4 &1973265798
 Transform:
   m_ObjectHideFlags: 0

@@ -6,8 +6,8 @@ AudioContainerElement:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: C hit glass reverb 2_{-9100710478400783823}
-  m_AudioClip: {fileID: 8300000, guid: c16e3d99d537c5548b88634409a8da42, type: 3}
+  m_Name: GlassBlockBreak3_{-9100710478400783823}
+  m_AudioClip: {fileID: 8300000, guid: c760bd8fa9b982a48b604e09b0e3f09e, type: 3}
   m_Volume: 0
   m_Enabled: 1
 --- !u!1307931743 &6418180475301049370
@@ -17,12 +17,12 @@ AudioRandomContainer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: RandomBrickHitPitch
-  m_Volume: 0
+  m_Volume: -6
   m_Pitch: 0
   m_AutomaticTriggerTime: 0
   m_LoopCount: 1
   m_VolumeRandomizationRange: {x: 0, y: 0}
-  m_PitchRandomizationRange: {x: -500, y: 500}
+  m_PitchRandomizationRange: {x: -100, y: 100}
   m_AutomaticTriggerTimeRandomizationRange: {x: 0, y: 0}
   m_LoopCountRandomizationRange: {x: 0, y: 0}
   m_Elements:

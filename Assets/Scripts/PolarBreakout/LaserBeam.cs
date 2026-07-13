@@ -89,6 +89,11 @@ namespace PolarBreakout
         {
             var brick = other.GetComponent<Brick>();
             if (brick != null) brick.Hit(gameObject);
+
+            // The boss's hit collider lives on its "Body" child (see BossController.Awake), not
+            // its root, so it needs GetComponentInParent rather than GetComponent to find it.
+            var boss = other.GetComponentInParent<BossController>();
+            if (boss != null) boss.Hit(gameObject);
         }
 
         private void Update()

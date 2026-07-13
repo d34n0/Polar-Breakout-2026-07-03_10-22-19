@@ -47,6 +47,13 @@ namespace PolarBreakout
         // re-satisfy the "<= ClearThreshold" check and re-invoke the event.
         private bool _levelClearedFired;
 
+        /// <summary>Re-arms the OnLevelCleared guard for a freshly (re)built level. BuildLevel
+        /// already does this itself - only needed by callers that spawn a level's bricks some
+        /// other way (see HexWipeTransition.PlayBuildIn, whose progressive per-cell spawn via
+        /// SpawnBrickAt never goes through BuildLevel), so that level can still ever clear instead
+        /// of staying latched from whatever level last set the guard.</summary>
+        public void ResetLevelClearedGuard() => _levelClearedFired = false;
+
         public event Action OnLevelCleared;
 
         /// <summary>Fired once per brick right when it's destroyed (never for indestructible

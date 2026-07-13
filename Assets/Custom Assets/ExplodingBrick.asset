@@ -32,3 +32,4 @@ MonoBehaviour:
   shardDropAmountMax: 3
   explosionRadius: 1.5
   fuseDuration: 0.35
+  explosionParticlesPrefab: {fileID: 804500764355357061, guid: 5ef09501eba14c242b03c91b8157d35a, type: 3}
