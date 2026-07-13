@@ -13,6 +13,9 @@ namespace PolarBreakout
         public BrickGridManager brickGridManager;
         public CameraShake cameraShake;
         public ParticleSystem breakParticlesPrefab;
+        [Tooltip("Optional. Instantiated at the brick's position alongside the particle burst - a " +
+                 "small screen-space ripple radiating from the break point. Leave unset for no ripple.")]
+        public RippleEffect ripplePrefab;
 
         [Header("Screen Shake")]
         [Tooltip("Trauma added for a 1-health (weakest) brick.")]
@@ -52,6 +55,7 @@ namespace PolarBreakout
                 cameraShake.AddTrauma(baseTrauma + traumaPerExtraHealth * (tier - 1));
 
             SpawnBreakParticles(brick, tier);
+            SpawnRipple(brick);
             TriggerHitStop();
         }
 
@@ -78,13 +82,7 @@ namespace PolarBreakout
             ParticleSystem instance = Instantiate(breakParticlesPrefab, brick.WorldPosition, Quaternion.identity);
 
             var main = instance.main;
-            // Force full opacity - BrickTypeSO.color's alpha channel is meaningless for the
-            // brick's own opaque mesh material, so some brick types leave it at 0. Left as-is,
-            // that alpha would carry straight into the particle's alpha-blended shader and make
-            // the whole burst invisible.
-            Color tint = brick.BrickType.color;
-            tint.a = 1f;
-            main.startColor = tint;
+            main.startColor = GetOpaqueTint(brick);
 
             int extraParticles = particlesPerExtraHealth * (tier - 1);
             if (extraParticles > 0)
@@ -96,6 +94,25 @@ namespace PolarBreakout
             }
 
             instance.Play();
+        }
+
+        private void SpawnRipple(Brick brick)
+        {
+            if (ripplePrefab == null) return;
+
+            RippleEffect instance = Instantiate(ripplePrefab, brick.WorldPosition, Quaternion.identity);
+            instance.Play(GetOpaqueTint(brick));
+        }
+
+        // Force full opacity - BrickTypeSO.color's alpha channel is meaningless for the brick's
+        // own opaque mesh material, so some brick types leave it at 0. Left as-is, that alpha
+        // would carry straight into the particle/ripple's own alpha-blended shaders and make the
+        // whole effect invisible.
+        private static Color GetOpaqueTint(Brick brick)
+        {
+            Color tint = brick.BrickType.color;
+            tint.a = 1f;
+            return tint;
         }
     }
 }

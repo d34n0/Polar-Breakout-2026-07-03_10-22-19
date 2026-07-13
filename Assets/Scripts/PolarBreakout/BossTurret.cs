@@ -91,6 +91,10 @@ namespace PolarBreakout
         private Vector2 _driftDirection;
         private float _driftChangeTimer;
 
+        private bool _paused;
+        private float _healthFraction = 1f;
+        private float _phaseFireRateMultiplier = 1f;
+
         private void Awake()
         {
             _renderer = gameObject.AddComponent<SpriteRenderer>();
@@ -118,18 +122,40 @@ namespace PolarBreakout
         public void SetHealthFraction(float remainingFraction)
         {
             if (!_baselineCaptured) CaptureBaseline();
-
-            float t = 1f - Mathf.Clamp01(remainingFraction);
-            bulletSpeed = Mathf.Lerp(_baseBulletSpeed, _baseBulletSpeed * maxSpeedMultiplier, t);
-            fireInterval = Mathf.Lerp(_baseFireInterval, _baseFireInterval * minFireIntervalMultiplier, t);
+            _healthFraction = Mathf.Clamp01(remainingFraction);
+            RecomputeStats();
         }
+
+        /// <summary>Layers an extra fire-rate boost on top of SetHealthFraction's own scaling -
+        /// called by BossController.UpdatePhaseState with its phase 2/final-hit multiplier
+        /// (1 outside phase 2). Values above 1 shrink fireInterval further, i.e. fire more often.</summary>
+        public void SetPhaseFireRateMultiplier(float multiplier)
+        {
+            if (!_baselineCaptured) CaptureBaseline();
+            _phaseFireRateMultiplier = Mathf.Max(0.01f, multiplier);
+            RecomputeStats();
+        }
+
+        private void RecomputeStats()
+        {
+            float t = 1f - _healthFraction;
+            bulletSpeed = Mathf.Lerp(_baseBulletSpeed, _baseBulletSpeed * maxSpeedMultiplier, t);
+            fireInterval = Mathf.Lerp(_baseFireInterval, _baseFireInterval * minFireIntervalMultiplier, t)
+                / _phaseFireRateMultiplier;
+        }
+
+        /// <summary>Suspends (or resumes) normal aim/fire without touching _isDying - used by
+        /// BossController to freeze the turret for the duration of a phase 2 teleport (see
+        /// BossController.TeleportRoutine), resuming the instant the teleport completes.</summary>
+        public void SetPaused(bool paused) => _paused = paused;
 
         private void Update()
         {
             // Once the boss dies, DeathSequence (started from BeginDeathSequence) drives the
             // turret's motion frame-by-frame itself (see its while loop) - normal aim/fire is
             // skipped entirely rather than fighting it for control of transform.rotation/position.
-            if (_isDying) return;
+            // Same during a phase 2 teleport (_paused) - see BossController.TeleportRoutine.
+            if (_isDying || _paused) return;
 
             if (ballManager != null && ballManager.TryGetNearestBallPosition(out Vector2 targetPosition))
             {

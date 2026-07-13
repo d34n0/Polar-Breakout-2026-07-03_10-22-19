@@ -50,6 +50,14 @@ MonoBehaviour:
   bulletSpeed: 6
   bossBulletPrefab: {fileID: 8326734492859646417, guid: 3055e2b5b69bed8478d25d437ab281e9, type: 3}
   explosionParticlesPrefab: {fileID: 3527978499976578858, guid: 54d19c50999a9f7478c1e5e79a7aa666, type: 3}
+  deathLingerDurationMin: 0.5
+  deathLingerDurationMax: 1
+  deathDriftSpeed: 0.6
+  deathDriftChangeInterval: 0.3
+  deathDriftSpinDegrees: 60
+  preExplodeFlashColor: {r: 2, g: 2, b: 2, a: 1}
+  preExplodeFlashDuration: 0.3
+  preExplodeFlashBlinkInterval: 0.06
   rotationSpeedDegrees: 240
   maxSpeedMultiplier: 2
   minFireIntervalMultiplier: 0.4
@@ -109,6 +117,7 @@ MonoBehaviour:
   hitFlashColor: {r: 2.670157, g: 0, b: 0, a: 1}
   hitFlashMaterial: {fileID: 0}
   explosionParticlesPrefab: {fileID: 4175979075884359705, guid: 00c9b0d8b4b003346a5dea39a1f58f43, type: 3}
+  explosionRipplePrefab: {fileID: 2477756947519441421, guid: df3c985819395a246a9d19fba406f3de, type: 3}
   slowMoTimeScale: 0.5
   slowMoDuration: 2
   hoverCenterAngleDegrees: 90
@@ -121,8 +130,18 @@ MonoBehaviour:
   wanderSpeedMax: 4
   wanderTurnRateDegrees: 150
   wanderArrivalThreshold: 0.5
-  idleSoundIntervalMinSeconds: 4
-  idleSoundIntervalMaxSeconds: 10
+  phase2HitThreshold: 2
+  phase2SpeedMultiplier: 1.6
+  phase2FireRateMultiplier: 1.6
+  phase2TeleportIntervalMin: 3
+  phase2TeleportIntervalMax: 5
+  finalHitBoostMultiplier: 2
+  teleportDuration: 1.5
+  teleportMinRadiusRings: 7
+  teleportMinDistanceFromPaddle: 7
+  dissolveMaterial: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
+  idleSoundIntervalMinSeconds: 10
+  idleSoundIntervalMaxSeconds: 20
   settings: {fileID: 0}
   ballManager: {fileID: 0}
   audioManager: {fileID: 0}

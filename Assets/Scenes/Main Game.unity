@@ -15340,6 +15340,7 @@ MonoBehaviour:
   brickGridManager: {fileID: 452747081}
   cameraShake: {fileID: 330585548}
   breakParticlesPrefab: {fileID: 3527978499976578858, guid: 2f85bd998ef2bf846907372b5fb8f99e, type: 3}
+  ripplePrefab: {fileID: 340541438434061090, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
   baseTrauma: 0.15
   traumaPerExtraHealth: 0.12
   particlesPerExtraHealth: 4
@@ -38207,6 +38208,120 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2132120472}
   m_CullTransparentMesh: 1
+--- !u!1001 &897770749581779394
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 618064261906043476, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_Name
+      value: BrickRipple
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5457864584884077224, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 116eb1e203ba58e4ca371877815891de, type: 3}
+--- !u!1001 &2837089666921542287
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 791664847670232122, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_Name
+      value: BossRipple
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6304648156436070962, guid: df3c985819395a246a9d19fba406f3de, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: df3c985819395a246a9d19fba406f3de, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -38235,3 +38350,5 @@ SceneRoots:
   - {fileID: 1809062201}
   - {fileID: 445592114}
   - {fileID: 1693991715}
+  - {fileID: 897770749581779394}
+  - {fileID: 2837089666921542287}
