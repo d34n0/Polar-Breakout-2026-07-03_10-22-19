@@ -451,15 +451,40 @@ namespace PolarBreakout
         /// Kinematic (so it stops responding to/generating physics bounces off walls, bricks, or
         /// the paddle) and hands off to HandleDying, which pulls it toward dead center at a fixed
         /// deathZonePullSpeed each FixedUpdate until it arrives, then flashes out (see
-        /// FlashThenReportLost) before actually being reported lost. Public so an external hazard
-        /// (e.g. a boss bullet hitting the paddle - see BallManager.KillAllBallsInPlay) can force
-        /// this same sequence instead of only the ball's own outer-wall/death-zone check
-        /// triggering it. Guarded against double-entry - a ball already Dying (or already reported
-        /// lost) just no-ops.</summary>
+        /// FlashThenReportLost) before actually being reported lost. Called by the ball's own
+        /// outer-wall/death-zone check when it actually falls into the black hole. Guarded against
+        /// double-entry - a ball already Dying (or already reported lost) just no-ops.</summary>
         public void EnterDeathZone()
         {
-            if (State == BallState.Dying || _reportedLost) return;
-            if (ballManager == null) return;
+            if (!BeginDying()) return;
+        }
+
+        /// <summary>Kills the ball right where it is - no pull-to-center glide toward the black
+        /// hole, just the same white flash-and-burst EnterDeathZone plays once its glide arrives
+        /// at center (see FlashThenReportLost), starting immediately instead. Used for deaths that
+        /// aren't "fell into the death zone" - e.g. a boss bullet hitting the paddle (see
+        /// BallManager.KillAllBallsInPlay) - so the ball visibly vanishes on the spot it was hit
+        /// rather than drifting toward the black hole first. Guarded the same way as
+        /// EnterDeathZone.</summary>
+        public void FlashOutInPlace()
+        {
+            if (!BeginDying()) return;
+
+            _dyingFlashStarted = true;
+            StartCoroutine(FlashThenReportLost());
+        }
+
+        /// <summary>Shared entry setup for both death paths (see EnterDeathZone/FlashOutInPlace):
+        /// flips to Dying, stops and freezes the physics body, and tells the manager the sequence
+        /// has begun - if this was the last ball in play, it freezes the whole scene
+        /// (Time.timeScale = 0) right now, so everything else holds still while this ball glides
+        /// in or flashes out. Both of those run on unscaled time (see HandleDying/
+        /// FlashThenReportLost), so they're immune to that very freeze. Returns false (no-op) if
+        /// the ball is already dying/lost or has no manager to report to.</summary>
+        private bool BeginDying()
+        {
+            if (State == BallState.Dying || _reportedLost) return false;
+            if (ballManager == null) return false;
 
             State = BallState.Dying;
             _dyingFlashStarted = false;
@@ -467,11 +492,8 @@ namespace PolarBreakout
             _rb.bodyType = RigidbodyType2D.Kinematic;
             if (_collider != null) _collider.enabled = false;
 
-            // Tells the manager the death-zone sequence has begun - if this was the last ball in
-            // play, it freezes the whole scene (Time.timeScale = 0) right now, so everything else
-            // holds still while this ball glides in. The glide itself runs on unscaled time from
-            // Update (see HandleDying), so it's immune to that very freeze.
             ballManager.NotifyBallDying(this);
+            return true;
         }
 
         /// <summary>Driven from Update on unscaled time rather than FixedUpdate - the death

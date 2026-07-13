@@ -527,20 +527,23 @@ namespace PolarBreakout
             return found;
         }
 
-        /// <summary>Forces every active, launched ball (primary and every clone) into its own
-        /// death-zone sequence at once - used when a hazard should cost a life regardless of how
-        /// many balls multiball currently has in play (see BossBullet hitting the paddle). Losing
-        /// several balls the same instant still only costs exactly one life, since LivesManager
-        /// only reacts once OnAllBallsLost fires (i.e. once every one of them is actually gone) -
-        /// the same rule that already applies to losing them one at a time.</summary>
+        /// <summary>Forces every active, launched ball (primary and every clone) to flash out of
+        /// existence right where it is at once - used when a hazard should cost a life regardless
+        /// of how many balls multiball currently has in play (see BossBullet hitting the paddle).
+        /// Uses BallController.FlashOutInPlace rather than EnterDeathZone - a bullet hit isn't the
+        /// ball falling into the black hole, so it shouldn't play that same pull-to-center glide
+        /// first; it should just vanish on the spot instead. Losing several balls the same instant
+        /// still only costs exactly one life, since LivesManager only reacts once OnAllBallsLost
+        /// fires (i.e. once every one of them is actually gone) - the same rule that already
+        /// applies to losing them one at a time.</summary>
         public void KillAllBallsInPlay()
         {
             if (primaryBall != null && primaryBall.gameObject.activeSelf && primaryBall.State == BallState.Launched)
-                primaryBall.EnterDeathZone();
+                primaryBall.FlashOutInPlace();
 
             foreach (var clone in _clones)
                 if (clone != null && clone.gameObject.activeSelf && clone.State == BallState.Launched)
-                    clone.EnterDeathZone();
+                    clone.FlashOutInPlace();
         }
     }
 }
