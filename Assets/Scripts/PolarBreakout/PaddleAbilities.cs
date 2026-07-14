@@ -99,8 +99,10 @@ namespace PolarBreakout
                  "camera is back to its original framing. Leave unset if the scene doesn't use " +
                  "CustomCam.")]
         public CustomCam customCam;
-        [Tooltip("Orthographic size the camera zooms in to for the reveal - smaller is tighter.")]
+        [Tooltip("Orthographic size the camera zooms in to for the reveal - smaller is tighter. Only used when focusCamera is orthographic (see focusFieldOfView for a perspective focusCamera).")]
         public float focusOrthographicSize = 3f;
+        [Tooltip("Field of view the camera zooms in to for the reveal when focusCamera is perspective - smaller is tighter. Ignored for an orthographic focusCamera.")]
+        public float focusFieldOfView = 20f;
         [Tooltip("How long the zoom in on the paddle takes, seconds.")]
         public float focusZoomInDuration = 0.3f;
         [Tooltip("How long the zoom back out to the camera's original framing takes, seconds.")]
@@ -365,7 +367,7 @@ namespace PolarBreakout
             _focusSequenceActive = true;
 
             _focusOriginalCameraPosition = focusCamera.transform.position;
-            _focusOriginalCameraSize = focusCamera.orthographicSize;
+            _focusOriginalCameraSize = GetCameraZoom();
             // CameraShake's LateUpdate snaps the camera back to its captured rest position on
             // every zero-trauma frame, which would override this sequence's own position
             // animation the moment each frame's coroutine step finished - suspended for the
@@ -379,8 +381,9 @@ namespace PolarBreakout
 
             Vector3 targetPosition = GetPaddleWorldPosition();
             targetPosition.z = _focusOriginalCameraPosition.z;
+            float focusZoom = focusCamera.orthographic ? focusOrthographicSize : focusFieldOfView;
             yield return AnimateCamera(_focusOriginalCameraPosition, targetPosition,
-                _focusOriginalCameraSize, focusOrthographicSize, focusZoomInDuration);
+                _focusOriginalCameraSize, focusZoom, focusZoomInDuration);
 
             ApplyPowerUpEffect(type);
 
@@ -390,7 +393,7 @@ namespace PolarBreakout
                 yield return new WaitForSecondsRealtime(focusHoldDuration);
 
             yield return AnimateCamera(focusCamera.transform.position, _focusOriginalCameraPosition,
-                focusCamera.orthographicSize, _focusOriginalCameraSize, focusZoomOutDuration);
+                GetCameraZoom(), _focusOriginalCameraSize, focusZoomOutDuration);
 
             RestoreFocusSequenceState();
         }
@@ -422,7 +425,7 @@ namespace PolarBreakout
 
             if (_focusSequenceCoroutine != null) StopCoroutine(_focusSequenceCoroutine);
             focusCamera.transform.position = _focusOriginalCameraPosition;
-            focusCamera.orthographicSize = _focusOriginalCameraSize;
+            SetCameraZoom(_focusOriginalCameraSize);
             RestoreFocusSequenceState();
         }
 
@@ -447,11 +450,26 @@ namespace PolarBreakout
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / safeDuration);
                 focusCamera.transform.position = Vector3.Lerp(fromPosition, toPosition, t);
-                focusCamera.orthographicSize = Mathf.Lerp(fromSize, toSize, t);
+                SetCameraZoom(Mathf.Lerp(fromSize, toSize, t));
                 yield return null;
             }
             focusCamera.transform.position = toPosition;
-            focusCamera.orthographicSize = toSize;
+            SetCameraZoom(toSize);
+        }
+
+        /// <summary>Reads whichever property actually controls focusCamera's zoom - orthographicSize
+        /// has no effect on a perspective camera (it's silently ignored), so the focus cinematic
+        /// has to drive fieldOfView instead when focusCamera isn't orthographic, or the zoom-in
+        /// degenerates into a plain pan (see focusFieldOfView).</summary>
+        private float GetCameraZoom()
+        {
+            return focusCamera.orthographic ? focusCamera.orthographicSize : focusCamera.fieldOfView;
+        }
+
+        private void SetCameraZoom(float value)
+        {
+            if (focusCamera.orthographic) focusCamera.orthographicSize = value;
+            else focusCamera.fieldOfView = value;
         }
 
         /// <summary>Enables/disables Move and Fire for the duration of the focus effect - mirrors

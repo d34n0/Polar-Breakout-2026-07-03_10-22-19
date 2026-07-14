@@ -17,6 +17,13 @@ namespace PolarBreakout
         [Tooltip("Optional. Routes each brick's hitSound/destroyedSound (see BrickTypeSO) - " +
                  "read by Brick.Hit via Manager.audioManager. Leave unset for silent bricks.")]
         public AudioManager audioManager;
+        [Tooltip("Optional. A model (e.g. Assets/Prefabs/Gem.prefab) whose first mesh replaces " +
+                 "the flat procedural hex tile for every brick, baked and uniformly scaled to " +
+                 "match hexRadius exactly (see PolarMeshUtility.BuildScaledBrickMesh) - built for " +
+                 "the perspective camera, where a flat hex reads poorly. The gameplay collider " +
+                 "stays the same flat hex outline either way, so collisions are unaffected. Leave " +
+                 "unset to keep the original flat procedural hex mesh.")]
+        public GameObject gemModel;
 
         private readonly Dictionary<HexCoordinate, Brick> _activeBricks = new Dictionary<HexCoordinate, Brick>();
 
@@ -134,7 +141,10 @@ namespace PolarBreakout
         public void PrepareSharedGeometry(PolarGridSettings settings)
         {
             float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
-            _sharedHexMesh = PolarMeshUtility.BuildHexMesh(hexRadius);
+            _sharedHexMesh = gemModel != null
+                ? PolarMeshUtility.BuildScaledBrickMesh(gemModel, hexRadius)
+                : null;
+            if (_sharedHexMesh == null) _sharedHexMesh = PolarMeshUtility.BuildHexMesh(hexRadius);
             _sharedHexOutline = PolarMeshUtility.BuildHexOutlinePoints(hexRadius);
         }
 

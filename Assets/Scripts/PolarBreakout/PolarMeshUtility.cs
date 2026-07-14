@@ -244,6 +244,52 @@ namespace PolarBreakout
             return mesh;
         }
 
+        /// <summary>Builds a standalone copy of source's first MeshFilter mesh, baked into
+        /// source-root-local space and uniformly scaled by <paramref name="scale"/> - used to
+        /// drop an authored model (e.g. a Gem.fbx) into the hex grid in place of the flat
+        /// procedural hex tile, sized to match hexRadius exactly (see BrickGridManager.gemModel).
+        /// Always returns a fresh Mesh (never the source asset itself), so the original imported
+        /// mesh asset is never mutated. Returns null if source has no mesh to copy.</summary>
+        public static Mesh BuildScaledBrickMesh(GameObject source, float scale)
+        {
+            var meshFilter = source.GetComponentInChildren<MeshFilter>();
+            if (meshFilter == null || meshFilter.sharedMesh == null) return null;
+
+            var mesh = Object.Instantiate(meshFilter.sharedMesh);
+            mesh.name = source.name + " (Scaled)";
+
+            var vertices = mesh.vertices;
+            var normals = mesh.normals;
+            bool hasNormals = normals.Length == vertices.Length;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                // Bakes the mesh filter's own local transform (relative to source's root -
+                // usually identity, but not assumed) into the vertices, exactly like every other
+                // mesh this class builds already has its final shape baked in rather than relying
+                // on the Brick GameObject's own transform.localScale (which stays 1,1,1 - see
+                // BrickGridManager.PrepareSharedGeometry - since PolygonCollider2D's outline is
+                // built at the same hexRadius separately and would otherwise be double-scaled).
+                Vector3 worldPoint = meshFilter.transform.TransformPoint(vertices[i]);
+                vertices[i] = source.transform.InverseTransformPoint(worldPoint) * scale;
+
+                if (hasNormals)
+                {
+                    Vector3 worldNormal = meshFilter.transform.TransformDirection(normals[i]);
+                    normals[i] = source.transform.InverseTransformDirection(worldNormal);
+                }
+            }
+            mesh.vertices = vertices;
+            if (hasNormals) mesh.normals = normals;
+            else mesh.RecalculateNormals();
+
+            // Needed for any shader reading a tangent-space normal map (see BuildArcSegmentMesh's
+            // matching comment) - the source mesh's own tangents were computed for its authored
+            // scale/orientation, not this baked/scaled copy.
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
         /// <summary>The 6 corners of a pointy-top hexagon centered at the origin, suitable for
         /// PolygonCollider2D.SetPath - shared across every Brick instance the same way
         /// BuildHexMesh is.</summary>

@@ -153,7 +153,14 @@ namespace PolarBreakout
             collider.pathCount = 1;
             collider.SetPath(0, points);
 
-            if (materialOverride != null) GetComponent<MeshRenderer>().sharedMaterial = materialOverride;
+            // Guarded to skinless paddles only - availableSkins (applied by ApplyCurrentSkin, see
+            // its own doc) takes precedence per this field's own tooltip, but BuildShape re-runs
+            // on every runModifiers.OnModifiersChanged (not just once at Awake - see OnEnable), so
+            // an unconditional reassignment here would stomp a skinned paddle's already-applied
+            // skin back to materialOverride on every single card pickup for the rest of the run,
+            // not just leave it as a inert fallback for paddles with no skins configured.
+            if (materialOverride != null && (availableSkins == null || availableSkins.Length == 0))
+                GetComponent<MeshRenderer>().sharedMaterial = materialOverride;
         }
 
         private void FixedUpdate()
