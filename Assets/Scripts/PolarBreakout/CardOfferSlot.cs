@@ -25,7 +25,7 @@ namespace PolarBreakout
         public Button button;
 
         [Header("Holo Card Setup")]
-        [Tooltip("The material used for the holographic background of legendary cards.")]
+        [Tooltip("The material used for the holographic background of every card.")]
         public Material holoCardMaterial;
 
         [Header("Layout (matches CardTemplateBase)")]
@@ -63,13 +63,13 @@ namespace PolarBreakout
         [Tooltip("How much larger the selected card's RectTransform scales, e.g. 1.08 = 8% bigger " +
                  "- the primary at-a-glance cue for which card is currently selected.")]
         public float selectedScale = 1.08f;
-        [Tooltip("Max tilt in degrees on the X axis while this card is the EventSystem's currently " +
-                 "selected one - kept small so the front stays almost facing forward, just enough " +
-                 "to catch the light on a holo/foil material. Also scales the Y/Z wobble before " +
-                 "those get clamped to +/-8 degrees (see Update). Set to 0 to disable.")]
+        [Tooltip("Max yaw (Y axis) rotation in degrees while this card is the EventSystem's " +
+                 "currently selected one - the card gently rocks left and right by this amount, " +
+                 "letting a real 3D holo/foil material (see CardMeshVisual) catch the light as its " +
+                 "actual view angle changes. Set to 0 to disable.")]
         public float idleWobbleDegrees = 3f;
-        [Tooltip("How fast the idle wobble drifts, in cycles per second - low values read as a " +
-                 "slow ambient tilt rather than a shake.")]
+        [Tooltip("How fast the left/right rock oscillates, in full cycles per second - low values " +
+                 "read as a slow ambient rock rather than a shake.")]
         public float idleWobbleSpeed = 0.15f;
         [Tooltip("How long the wobble takes to ease in from a dead stop each time this card is " +
                  "newly selected, seconds - guarantees the card is perfectly unrotated the instant " +
@@ -105,15 +105,16 @@ namespace PolarBreakout
         private bool _suppressNextSelectionSpin;
         private bool _spinSuppressedForCurrentSelection;
         private bool _spinShowingBack;
-        private float _wobbleSeedX, _wobbleSeedY, _wobbleSeedZ;
+        // Phase offset (in cycles) for the idle left/right rock, not a Perlin coordinate - just
+        // keeps multiple simultaneously-selected cards (unusual, but possible) from rocking in
+        // lockstep.
+        private float _wobbleSeedY;
         private Material _rootMaterialInstance;
         private Image _rootImage;
 
         private void Awake()
         {
-            _wobbleSeedX = Random.Range(0f, 100f);
-            _wobbleSeedY = Random.Range(0f, 100f);
-            _wobbleSeedZ = Random.Range(0f, 100f);
+            _wobbleSeedY = Random.Range(0f, 1f);
 
             _rootImage = GetComponent<Image>();
         }
@@ -199,21 +200,22 @@ namespace PolarBreakout
                     if (idleWobbleDegrees > 0f)
                     {
                         // Ramp starts once the spin above finishes (not from the moment selection
-                        // began), so the wobble eases in cleanly right where the spin left off -
+                        // began), so the rock eases in cleanly right where the spin left off -
                         // facing forward - instead of racing ahead mid-spin. If the spin was
                         // suppressed, spinDuration is 0 so the ramp starts immediately instead.
                         float rampT = wobbleRampInDuration > 0f
                             ? Mathf.Clamp01((timeSinceSelected - spinDuration) / wobbleRampInDuration)
                             : 1f;
                         float amount = idleWobbleDegrees * rampT;
-                        float t = Time.unscaledTime * idleWobbleSpeed;
-                        float x = (Mathf.PerlinNoise(_wobbleSeedX, t) * 2f - 1f) * amount;
-                        // Y (turning left/right) and Z (in-plane roll) are capped at +/-8 degrees
-                        // regardless of idleWobbleDegrees - large values there read as the card
-                        // spinning or tipping over rather than a subtle idle wobble.
-                        float y = Mathf.Clamp((Mathf.PerlinNoise(_wobbleSeedY, t) * 2f - 1f) * amount, -8f, 8f);
-                        float z = Mathf.Clamp((Mathf.PerlinNoise(_wobbleSeedZ, t) * 2f - 1f) * amount, -8f, 8f);
-                        rect.localRotation = Quaternion.Euler(x, y, z);
+                        // A clean sine sweep on Y only (left/right yaw) rather than the old
+                        // multi-axis Perlin jitter - that was there to fake a view-angle change for
+                        // the Holographic material's simulated tilt on a flat, orthographic-camera
+                        // card (see UpdateSimulatedTilt); now that the card is a real 3D mesh
+                        // (CardMeshVisual) under a perspective camera, an actual yaw swing gives the
+                        // holo material's real ViewDirection a genuine angle to shine off of.
+                        float cycles = Time.unscaledTime * idleWobbleSpeed + _wobbleSeedY;
+                        float y = Mathf.Sin(cycles * Mathf.PI * 2f) * amount;
+                        rect.localRotation = Quaternion.Euler(0f, y, 0f);
                     }
                     else if (rect.localRotation != Quaternion.identity)
                     {
@@ -243,11 +245,9 @@ namespace PolarBreakout
             nameText.text = card.displayName;
             descriptionText.text = card.description;
 
-            bool isLegendary = card.rarity == CardRarity.Legendary;
-
             if (_rootImage != null)
             {
-                if (isLegendary && holoCardMaterial != null)
+                if (holoCardMaterial != null)
                 {
                     _rootMaterialInstance = new Material(holoCardMaterial);
                     _rootImage.material = _rootMaterialInstance;
