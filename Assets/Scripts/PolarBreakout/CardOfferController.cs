@@ -26,6 +26,13 @@ namespace PolarBreakout
         public CardSO[] allCards;
         public GameObject panelRoot;
         public CardOfferSlot[] slots;
+        [Tooltip("Optional. A dedicated camera assigned as the Card Canvas's own worldCamera, " +
+                 "cleared to opaque black with a cullingMask that excludes the 3D game world - " +
+                 "guarantees nothing behind the cards (the black hole swirl, bricks, etc.) can " +
+                 "ever bleed through a card's transparent/edge-on moments during its spin, which " +
+                 "sharing Main Camera could not reliably prevent. Enabled/disabled in lockstep " +
+                 "with panelRoot so normal gameplay rendering is untouched the rest of the time.")]
+        public Camera dedicatedCamera;
 
         [Header("Rarity Weights")]
         [Tooltip("Relative chance each rarity is offered - higher = more common. Doesn't need to sum to 100.")]
@@ -92,6 +99,7 @@ namespace PolarBreakout
             // _rootImage, so on a slot's very first-ever offer that left it silently null,
             // skipping the legendary holo material with no error.
             if (panelRoot != null) panelRoot.SetActive(true);
+            if (dedicatedCamera != null) dedicatedCamera.gameObject.SetActive(true);
 
             RefreshOfferCards();
 
@@ -114,6 +122,7 @@ namespace PolarBreakout
             }
 
             if (panelRoot != null) panelRoot.SetActive(false);
+            if (dedicatedCamera != null) dedicatedCamera.gameObject.SetActive(false);
             Time.timeScale = 1f;
             SetGameplayActionsEnabled(true);
 

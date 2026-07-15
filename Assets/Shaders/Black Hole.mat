@@ -42,7 +42,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 5da33868701b3834fb519e4f6654cc59, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
@@ -59,8 +59,8 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _DistortionAmount: 0.699
-    - _DistortionScale: 35.8
+    - _DistortionAmount: 0.569
+    - _DistortionScale: 8.3
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RotationAmount: 3

@@ -48,5 +48,21 @@ namespace PolarBreakout
         /// angle 180 degrees opposite. Same "big value flips a threshold-based bool" convention
         /// as LaserBeamEnabled/PhaseThresholdReduction.</summary>
         TwinPaddleEnabled,
+
+        /// <summary>Additive - appended here rather than alongside the other additive entries
+        /// above so every existing card asset's serialized `type` integer stays pointed at the
+        /// same entry (same reasoning as BulletRicochetBonus above). Extra seconds added to the
+        /// Drone power-up's base duration (see PaddleAbilities.droneDuration) every time a Drone
+        /// capsule is caught, whether that's a fresh activation or a refresh of an already-active
+        /// Drone.</summary>
+        DroneDurationBonus,
+        /// <summary>Multiplicative - how much faster the Drone fires at bricks (see
+        /// PaddleAbilities.droneFireInterval/DroneController's own fire timer) - e.g. a total of
+        /// 0.4 fires 40% more often (a shorter interval), not a flat rate.</summary>
+        DroneFireRateMultiplier,
+        /// <summary>Additive - extra Drone(s) spawned alongside the first whenever a Drone
+        /// capsule activates the power-up fresh (not on a refresh-only recollect while one is
+        /// already active) - see PaddleAbilities.SpawnDrones.</summary>
+        DroneCountBonus,
     }
 }

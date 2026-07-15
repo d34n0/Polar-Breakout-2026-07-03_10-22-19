@@ -5,6 +5,7 @@ namespace PolarBreakout
     {
         Multiball,
         Autopilot,
-        Cannon
+        Cannon,
+        Drone
     }
 }

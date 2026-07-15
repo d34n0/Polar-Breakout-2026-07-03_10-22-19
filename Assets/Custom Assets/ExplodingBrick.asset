@@ -18,8 +18,8 @@ MonoBehaviour:
   scoreValue: 10
   scoreMultiplier: 1
   isIndestructible: 0
-  color: {r: 1, g: 0.4, b: 0, a: 1}
-  materialOverride: {fileID: 0}
+  color: {r: 0.7075472, g: 0.2971179, b: 0.15686187, a: 1}
+  materialOverride: {fileID: 2100000, guid: 4f6f1a8851cc57e42ae272c63498d27b, type: 2}
   hitFlashColor: {r: 4, g: 1.6, b: 0, a: 1}
   hitFlashMaterial: {fileID: 0}
   hitSound: {fileID: 8300000, guid: 1df2468ff2bfec746970f19a877e59de, type: 3}

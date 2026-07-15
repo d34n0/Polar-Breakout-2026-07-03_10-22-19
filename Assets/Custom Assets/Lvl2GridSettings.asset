@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.PolarGridSettings
   deathZoneRadius: 1
   paddleOrbitRadius: 1.2
-  hexSize: 0.5
+  hexSize: 0.7
   hexGap: 0.1
   outerWallRadius: 6
   arenaShape: 1

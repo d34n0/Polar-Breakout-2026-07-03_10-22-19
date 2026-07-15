@@ -24,8 +24,8 @@ MonoBehaviour:
   hitFlashMaterial: {fileID: 0}
   hitSound: {fileID: 6418180475301049370, guid: 976604be06b86974faa65e2329ab1a2a, type: 2}
   destroyedSound: {fileID: 6418180475301049370, guid: ee498138c6b29d44399d857a114c8399, type: 2}
-  powerUpDropChance: 0.2
-  possiblePowerUps: 000000000100000002000000
+  powerUpDropChance: 0.05
+  possiblePowerUps: 00000000010000000200000003000000
   scaleDropChanceNearClear: 1
   shardDropChance: 0.3
   shardDropAmountMin: 3

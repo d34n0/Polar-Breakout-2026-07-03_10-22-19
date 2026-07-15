@@ -109,5 +109,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e03e3ab46ef68d0449513dbb4ee7f7fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.BossBullet
-  visualRadius: 0.15
-  bulletSprite: {fileID: 0}
+  visualRadius: 0.01
+  bulletSprite: {fileID: -2413806693520163455, guid: 4ef874f0b941ee143960c96b3d8911d8, type: 3}

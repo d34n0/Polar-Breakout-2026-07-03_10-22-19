@@ -71,7 +71,17 @@ namespace PolarBreakout
         public ScaleInOvershoot stageCompleteScaleAnim;
         [Tooltip("How long (unscaled seconds) the \"Stage Complete!\" text holds at full size " +
                  "before it hides and the tear-down wipe begins.")]
-        public float stageCompleteHoldDuration = 0.8f;
+        public float stageCompleteHoldDuration = 1.3f;
+        [Tooltip("Optional. A \"Clear Bonus!\" UI text GameObject shown only when the round ended " +
+                 "via a genuine full clear (see _fullClearBonusPending - currently a Survive " +
+                 "stage's every brick destroyed before its timer ran out) - e.g. a child of " +
+                 "stageCompleteTextObject positioned below it. Only appears once " +
+                 "stageCompleteScaleAnim has fully finished popping in (not alongside it), then " +
+                 "flashes on/off (see clearBonusFlashInterval) for the rest of the hold. Leave " +
+                 "unset to skip this callout entirely.")]
+        public GameObject clearBonusTextObject;
+        [Tooltip("Seconds between each on/off toggle while clearBonusTextObject is flashing.")]
+        public float clearBonusFlashInterval = 0.15f;
 
         [Header("Level Start Sequence")]
         [Tooltip("Optional. A \"GO!\" UI text GameObject - activated and scaled in via " +
@@ -485,10 +495,16 @@ namespace PolarBreakout
         /// <summary>Runs right after PlayEndOfRoundSequence's own pause/paddle-dissolve-out and
         /// before the tear-down wipe clears the old level - a brief "Stage Complete!" text pop
         /// (see stageCompleteTextObject/stageCompleteScaleAnim) so the player gets a beat of
-        /// feedback on the round they just finished before the arena visually disappears. Driven
-        /// by unscaled time, matching PlayLevelStartSequence's own GO! beat - doesn't touch
-        /// Time.timeScale itself since the paddle/ball are already dissolved out by
-        /// PlayEndOfRoundSequence by this point, so nothing is left moving to pause.</summary>
+        /// feedback on the round they just finished before the arena visually disappears. Once
+        /// that pop has fully finished (not alongside it), also starts clearBonusTextObject
+        /// flashing for the rest of the hold when _fullClearBonusPending is set (a genuine full
+        /// clear, not just meeting a Clear stage's soft threshold - see HandleLevelCleared) - read
+        /// here rather than passed in, since it's still exactly what HandleLevelCleared set it to
+        /// at this point in AdvanceToNextStage (ActivateLevel, further down the coroutine, is what
+        /// eventually resets it back to false for the next stage). Driven by unscaled time,
+        /// matching PlayLevelStartSequence's own GO! beat - doesn't touch Time.timeScale itself
+        /// since the paddle/ball are already dissolved out by PlayEndOfRoundSequence by this
+        /// point, so nothing is left moving to pause.</summary>
         private IEnumerator PlayStageCompleteFlash()
         {
             if (stageCompleteTextObject == null) yield break;
@@ -496,8 +512,29 @@ namespace PolarBreakout
             stageCompleteTextObject.SetActive(true);
             audioManager?.PlayStageComplete();
             if (stageCompleteScaleAnim != null) yield return stageCompleteScaleAnim.Play();
+
+            Coroutine clearBonusFlashRoutine = null;
+            if (_fullClearBonusPending && clearBonusTextObject != null)
+                clearBonusFlashRoutine = StartCoroutine(FlashClearBonusText());
+
             yield return new WaitForSecondsRealtime(stageCompleteHoldDuration);
+
+            if (clearBonusFlashRoutine != null) StopCoroutine(clearBonusFlashRoutine);
             stageCompleteTextObject.SetActive(false);
+            if (clearBonusTextObject != null) clearBonusTextObject.SetActive(false);
+        }
+
+        /// <summary>Toggles clearBonusTextObject on/off every clearBonusFlashInterval (unscaled)
+        /// until stopped - runs for whatever's left of PlayStageCompleteFlash's own hold once
+        /// started, and is stopped (then force-hidden) there rather than ending on its own.</summary>
+        private IEnumerator FlashClearBonusText()
+        {
+            clearBonusTextObject.SetActive(true);
+            while (true)
+            {
+                yield return new WaitForSecondsRealtime(clearBonusFlashInterval);
+                clearBonusTextObject.SetActive(!clearBonusTextObject.activeSelf);
+            }
         }
 
         private LevelSO GetLevelForStage(int stage)

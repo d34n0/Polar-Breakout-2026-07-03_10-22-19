@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -64,6 +65,44 @@ namespace PolarBreakout
         [Header("Autopilot")]
         public float autopilotDuration = 5f;
 
+        [Header("Drone")]
+        [Tooltip("How long a Drone power-up lasts before its drone(s) phase out, seconds. " +
+                 "Catching another Drone capsule while one is already active refreshes this back " +
+                 "to full rather than adding to it (same convention as Autopilot).")]
+        public float droneDuration = 10f;
+        [Tooltip("Optional. The drone's own sprite. Leave unset to use a small generated circle " +
+                 "sprite instead, so the drone is always visible even before real art exists.")]
+        public Sprite droneSprite;
+        [Tooltip("Tint applied to droneSprite (or the generated fallback circle).")]
+        public Color droneTintColor = new Color(0.6f, 1f, 0.7f);
+        [Tooltip("Rendered radius of the drone, world units.")]
+        public float droneVisualRadius = 0.15f;
+        [Tooltip("How far outside the paddle's own orbit radius the drone hovers, world units - " +
+                 "always added (never subtracted), so the drone can never drift inward toward " +
+                 "the black hole regardless of its wobble below.")]
+        public float droneHoverRadiusOffset = 0.5f;
+        [Tooltip("How far either side of its resting angle (degrees) the drone's hover wobbles.")]
+        public float droneHoverWobbleAmplitudeDegrees = 20f;
+        [Tooltip("How fast the hover wobble oscillates, radians/second.")]
+        public float droneHoverWobbleSpeed = 2f;
+        [Tooltip("How fast (world units/second) the drone chases its current target hover spot - " +
+                 "higher reads as more tightly leashed to the paddle, lower as lazier/floatier.")]
+        public float droneHoverFollowSpeed = 6f;
+        [Tooltip("Seconds between the drone's shots at the nearest brick (or boss, if no bricks " +
+                 "remain) - see ModifierType.DroneFireRateMultiplier for a Card that speeds this up.")]
+        public float droneFireInterval = 0.7f;
+        public float droneBulletSpeed = 9f;
+        [Tooltip("Optional. Overrides a drone-fired bullet's default procedural material.")]
+        public Material droneBulletMaterial;
+        [Tooltip("How long the drone's dissolve-out phase-out takes once its duration runs out, " +
+                 "seconds.")]
+        public float dronePhaseOutDuration = 0.4f;
+        [Tooltip("The Dissolve shader graph material (e.g. Assets/Shaders/Dissolve.mat) used for " +
+                 "the drone's phase-out - see DissolveEffect.dissolveMaterial. Leave unset and " +
+                 "the drone just sits still for dronePhaseOutDuration with no fade before " +
+                 "vanishing, rather than visibly dissolving away.")]
+        public Material droneDissolveMaterial;
+
         [Header("Twin Paddle")]
         [Tooltip("Optional. A second PaddleController instance, pre-built in the scene (inactive " +
                  "by default) with its mirrorSource already pointed at this paddle - activated/" +
@@ -84,15 +123,20 @@ namespace PolarBreakout
         public Material multiballCapsuleMaterial;
         public Material autopilotCapsuleMaterial;
         public Material cannonCapsuleMaterial;
+        public Material droneCapsuleMaterial;
 
         [Header("Power-Up Focus Effect")]
-        [Tooltip("Optional. The main arena camera - when set, catching a Cannon capsule pauses " +
-                 "the game and zooms this camera in on the paddle (see PlayPowerUpFocusSequence) " +
-                 "before applying the power-up, holds there until RevealCannons finishes, then " +
-                 "zooms back out and resumes. Multiball and Autopilot always apply instantly with " +
-                 "no camera effect, regardless of this setting. Leave unset to apply Cannon " +
-                 "instantly too, with no camera effect at all, exactly as before - every existing " +
-                 "isolated test relies on this default.")]
+        [Tooltip("Optional. The main arena camera - when set, catching a Cannon or Drone capsule " +
+                 "pauses the game and zooms this camera in on the paddle (see " +
+                 "PlayPowerUpFocusSequence) before applying the power-up, holds there until " +
+                 "RevealCannons (Cannon) or focusHoldDuration (Drone, which has no bespoke " +
+                 "reveal of its own yet) finishes, then zooms back out and resumes. A Cannon/" +
+                 "Drone capsule caught while that same ability is already active just refreshes " +
+                 "it in place with no camera effect - only the very first activation gets the " +
+                 "cinematic. Multiball and Autopilot always apply instantly with no camera " +
+                 "effect, regardless of this setting. Leave unset to apply every type instantly, " +
+                 "with no camera effect at all, exactly as before - every existing isolated test " +
+                 "relies on this default.")]
         public Camera focusCamera;
         [Tooltip("Optional. Disabled for the duration of the focus effect so it doesn't fight " +
                  "the zoom's own orthographicSize/position animation, then re-enabled once the " +
@@ -115,6 +159,7 @@ namespace PolarBreakout
 
         public int CannonAmmo => _cannonAmmo;
         public bool IsAutopilotActive => _autopilotTimeRemaining > 0f;
+        public bool IsDroneActive => _droneTimeRemaining > 0f;
 
         /// <summary>Fired whenever CannonAmmo changes (a fresh pickup, a stacked top-up, a shot
         /// fired, or a reset to 0) - drives a HUD element that only shows while the cannon is
@@ -124,6 +169,8 @@ namespace PolarBreakout
         private PaddleController _paddle;
         private int _cannonAmmo;
         private float _autopilotTimeRemaining;
+        private float _droneTimeRemaining;
+        private readonly List<DroneController> _drones = new List<DroneController>();
         private bool _firePressed;
         private GameObject _cannonLeft;
         private GameObject _cannonRight;
@@ -266,6 +313,7 @@ namespace PolarBreakout
         private void FixedUpdate()
         {
             UpdateAutopilot();
+            UpdateDrones();
 
             bool firePressed = _firePressed;
             _firePressed = false;
@@ -299,13 +347,14 @@ namespace PolarBreakout
         }
 
         /// <summary>Applies type's effect - via the full pause/zoom/reveal/resume cinematic (see
-        /// PlayPowerUpFocusSequence) when focusCamera is wired up, the type is Cannon, no such
-        /// sequence is already running, and the cannon isn't already active, otherwise instantly.
-        /// The zoom-in/turret-grow cinematic only exists to frame the very first reveal of the
-        /// barrels - a Cannon pickup caught while the cannon is already active (ammo still in
-        /// hand) skips it entirely and just tops up its ammo in place (see ApplyPowerUpEffect),
-        /// since the barrels are already visibly out. Multiball and Autopilot always apply
-        /// instantly with no camera effect.</summary>
+        /// PlayPowerUpFocusSequence) when focusCamera is wired up, the type is Cannon or Drone,
+        /// no such sequence is already running, and that same ability isn't already active,
+        /// otherwise instantly. The zoom-in cinematic only exists to frame the very first reveal
+        /// of the barrels/drone(s) - a Cannon pickup caught while the cannon is already active
+        /// (ammo still in hand) skips it entirely and just tops up its ammo in place, and a Drone
+        /// pickup caught while a drone is already active just refreshes its remaining duration in
+        /// place (see ApplyPowerUpEffect for both), since the barrels/drone are already visibly
+        /// out. Multiball and Autopilot always apply instantly with no camera effect.</summary>
         public void CollectPowerUp(PowerUpType type)
         {
             // The cinematic only plays while gameplay is genuinely live - a capsule caught in the
@@ -315,7 +364,10 @@ namespace PolarBreakout
             // stuck at 0 and froze the whole game).
             bool gameplayLive = ballManager == null || ballManager.IsAnyBallInPlay();
             bool cannonAlreadyActive = type == PowerUpType.Cannon && _cannonAmmo > 0;
-            if (type == PowerUpType.Cannon && focusCamera != null && !_focusSequenceActive && gameplayLive && !cannonAlreadyActive)
+            bool droneAlreadyActive = type == PowerUpType.Drone && _droneTimeRemaining > 0f;
+            bool zoomEligibleType = type == PowerUpType.Cannon || type == PowerUpType.Drone;
+            if (zoomEligibleType && focusCamera != null && !_focusSequenceActive && gameplayLive
+                && !cannonAlreadyActive && !droneAlreadyActive)
                 _focusSequenceCoroutine = StartCoroutine(PlayPowerUpFocusSequence(type));
             else
                 ApplyPowerUpEffect(type);
@@ -347,6 +399,13 @@ namespace PolarBreakout
                         if (_cannonRevealCoroutine != null) StopCoroutine(_cannonRevealCoroutine);
                         _cannonRevealCoroutine = StartCoroutine(RevealCannons());
                     }
+                    break;
+                case PowerUpType.Drone:
+                    float droneDurationBonus = runModifiers != null ? runModifiers.GetBonus(ModifierType.DroneDurationBonus) : 0f;
+                    _droneTimeRemaining = droneDuration + droneDurationBonus;
+                    // Already active - just refreshing the timer above is enough, the drone(s)
+                    // are already visibly out there. Only spawn fresh ones the first time.
+                    if (_drones.Count == 0) SpawnDrones();
                     break;
             }
         }
@@ -514,6 +573,11 @@ namespace PolarBreakout
             _paddle.AutopilotOverrideAngleDegrees = null;
             SetCannonVisualsActive(false);
 
+            _droneTimeRemaining = 0f;
+            _drones.Clear();
+            foreach (var drone in Object.FindObjectsByType<DroneController>(FindObjectsSortMode.None))
+                Destroy(drone.gameObject);
+
             foreach (var bullet in Object.FindObjectsByType<Bullet>(FindObjectsSortMode.None))
                 Destroy(bullet.gameObject);
             foreach (var beam in Object.FindObjectsByType<LaserBeam>(FindObjectsSortMode.None))
@@ -625,6 +689,58 @@ namespace PolarBreakout
                 _paddle.AutopilotOverrideAngleDegrees = ballManager.GetNearestBallAngleDegrees(_paddle.CurrentAngleDegrees);
             else
                 _paddle.AutopilotOverrideAngleDegrees = null;
+        }
+
+        /// <summary>Counts down the active Drone power-up's remaining duration - once it runs
+        /// out, every currently-spawned drone phases out (see DespawnDrones) instead of the
+        /// countdown just silently going negative and doing nothing, the way it would if this
+        /// only ever checked "&gt; 0" without also reacting to the exact frame it crosses zero.</summary>
+        private void UpdateDrones()
+        {
+            if (_droneTimeRemaining <= 0f) return;
+
+            _droneTimeRemaining -= Time.fixedDeltaTime;
+            if (_droneTimeRemaining <= 0f) DespawnDrones();
+        }
+
+        /// <summary>Spawns 1 + ModifierType.DroneCountBonus drones, each offset to its own share
+        /// of a full circle around the paddle (see DroneController's own orbitPhaseOffsetDegrees
+        /// param) so multiple drones spread out instead of stacking on top of one another. Fire
+        /// rate is boosted by ModifierType.DroneFireRateMultiplier (a shorter interval = fires
+        /// more often) - computed once here and baked into each drone at spawn time rather than
+        /// having DroneController read RunModifiers itself, keeping it as dumb/self-contained as
+        /// Bullet.</summary>
+        private void SpawnDrones()
+        {
+            float countBonus = runModifiers != null ? runModifiers.GetBonus(ModifierType.DroneCountBonus) : 0f;
+            int droneCount = Mathf.Max(1, 1 + Mathf.RoundToInt(countBonus));
+
+            float fireRateMultiplier = runModifiers != null ? runModifiers.GetMultiplier(ModifierType.DroneFireRateMultiplier) : 1f;
+            float effectiveFireInterval = droneFireInterval / Mathf.Max(0.01f, fireRateMultiplier);
+
+            for (int i = 0; i < droneCount; i++)
+            {
+                float orbitPhaseOffsetDegrees = droneCount > 1 ? (360f / droneCount) * i : 0f;
+
+                var droneObject = new GameObject($"Drone_{i}");
+                var drone = droneObject.AddComponent<DroneController>();
+                drone.Initialize(_paddle, audioManager, droneDissolveMaterial, droneSprite, droneTintColor,
+                    droneVisualRadius, droneHoverRadiusOffset, orbitPhaseOffsetDegrees,
+                    droneHoverWobbleAmplitudeDegrees, droneHoverWobbleSpeed, droneHoverFollowSpeed,
+                    effectiveFireInterval, droneBulletSpeed, droneBulletMaterial);
+                _drones.Add(drone);
+            }
+        }
+
+        /// <summary>Starts every active drone's dissolve-out-and-destroy sequence (see
+        /// DroneController.BeginPhaseOut) and forgets about them - unlike ResetAbilities' own
+        /// instant force-destroy, this is the graceful "ran out of time" ending, not a hard
+        /// reset.</summary>
+        private void DespawnDrones()
+        {
+            foreach (var drone in _drones)
+                if (drone != null) drone.BeginPhaseOut(dronePhaseOutDuration);
+            _drones.Clear();
         }
 
         /// <summary>Fires both of the main paddle's cannon barrels at once - one bullet per

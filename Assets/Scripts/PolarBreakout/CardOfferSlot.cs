@@ -25,8 +25,11 @@ namespace PolarBreakout
         public Button button;
 
         [Header("Holo Card Setup")]
-        [Tooltip("The material used for the holographic background of legendary cards.")]
+        [Tooltip("The material used for the holographic background of Legendary cards.")]
         public Material holoCardMaterial;
+        [Tooltip("The material used for the holographic background of Rare cards (e.g. the " +
+                 "Holographic shader) - a lighter effect than holoCardMaterial's Legendary treatment.")]
+        public Material rareHoloMaterial;
 
         [Header("Layout (matches CardTemplateBase)")]
         [Tooltip("Optional. Background behind rarityText/nameText, sized/positioned to match " +
@@ -245,13 +248,15 @@ namespace PolarBreakout
             nameText.text = card.displayName;
             descriptionText.text = card.description;
 
-            bool isLegendary = card.rarity == CardRarity.Legendary;
+            Material holoMaterial = card.rarity == CardRarity.Legendary ? holoCardMaterial
+                : card.rarity == CardRarity.Rare ? rareHoloMaterial
+                : null;
 
             if (_rootImage != null)
             {
-                if (isLegendary && holoCardMaterial != null)
+                if (holoMaterial != null)
                 {
-                    _rootMaterialInstance = new Material(holoCardMaterial);
+                    _rootMaterialInstance = new Material(holoMaterial);
                     _rootImage.material = _rootMaterialInstance;
                 }
                 else

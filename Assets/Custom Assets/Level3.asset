@@ -13,7 +13,43 @@ MonoBehaviour:
   m_Name: Level3
   m_EditorClassIdentifier: PolarBreakout.Runtime::PolarBreakout.LevelSO
   gridSettings: {fileID: 11400000, guid: 08d60fc3630484547bdbb6f73af1f653, type: 2}
-  placements: []
+  placements:
+  - q: -3
+    r: 6
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 3
+    r: -6
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 6
+    r: 0
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: -6
+    r: 0
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 5
+    r: 1
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 6
+    r: -1
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: -6
+    r: 1
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: -5
+    r: -1
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: -3
+    r: 5
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: -2
+    r: 5
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 2
+    r: -5
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
+  - q: 3
+    r: -5
+    brickType: {fileID: 11400000, guid: 731940cd26c5615429cf1df20d4a13e1, type: 2}
   objectiveType: 2
   surviveDuration: 0
   bossPrefab: {fileID: 4304067348857374771, guid: bcc16675a3bbbff459a6b367351c6014, type: 3}

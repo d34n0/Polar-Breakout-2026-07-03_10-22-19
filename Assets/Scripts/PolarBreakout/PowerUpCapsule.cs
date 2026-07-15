@@ -107,6 +107,7 @@ namespace PolarBreakout
                 case PowerUpType.Multiball: return abilities.multiballCapsuleMaterial;
                 case PowerUpType.Autopilot: return abilities.autopilotCapsuleMaterial;
                 case PowerUpType.Cannon: return abilities.cannonCapsuleMaterial;
+                case PowerUpType.Drone: return abilities.droneCapsuleMaterial;
                 default: return null;
             }
         }
@@ -182,6 +183,7 @@ namespace PolarBreakout
                 case PowerUpType.Multiball: return new Color(0.2f, 0.8f, 1f);
                 case PowerUpType.Autopilot: return new Color(1f, 0.85f, 0.1f);
                 case PowerUpType.Cannon: return new Color(1f, 0.3f, 0.2f);
+                case PowerUpType.Drone: return new Color(0.5f, 1f, 0.5f);
                 default: return Color.white;
             }
         }
