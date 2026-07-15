@@ -118,7 +118,7 @@ MonoBehaviour:
   hitFlashMaterial: {fileID: 0}
   explosionParticlesPrefab: {fileID: 4175979075884359705, guid: 00c9b0d8b4b003346a5dea39a1f58f43, type: 3}
   explosionRipplePrefab: {fileID: 2477756947519441421, guid: df3c985819395a246a9d19fba406f3de, type: 3}
-  slowMoTimeScale: 0.5
+  slowMoTimeScale: 0.2
   slowMoDuration: 2
   hoverCenterAngleDegrees: 90
   hoverArcDegrees: 40
@@ -140,6 +140,8 @@ MonoBehaviour:
   teleportMinRadiusRings: 7
   teleportMinDistanceFromPaddle: 7
   dissolveMaterial: {fileID: 2100000, guid: 6ebd10d673e5a0e44a8bffabd3b68948, type: 2}
+  dissolveInOnSpawn: 1
+  spawnDissolveInDuration: 0.8
   idleSoundIntervalMinSeconds: 10
   idleSoundIntervalMaxSeconds: 20
   settings: {fileID: 0}

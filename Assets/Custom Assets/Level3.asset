@@ -18,4 +18,4 @@ MonoBehaviour:
   surviveDuration: 0
   bossPrefab: {fileID: 4304067348857374771, guid: bcc16675a3bbbff459a6b367351c6014, type: 3}
   bossMaxHealth: 5
-  bossFireInterval: 5
+  bossFireInterval: 2

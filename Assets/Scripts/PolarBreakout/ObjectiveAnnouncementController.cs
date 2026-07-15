@@ -22,6 +22,12 @@ namespace PolarBreakout
         [Tooltip("How long the fade-out itself takes, seconds.")]
         public float fadeOutDuration = 0.5f;
 
+        /// <summary>Fires once the announcement has fully faded out and hidden itself, passing
+        /// along which objective type was just announced - lets other display layers (e.g.
+        /// SurviveTimerController) know it's their turn to appear without hardcoding this
+        /// controller's own display/fade timing.</summary>
+        public event System.Action<StageObjectiveType> OnFinished;
+
         private Coroutine _routine;
 
         private void OnEnable()
@@ -41,7 +47,7 @@ namespace PolarBreakout
             objectiveText.text = BuildMessage(type, surviveDuration);
 
             if (_routine != null) StopCoroutine(_routine);
-            _routine = StartCoroutine(ShowThenFade());
+            _routine = StartCoroutine(ShowThenFade(type));
         }
 
         private static string BuildMessage(StageObjectiveType type, float surviveDuration)
@@ -60,7 +66,7 @@ namespace PolarBreakout
 
         // Unscaled throughout - matches HexWipeTransition/DissolveEffect's own reasoning, so a
         // pause (Time.timeScale = 0, e.g. a card offer) can never desync or strand this mid-fade.
-        private IEnumerator ShowThenFade()
+        private IEnumerator ShowThenFade(StageObjectiveType type)
         {
             Color color = objectiveText.color;
             color.a = 1f;
@@ -80,6 +86,7 @@ namespace PolarBreakout
 
             objectiveText.gameObject.SetActive(false);
             _routine = null;
+            OnFinished?.Invoke(type);
         }
 
         private static string FormatTime(float seconds)

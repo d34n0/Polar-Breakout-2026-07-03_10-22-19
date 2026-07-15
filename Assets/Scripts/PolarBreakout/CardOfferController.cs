@@ -82,11 +82,18 @@ namespace PolarBreakout
         public IEnumerator ShowOffer()
         {
             _rerollsUsedThisOffer = 0;
-            RefreshOfferCards();
 
             Time.timeScale = 0f;
             SetGameplayActionsEnabled(false);
+            // Activate the panel before touching any slot - slots are its children, so
+            // activating/Initializing them first (while panelRoot is still inactive) leaves them
+            // inactive-in-hierarchy too, meaning Unity never calls Awake() on a slot that hasn't
+            // been active before. Initialize() relies on Awake() having already cached
+            // _rootImage, so on a slot's very first-ever offer that left it silently null,
+            // skipping the legendary holo material with no error.
             if (panelRoot != null) panelRoot.SetActive(true);
+
+            RefreshOfferCards();
 
             yield return PlayRevealSequence();
 

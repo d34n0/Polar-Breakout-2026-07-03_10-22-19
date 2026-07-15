@@ -63,8 +63,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _ColorMask: 15
-    - _DistortionAmount: 30
-    - _OffsetAmount: 1
+    - _DistortionAmount: 51.73
+    - _OffsetAmount: 3.1
     - _QueueControl: 0
     - _QueueOffset: 0
     - _Stencil: 0

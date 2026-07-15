@@ -35,6 +35,12 @@ namespace PolarBreakout
 
         public int RemainingDestructibleCount { get; private set; }
 
+        /// <summary>The uniform scale gemModel's mesh gets baked at to become _sharedHexMesh (see
+        /// PrepareSharedGeometry) - exposed so other effects that spawn their own copy of a gem
+        /// model (e.g. BrickBreakEffects' shatter effect) can match the same size bricks actually
+        /// render at, rather than showing at gemModel's raw imported scale.</summary>
+        public float HexRadius { get; private set; }
+
         /// <summary>Snapshot of RemainingDestructibleCount taken once BuildLevel finishes
         /// spawning every placement - the denominator for the soft clear threshold (see
         /// ClearThreshold) and the power-up drop-rate surge (see BrickTypeSO.ComputeDropScale).</summary>
@@ -141,6 +147,7 @@ namespace PolarBreakout
         public void PrepareSharedGeometry(PolarGridSettings settings)
         {
             float hexRadius = Mathf.Max(0.01f, settings.hexSize - settings.hexGap);
+            HexRadius = hexRadius;
             _sharedHexMesh = gemModel != null
                 ? PolarMeshUtility.BuildScaledBrickMesh(gemModel, hexRadius)
                 : null;

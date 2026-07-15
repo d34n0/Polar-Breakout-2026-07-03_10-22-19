@@ -16,6 +16,10 @@ namespace PolarBreakout
         [Tooltip("Optional. Instantiated at the brick's position alongside the particle burst - a " +
                  "small screen-space ripple radiating from the break point. Leave unset for no ripple.")]
         public RippleEffect ripplePrefab;
+        [Tooltip("Optional. A pre-fractured gem model (see GemBroken.fbx) with a GemShatterEffect " +
+                 "component - instantiated at the brick's position and exploded outward alongside " +
+                 "the particle burst, tinted to match the brick's color. Leave unset to skip.")]
+        public GemShatterEffect gemShatterPrefab;
 
         [Header("Screen Shake")]
         [Tooltip("Trauma added for a 1-health (weakest) brick.")]
@@ -56,6 +60,7 @@ namespace PolarBreakout
 
             SpawnBreakParticles(brick, tier);
             SpawnRipple(brick);
+            SpawnGemShatter(brick);
             TriggerHitStop();
         }
 
@@ -101,6 +106,20 @@ namespace PolarBreakout
             if (ripplePrefab == null) return;
 
             RippleEffect instance = Instantiate(ripplePrefab, brick.WorldPosition, Quaternion.identity);
+            instance.Play(GetOpaqueTint(brick));
+        }
+
+        private void SpawnGemShatter(Brick brick)
+        {
+            if (gemShatterPrefab == null) return;
+
+            GemShatterEffect instance = Instantiate(gemShatterPrefab, brick.WorldPosition, Quaternion.identity);
+            // Match whatever uniform scale the brick's own gem mesh was baked at (see
+            // BrickGridManager.HexRadius) - the shatter prefab is a raw, un-scaled copy of the
+            // same source model, so left alone it renders at its tiny raw imported size instead
+            // of the brick's actual on-screen size.
+            if (brickGridManager != null)
+                instance.transform.localScale = Vector3.one * brickGridManager.HexRadius;
             instance.Play(GetOpaqueTint(brick));
         }
 

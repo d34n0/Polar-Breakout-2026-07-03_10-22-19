@@ -125,9 +125,18 @@ namespace PolarBreakout
                 _manager.NotifyBrickDestroyed(this);
 
                 // Stop reacting to further collisions immediately - the brick is already
-                // logically destroyed, it's just sticking around a moment longer to show
-                // the flash before the GameObject actually goes away.
+                // logically destroyed, it's just sticking around a moment longer (still
+                // invisible - see below) before the GameObject actually goes away.
                 _collider.enabled = false;
+                // Hide instantly rather than playing out the flash/blink visually - the shatter
+                // effect (see BrickBreakEffects, spawned from NotifyBrickDestroyed just above)
+                // reads as the brick breaking now instead. DestroyAfterFlash's blink timer still
+                // runs unchanged underneath regardless (it's also this brick's fuse for
+                // ExplodingBrickType - see below). Skipped for ExplodingBrickType specifically:
+                // its flash IS a deliberate "lit fuse" warning the player is meant to see before
+                // it chains into neighbors (see ExplodingBrickType's own doc comment), not just
+                // cosmetic destroy feedback like every other brick type's flash.
+                if (!(BrickType is ExplodingBrickType)) _renderer.enabled = false;
                 _flashCoroutine = StartCoroutine(DestroyAfterFlash());
             }
             else
