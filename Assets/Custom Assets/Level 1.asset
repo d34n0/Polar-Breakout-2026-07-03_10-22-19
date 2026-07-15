@@ -374,6 +374,9 @@ MonoBehaviour:
   - q: -7
     r: 0
     brickType: {fileID: 11400000, guid: b8365bc6cecaf6b4d90b727d9c5141a2, type: 2}
+  - q: 4
+    r: 0
+    brickType: {fileID: 11400000, guid: 102b11b3ef5647b4daec43f438cbb08e, type: 2}
   objectiveType: 1
   surviveDuration: 60
   bossPrefab: {fileID: 0}

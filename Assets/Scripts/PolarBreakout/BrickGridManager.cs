@@ -24,6 +24,30 @@ namespace PolarBreakout
                  "stays the same flat hex outline either way, so collisions are unaffected. Leave " +
                  "unset to keep the original flat procedural hex mesh.")]
         public GameObject gemModel;
+        [Tooltip("Optional. A model whose first mesh replaces gemModel on any multi-health brick " +
+                 "(see BrickTypeSO.maxHealth) once it has taken its first hit but still has more " +
+                 "than one hit left to survive - baked/scaled the same way as gemModel (see " +
+                 "PolarMeshUtility.BuildScaledBrickMesh). Gives multi-hit bricks a visibly cracked " +
+                 "look instead of just darkening in place. Leave unset to keep showing gemModel " +
+                 "regardless of remaining health.")]
+        public GameObject gemBroken2Model;
+        [Tooltip("Corrective rotation (degrees) applied only to gemBroken2Model when its mesh is " +
+                 "baked - some model files aren't authored/exported facing the same way as " +
+                 "gemModel (e.g. lying on their side), and this straightens it out without " +
+                 "touching the source asset. Defaults to (90, 0, 0), which matches the " +
+                 "GemBroken2.fbx model shipped with this project; tweak if you swap in a " +
+                 "differently-oriented model and it renders sideways/squashed.")]
+        public Vector3 gemBroken2ModelRotation = new Vector3(90f, 0f, 0f);
+        [Tooltip("Optional. A model whose first mesh replaces gemBroken2Model once a multi-health " +
+                 "brick is down to its last hit before being destroyed - e.g. a 3-health brick " +
+                 "shows gemModel at full health, gemBroken2Model after the first hit, then this " +
+                 "model after the second. Leave unset to keep showing gemBroken2Model (or " +
+                 "gemModel, if that's unset too) all the way down to destruction.")]
+        public GameObject gemBrokenModel;
+        [Tooltip("Corrective rotation (degrees) applied only to gemBrokenModel when its mesh is " +
+                 "baked - see gemBroken2ModelRotation above for why. Defaults to (90, 0, 0), " +
+                 "matching the GemBroken.fbx model shipped with this project.")]
+        public Vector3 gemBrokenModelRotation = new Vector3(90f, 0f, 0f);
 
         private readonly Dictionary<HexCoordinate, Brick> _activeBricks = new Dictionary<HexCoordinate, Brick>();
 
@@ -31,6 +55,8 @@ namespace PolarBreakout
         // is built once per BuildLevel call and shared across every Brick instance, rather than
         // each brick building its own (as the old per-ring arc bricks had to).
         private Mesh _sharedHexMesh;
+        private Mesh _sharedBroken2Mesh;
+        private Mesh _sharedBrokenMesh;
         private Vector2[] _sharedHexOutline;
 
         public int RemainingDestructibleCount { get; private set; }
@@ -133,7 +159,7 @@ namespace PolarBreakout
             Brick brick = Instantiate(brickPrefab, transform);
             brick.transform.localPosition = settings.HexToWorld(coord);
             brick.transform.localRotation = Quaternion.identity;
-            brick.Initialize(this, settings, coord, type, _sharedHexMesh, _sharedHexOutline);
+            brick.Initialize(this, settings, coord, type, _sharedHexMesh, _sharedHexOutline, _sharedBroken2Mesh, _sharedBrokenMesh);
             _activeBricks[coord] = brick;
 
             if (!type.isIndestructible)
@@ -152,6 +178,12 @@ namespace PolarBreakout
                 ? PolarMeshUtility.BuildScaledBrickMesh(gemModel, hexRadius)
                 : null;
             if (_sharedHexMesh == null) _sharedHexMesh = PolarMeshUtility.BuildHexMesh(hexRadius);
+            _sharedBroken2Mesh = gemBroken2Model != null
+                ? PolarMeshUtility.BuildScaledBrickMesh(gemBroken2Model, hexRadius, gemBroken2ModelRotation)
+                : null;
+            _sharedBrokenMesh = gemBrokenModel != null
+                ? PolarMeshUtility.BuildScaledBrickMesh(gemBrokenModel, hexRadius, gemBrokenModelRotation)
+                : null;
             _sharedHexOutline = PolarMeshUtility.BuildHexOutlinePoints(hexRadius);
         }
 

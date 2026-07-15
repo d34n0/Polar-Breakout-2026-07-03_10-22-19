@@ -36,20 +36,29 @@ namespace PolarBreakout
         public Vector2 WorldPosition => Settings.HexToWorld(Coordinate);
 
         private BrickGridManager _manager;
+        private MeshFilter _meshFilter;
         private MeshRenderer _renderer;
         private MaterialPropertyBlock _propBlock;
         private PolygonCollider2D _collider;
         private Coroutine _flashCoroutine;
         private Material _normalMaterial;
 
+        private Mesh _normalMesh;
+        private Mesh _broken2Mesh;
+        private Mesh _brokenMesh;
+
         public void Initialize(BrickGridManager manager, PolarGridSettings settings, HexCoordinate coord, BrickTypeSO type,
-                                Mesh sharedHexMesh, Vector2[] sharedHexOutline)
+                                Mesh sharedHexMesh, Vector2[] sharedHexOutline,
+                                Mesh sharedBroken2Mesh = null, Mesh sharedBrokenMesh = null)
         {
             _manager = manager;
             Settings = settings;
             Coordinate = coord;
             BrickType = type;
             CurrentHealth = type.maxHealth;
+            _normalMesh = sharedHexMesh;
+            _broken2Mesh = sharedBroken2Mesh;
+            _brokenMesh = sharedBrokenMesh;
 
             // An exploding brick's fuse (the delay before it detonates and chains into
             // neighbors - see ExplodingBrickType.OnFlashComplete) is driven by this same
@@ -57,8 +66,8 @@ namespace PolarBreakout
             // actually explodes always line up as one single, consistent delay.
             if (type is ExplodingBrickType exploding) flashDuration = exploding.fuseDuration;
 
-            var meshFilter = GetComponent<MeshFilter>();
-            meshFilter.mesh = sharedHexMesh;
+            _meshFilter = GetComponent<MeshFilter>();
+            _meshFilter.mesh = sharedHexMesh;
 
             _collider = GetComponent<PolygonCollider2D>();
             _collider.pathCount = 1;
@@ -71,18 +80,25 @@ namespace PolarBreakout
             // Snapshot whatever material is actually showing now - Hit()/DestroyAfterFlash swap
             // to hitFlashMaterial and need to know exactly what to restore afterward.
             _normalMaterial = _renderer.sharedMaterial;
-            UpdateVisualColor();
+            SetRenderColor(BrickType.color);
+            UpdateVisualMesh();
         }
 
-        // Darkens the brick's color as it takes damage, so multi-hit bricks visibly show
-        // how close they are to breaking instead of looking identical until they vanish.
-        private void UpdateVisualColor()
+        // Swaps in a progressively more-cracked model as a multi-hit brick takes damage, instead
+        // of just darkening its color - full health shows the normal model, the first hit taken
+        // (with more than one hit still remaining) swaps to gemBroken2Model, and any hit beyond
+        // that swaps to gemBrokenModel. Single-health bricks never have an intermediate state to
+        // show, and any model left unassigned on BrickGridManager just falls back to the previous
+        // stage instead of swapping.
+        private void UpdateVisualMesh()
         {
-            float healthFraction = BrickType.maxHealth > 0
-                ? Mathf.Clamp01((float)CurrentHealth / BrickType.maxHealth)
-                : 1f;
-            Color tinted = Color.Lerp(Color.black, BrickType.color, Mathf.Lerp(0.4f, 1f, healthFraction));
-            SetRenderColor(tinted);
+            if (BrickType.maxHealth <= 1) return;
+
+            Mesh targetMesh = _normalMesh;
+            if (CurrentHealth < BrickType.maxHealth - 1 && _brokenMesh != null) targetMesh = _brokenMesh;
+            else if (CurrentHealth < BrickType.maxHealth && _broken2Mesh != null) targetMesh = _broken2Mesh;
+
+            if (targetMesh != null) _meshFilter.mesh = targetMesh;
         }
 
         // Use a MaterialPropertyBlock so bricks share one Material asset
@@ -173,7 +189,8 @@ namespace PolarBreakout
         {
             yield return new WaitForSeconds(flashDuration);
             SetFlashMaterialShowing(false);
-            UpdateVisualColor();
+            SetRenderColor(BrickType.color);
+            UpdateVisualMesh();
             _flashCoroutine = null;
         }
 

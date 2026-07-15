@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PolarBreakout
@@ -244,44 +245,65 @@ namespace PolarBreakout
             return mesh;
         }
 
-        /// <summary>Builds a standalone copy of source's first MeshFilter mesh, baked into
-        /// source-root-local space and uniformly scaled by <paramref name="scale"/> - used to
-        /// drop an authored model (e.g. a Gem.fbx) into the hex grid in place of the flat
-        /// procedural hex tile, sized to match hexRadius exactly (see BrickGridManager.gemModel).
-        /// Always returns a fresh Mesh (never the source asset itself), so the original imported
-        /// mesh asset is never mutated. Returns null if source has no mesh to copy.</summary>
-        public static Mesh BuildScaledBrickMesh(GameObject source, float scale)
+        /// <summary>Builds a standalone mesh combining every MeshFilter under source (not just
+        /// the first), baked into source-root-local space and uniformly scaled by <paramref
+        /// name="scale"/> - used to drop an authored model (e.g. a Gem.fbx) into the hex grid in
+        /// place of the flat procedural hex tile, sized to match hexRadius exactly (see
+        /// BrickGridManager.gemModel). Combining every fragment matters for models like a
+        /// shattered/broken gem that are authored as many separate child pieces rather than one
+        /// mesh - taking only the first would show a single tiny shard blown up to fill the
+        /// whole hex instead of the assembled shape. <paramref name="eulerCorrection"/> exists
+        /// because sibling model files aren't guaranteed to agree on which way is "up" when
+        /// authored (e.g. GemBroken.fbx/GemBroken2.fbx were exported lying 90 degrees off from
+        /// Gem.fbx's own orientation) - lets a caller straighten a specific model out without
+        /// touching the source asset. Always returns a fresh Mesh (never the source asset
+        /// itself), so the original imported mesh asset is never mutated. Returns null if source
+        /// has no mesh to copy.</summary>
+        public static Mesh BuildScaledBrickMesh(GameObject source, float scale, Vector3 eulerCorrection = default)
         {
-            var meshFilter = source.GetComponentInChildren<MeshFilter>();
-            if (meshFilter == null || meshFilter.sharedMesh == null) return null;
+            // A pure rotation applied on top of every fragment's already-correct relative
+            // transform below (not folded into that relative transform itself) - see the loop
+            // comment for why composing rather than replacing matters.
+            var correctionMatrix = Matrix4x4.Rotate(Quaternion.Euler(eulerCorrection));
+            var meshFilters = source.GetComponentsInChildren<MeshFilter>();
+            var combineInstances = new List<CombineInstance>(meshFilters.Length);
+            foreach (var meshFilter in meshFilters)
+            {
+                if (meshFilter.sharedMesh == null) continue;
+                // Bakes each fragment's full local transform (position AND rotation) relative to
+                // source's root - same "undo the root" trick as the old single-mesh version of
+                // this method. For a single-mesh model like Gem.fbx the root IS the mesh's own
+                // node, so this cancels out to identity, landing the raw (correctly flat-facing)
+                // vertex data at the origin - no extra correction needed, matching
+                // eulerCorrection's default of zero. A multi-fragment model doesn't get that
+                // cancellation for free (each fragment carries its own corrective rotation
+                // instead of the root), so its fragments land pre-rotated (e.g. lying on their
+                // side) - eulerCorrection then rigidly rotates the WHOLE already-assembled result
+                // (every fragment's vertices and its position relative to its neighbors, applied
+                // identically) to straighten it out, exactly as if the whole model had been
+                // rotated as one rigid GameObject rather than left at its authored orientation.
+                Matrix4x4 relativeTransform = source.transform.worldToLocalMatrix * meshFilter.transform.localToWorldMatrix;
+                combineInstances.Add(new CombineInstance
+                {
+                    mesh = meshFilter.sharedMesh,
+                    transform = correctionMatrix * relativeTransform,
+                });
+            }
+            if (combineInstances.Count == 0) return null;
 
-            var mesh = Object.Instantiate(meshFilter.sharedMesh);
-            mesh.name = source.name + " (Scaled)";
+            var mesh = new Mesh { name = source.name + " (Scaled)" };
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.CombineMeshes(combineInstances.ToArray(), mergeSubMeshes: true, useMatrices: true);
 
             var vertices = mesh.vertices;
-            var normals = mesh.normals;
-            bool hasNormals = normals.Length == vertices.Length;
-            for (int i = 0; i < vertices.Length; i++)
-            {
-                // Bakes the mesh filter's own local transform (relative to source's root -
-                // usually identity, but not assumed) into the vertices, exactly like every other
-                // mesh this class builds already has its final shape baked in rather than relying
-                // on the Brick GameObject's own transform.localScale (which stays 1,1,1 - see
-                // BrickGridManager.PrepareSharedGeometry - since PolygonCollider2D's outline is
-                // built at the same hexRadius separately and would otherwise be double-scaled).
-                Vector3 worldPoint = meshFilter.transform.TransformPoint(vertices[i]);
-                vertices[i] = source.transform.InverseTransformPoint(worldPoint) * scale;
-
-                if (hasNormals)
-                {
-                    Vector3 worldNormal = meshFilter.transform.TransformDirection(normals[i]);
-                    normals[i] = source.transform.InverseTransformDirection(worldNormal);
-                }
-            }
+            for (int i = 0; i < vertices.Length; i++) vertices[i] *= scale;
             mesh.vertices = vertices;
-            if (hasNormals) mesh.normals = normals;
-            else mesh.RecalculateNormals();
 
+            // Recalculated fresh rather than transformed from the source fragments - simpler,
+            // and fine here since the fragments' own islands of vertices aren't shared with each
+            // other post-combine anyway (see BuildHexMesh/BuildArcSegmentMesh, which always
+            // recalculate too rather than preserving authored normals).
+            mesh.RecalculateNormals();
             // Needed for any shader reading a tangent-space normal map (see BuildArcSegmentMesh's
             // matching comment) - the source mesh's own tangents were computed for its authored
             // scale/orientation, not this baked/scaled copy.

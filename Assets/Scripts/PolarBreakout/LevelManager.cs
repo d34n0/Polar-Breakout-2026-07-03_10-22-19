@@ -59,6 +59,20 @@ namespace PolarBreakout
                  "transform) if the scene has no dedicated arena root for it.")]
         public Transform bossSpawnParent;
 
+        [Header("Stage Complete Sequence")]
+        [Tooltip("Optional. A \"Stage Complete!\" UI text GameObject - activated and scaled in via " +
+                 "stageCompleteScaleAnim right after the round-end pause, just before the tear-down " +
+                 "wipe clears the old level. Leave unset to skip this beat entirely and go straight " +
+                 "from the round-end pause into the tear-down wipe.")]
+        public GameObject stageCompleteTextObject;
+        [Tooltip("Optional. Drives stageCompleteTextObject's scale-up pop - should live on " +
+                 "stageCompleteTextObject (or a child of it), with its own playOnStart left off " +
+                 "since this triggers it manually.")]
+        public ScaleInOvershoot stageCompleteScaleAnim;
+        [Tooltip("How long (unscaled seconds) the \"Stage Complete!\" text holds at full size " +
+                 "before it hides and the tear-down wipe begins.")]
+        public float stageCompleteHoldDuration = 0.8f;
+
         [Header("Level Start Sequence")]
         [Tooltip("Optional. A \"GO!\" UI text GameObject - activated and scaled in via " +
                  "goScaleAnim right before a level's gameplay actually starts. Leave unset to skip " +
@@ -278,6 +292,7 @@ namespace PolarBreakout
             }
 
             _activeBoss.OnDefeated += HandleBossDefeated;
+            audioManager?.PlayBossMusic();
         }
 
         /// <summary>Unsubscribes and destroys the current boss instance, if any - called before
@@ -294,10 +309,12 @@ namespace PolarBreakout
             _activeBoss.OnDefeated -= HandleBossDefeated;
             Destroy(_activeBoss.gameObject);
             _activeBoss = null;
+            audioManager?.PlayBackgroundMusic();
         }
 
         private void HandleBossDefeated()
         {
+            audioManager?.PlayBackgroundMusic();
             BeginAdvanceToNextStage();
         }
 
@@ -330,6 +347,8 @@ namespace PolarBreakout
             OnStageChanged?.Invoke(CurrentStage);
 
             yield return PlayEndOfRoundSequence();
+
+            yield return PlayStageCompleteFlash();
 
             HexArenaBoundary boundary = brickGridManager != null ? brickGridManager.GetComponent<HexArenaBoundary>() : null;
 
@@ -427,7 +446,11 @@ namespace PolarBreakout
             float remainingHold = objectiveHoldDuration - ballRevealDelay;
             if (remainingHold > 0f) yield return new WaitForSecondsRealtime(remainingHold);
 
-            if (goTextObject != null) goTextObject.SetActive(true);
+            if (goTextObject != null)
+            {
+                goTextObject.SetActive(true);
+                audioManager?.PlayGoText();
+            }
             if (goScaleAnim != null) yield return goScaleAnim.Play();
             yield return new WaitForSecondsRealtime(goHoldDuration);
             if (goTextObject != null) goTextObject.SetActive(false);
@@ -457,6 +480,24 @@ namespace PolarBreakout
 
             yield return new WaitForSeconds(endOfRoundDelay);
             if (ballManager != null) yield return ballManager.PlayRoundEndDissolveOut();
+        }
+
+        /// <summary>Runs right after PlayEndOfRoundSequence's own pause/paddle-dissolve-out and
+        /// before the tear-down wipe clears the old level - a brief "Stage Complete!" text pop
+        /// (see stageCompleteTextObject/stageCompleteScaleAnim) so the player gets a beat of
+        /// feedback on the round they just finished before the arena visually disappears. Driven
+        /// by unscaled time, matching PlayLevelStartSequence's own GO! beat - doesn't touch
+        /// Time.timeScale itself since the paddle/ball are already dissolved out by
+        /// PlayEndOfRoundSequence by this point, so nothing is left moving to pause.</summary>
+        private IEnumerator PlayStageCompleteFlash()
+        {
+            if (stageCompleteTextObject == null) yield break;
+
+            stageCompleteTextObject.SetActive(true);
+            audioManager?.PlayStageComplete();
+            if (stageCompleteScaleAnim != null) yield return stageCompleteScaleAnim.Play();
+            yield return new WaitForSecondsRealtime(stageCompleteHoldDuration);
+            stageCompleteTextObject.SetActive(false);
         }
 
         private LevelSO GetLevelForStage(int stage)

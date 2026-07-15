@@ -35,6 +35,12 @@ namespace PolarBreakout
 
         [Header("Background Music")]
         public AudioClip backgroundMusic;
+        [Tooltip("Optional. Swapped in via PlayMusic when a Boss-type level's boss spawns (see " +
+                 "LevelManager.SpawnBoss), then swapped back to backgroundMusic once the boss is " +
+                 "defeated or force-destroyed (see LevelManager.HandleBossDefeated/" +
+                 "DestroyActiveBoss). Leave unset to keep backgroundMusic playing straight through " +
+                 "boss fights.")]
+        public AudioClip bossMusic;
         [Range(0f, 1f)] public float musicVolume = 1f;
         public bool playMusicOnStart = true;
 
@@ -70,6 +76,12 @@ namespace PolarBreakout
                  "BallController.IsPhasing) - i.e. the moment |Spin| crosses the phase threshold, " +
                  "not every frame it stays phasing. Leave unset for silence.")]
         public AudioResource spinEnterSound;
+        [Tooltip("Played once, the instant the \"Stage Complete!\" text pops up between rounds - " +
+                 "see LevelManager.PlayStageCompleteFlash. Leave unset for a silent stage-clear beat.")]
+        public AudioResource stageCompleteSound;
+        [Tooltip("Played once, the instant the \"GO!\" text pops up at the start of a level - see " +
+                 "LevelManager.PlayLevelStartSequence. Leave unset for a silent GO! beat.")]
+        public AudioResource goTextSound;
 
         [Header("Boss")]
         [Tooltip("Played once per shot the boss turret fires - see BossTurret.Fire.")]
@@ -171,6 +183,13 @@ namespace PolarBreakout
             src.Play();
         }
 
+        /// <summary>Swaps looping background music back to backgroundMusic - see bossMusic's own
+        /// tooltip for when this is called. A no-op (via PlayMusic) if it's already playing.</summary>
+        public void PlayBackgroundMusic() => PlayMusic(backgroundMusic);
+        /// <summary>Swaps looping background music to bossMusic - see its own tooltip for when
+        /// this is called. A no-op (via PlayMusic) if bossMusic is unset.</summary>
+        public void PlayBossMusic() => PlayMusic(bossMusic);
+
         public void PlayWipeTransition() => PlaySfx(wipeTransitionSound);
         public void PlayDissolveIn() => PlaySfx(dissolveInSound);
         public void PlayDissolveOut() => PlaySfx(dissolveOutSound);
@@ -182,6 +201,8 @@ namespace PolarBreakout
         public void PlayCapsulePickup() => PlaySfx(capsulePickupSound);
         public void PlayShardPickup() => PlaySfx(shardPickupSound);
         public void PlaySpinEnter() => PlaySfx(spinEnterSound);
+        public void PlayStageComplete() => PlaySfx(stageCompleteSound);
+        public void PlayGoText() => PlaySfx(goTextSound);
         public void PlayBossFire() => PlaySfx(bossFireSound);
         public void PlayBossHit() => PlaySfx(bossHitSound);
         public void PlayBossDeath() => PlaySfx(bossDeathSound);
