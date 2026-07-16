@@ -7,13 +7,13 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: BrickSigil
-  m_Shader: {fileID: -6465566751694194690, guid: 2c92a73a18733dc48ac5f805f073df09, type: 3}
+  m_Name: GemShader
+  m_Shader: {fileID: -6465566751694194690, guid: d8e87fe7dd767cf4bbd15f060a2016d1, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords: []
-  m_LightmapFlags: 2
+  m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -24,10 +24,6 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _Main_Tex:
-        m_Texture: {fileID: 2800000, guid: 7327fa8f3b18ab84794985eec31c83dc, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -42,19 +38,14 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Fresnel_Power: 3
-    - _LineThickness: 0
+    - _MovementSpeed: 1
     - _QueueControl: 0
     - _QueueOffset: 0
     m_Colors:
-    - _BrickColour: {r: 0.7490196, g: 0, b: 0, a: 1}
-    - _IconColour: {r: 1, g: 1, b: 1, a: 0}
-    - _NoiseMovementScale: {r: 0.5, g: 1, b: 0, a: 0}
-    - _Sigil_Colour: {r: 0, g: 0, b: 0, a: 0}
-    - _Sigil_Positioning: {r: -0.75, g: -0.3, b: 0, a: 0}
+    - _Cell_Colour: {r: 0.35068664, g: 0.6079315, b: 1.3396231, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &5808402128962080116
+--- !u!114 &3634047359131844920
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

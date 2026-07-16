@@ -12,7 +12,11 @@ namespace PolarBreakout
     {
         public BrickGridManager brickGridManager;
         public CameraShake cameraShake;
-        public ParticleSystem breakParticlesPrefab;
+        [Tooltip("Instantiated at the brick's position on destruction - a GameObject rather than a " +
+                 "single ParticleSystem so a composite multi-layer effect (e.g. Explosion.prefab's " +
+                 "separate Fire/Flash/Sparks/Smoke children) can be used as-is. Every ParticleSystem " +
+                 "found anywhere in its hierarchy is tinted to the brick's color and played.")]
+        public GameObject breakParticlesPrefab;
         [Tooltip("Optional. Instantiated at the brick's position alongside the particle burst - a " +
                  "small screen-space ripple radiating from the break point. Leave unset for no ripple.")]
         public RippleEffect ripplePrefab;
@@ -84,21 +88,29 @@ namespace PolarBreakout
         {
             if (breakParticlesPrefab == null) return;
 
-            ParticleSystem instance = Instantiate(breakParticlesPrefab, brick.WorldPosition, Quaternion.identity);
-
-            var main = instance.main;
-            main.startColor = GetOpaqueTint(brick);
-
+            GameObject instance = Instantiate(breakParticlesPrefab, brick.WorldPosition, Quaternion.identity);
+            Color tint = GetOpaqueTint(brick);
             int extraParticles = particlesPerExtraHealth * (tier - 1);
-            if (extraParticles > 0)
-            {
-                var emission = instance.emission;
-                ParticleSystem.Burst burst = emission.GetBurst(0);
-                burst.count = burst.count.constant + extraParticles;
-                emission.SetBurst(0, burst);
-            }
 
-            instance.Play();
+            // Tints and scales every particle system in the prefab's hierarchy, not just a single
+            // root one - supports both a plain single-ParticleSystem prefab (the old setup) and a
+            // composite effect built from several child systems (e.g. Explosion.prefab's separate
+            // Fire/Flash/Sparks/Smoke layers).
+            foreach (ParticleSystem system in instance.GetComponentsInChildren<ParticleSystem>())
+            {
+                var main = system.main;
+                main.startColor = tint;
+
+                if (extraParticles > 0 && system.emission.burstCount > 0)
+                {
+                    var emission = system.emission;
+                    ParticleSystem.Burst burst = emission.GetBurst(0);
+                    burst.count = burst.count.constant + extraParticles;
+                    emission.SetBurst(0, burst);
+                }
+
+                system.Play();
+            }
         }
 
         private void SpawnRipple(Brick brick)

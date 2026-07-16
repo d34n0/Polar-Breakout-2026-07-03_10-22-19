@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -39,10 +40,60 @@ namespace PolarBreakout
         [Tooltip("Leave unset for a plain colored unlit line - assign a custom material to override.")]
         public Material outerCircleMaterialOverride;
 
+        [Header("Interior Fill")]
+        [Tooltip("When enabled, builds a solid-colored mesh filling the arena's interior - the " +
+                 "same circle/hexagon silhouette as the smooth outer boundary above (see " +
+                 "BuildSmoothOuterBoundary) - so the background art only shows outside the play " +
+                 "field instead of bleeding into it and competing with the bricks. Regenerated " +
+                 "every BuildBoundary call alongside the boundary lines themselves, so it always " +
+                 "matches whatever grid settings/arena shape the level just built.")]
+        public bool buildInteriorFill = true;
+        [Tooltip("Color (including alpha) of the interior fill - darker/more opaque reads as more " +
+                 "focus on the play area, since it dims the background art showing through from " +
+                 "behind it.")]
+        public Color interiorFillColor = new Color(0f, 0f, 0f, 0.55f);
+        [Tooltip("Leave unset for a plain colored unlit fill (a fresh transparent material - " +
+                 "shared instances would all end up showing whichever level built last, since " +
+                 "PolarMeshUtility.GetProceduralUnlitMaterial's opaque shared instance isn't " +
+                 "suited to per-level alpha) - assign a custom material to override.")]
+        public Material interiorFillMaterialOverride;
+        [Tooltip("Local Z depth the interior fill renders at, relative to this component's own " +
+                 "transform - only needs to clear every brick/paddle/ball (which render at z=0) by " +
+                 "enough to win the depth test, NOT reach all the way back to the background art's " +
+                 "own z. The main camera is perspective, not orthographic, so a mesh built with the " +
+                 "same world-space radius as the boundary line (z=-0.05) projects visibly SMALLER " +
+                 "the farther back it sits - keep this small (a few hundredths) or the fill will no " +
+                 "longer line up with the boundary line/wall.")]
+        public float interiorFillDepth = 0.05f;
+        [Tooltip("Renderer.sortingOrder for the interior fill. It and the background art (BG, a " +
+                 "SpriteRenderer using the built-in Sprites/Default shader) are both alpha-blended, " +
+                 "so neither writes to the depth buffer - Unity draws transparent renderers in " +
+                 "sortingOrder order rather than depth-testing them against each other, unlike the " +
+                 "opaque bricks/paddle/ball (which DO depth-test normally regardless of this " +
+                 "value). Must sit above BG's own sortingOrder (-100) so the fill draws over it, " +
+                 "and below the default 0 every other renderer uses (explosion/muzzle-flash " +
+                 "particles included) so THEY draw over the fill instead of being masked by it.")]
+        public int interiorFillSortingOrder = -50;
+        [Tooltip("How long the interior fill takes to fade out when Hide() is called, seconds - a " +
+                 "smooth fade reads better than an instant cut during the level-transition wipe " +
+                 "(see LevelManager, which calls Hide() right before HexWipeTransition." +
+                 "PlayTearDown()). Only applies to the default generated fill material, not " +
+                 "interiorFillMaterialOverride - an override is used as-is (the same convention as " +
+                 "every other override in this class), so Hide() just disables it instantly " +
+                 "instead of guessing at how to fade an arbitrary custom material. Show()/a fresh " +
+                 "BuildBoundary rebuild snap it back to full opacity immediately rather than also " +
+                 "fading in, since by the time either runs the new level's own build-in sweep has " +
+                 "already finished revealing everything else.")]
+        public float interiorFillFadeDuration = 0.6f;
+
         private EdgeCollider2D _collider;
         private LineRenderer _lineRenderer;
         private LineRenderer _outerCircleLine;
         private EdgeCollider2D _outerCircleCollider;
+        private MeshFilter _interiorFillMeshFilter;
+        private MeshRenderer _interiorFillMeshRenderer;
+        private Material _interiorFillMaterial;
+        private Coroutine _interiorFillFadeRoutine;
 
         private void OnValidate() => ApplyActiveBoundary();
 
@@ -93,8 +144,10 @@ namespace PolarBreakout
             foreach (Transform child in transform)
                 if (child.name == "HexBoundaryLoop") Destroy(child.gameObject);
 
+            float outerRadius = maxCornerDistance + outerCirclePadding;
             (_outerCircleLine, _outerCircleCollider) = GetOrCreateOuterCircleObjects();
-            BuildSmoothOuterBoundary(_outerCircleLine, _outerCircleCollider, settings, maxCornerDistance + outerCirclePadding);
+            BuildSmoothOuterBoundary(_outerCircleLine, _outerCircleCollider, settings, outerRadius);
+            BuildInteriorFill(settings, outerRadius);
 
             var loops = StitchLoops(segments);
 
@@ -140,18 +193,60 @@ namespace PolarBreakout
         /// <summary>Disables both boundary shapes' colliders and lines regardless of
         /// activeBoundary - used by HexWipeTransition to hide the boundary for the whole
         /// transition span. Safe since the boundary's geometry depends only on grid settings, not
-        /// brick placements, so hiding never needs a rebuild.</summary>
+        /// brick placements, so hiding never needs a rebuild. Also fades the interior fill out
+        /// (see interiorFillFadeDuration) rather than cutting it instantly, since unlike the thin
+        /// boundary line it covers most of the screen and an instant cut there would be jarring.</summary>
         public void Hide()
         {
             if (_collider != null) _collider.enabled = false;
             if (_lineRenderer != null) _lineRenderer.enabled = false;
             if (_outerCircleCollider != null) _outerCircleCollider.enabled = false;
             if (_outerCircleLine != null) _outerCircleLine.enabled = false;
+
+            if (_interiorFillFadeRoutine != null) StopCoroutine(_interiorFillFadeRoutine);
+
+            if (_interiorFillMeshRenderer == null) return;
+            if (interiorFillMaterialOverride != null || !gameObject.activeInHierarchy)
+            {
+                // Can't safely fade an arbitrary override material's alpha (see the field's own
+                // tooltip), and can't start a coroutine on an inactive GameObject either - both
+                // fall back to the old instant cut.
+                _interiorFillMeshRenderer.enabled = false;
+                return;
+            }
+
+            _interiorFillFadeRoutine = StartCoroutine(FadeInteriorFillOut());
         }
 
         /// <summary>Restores whichever shape activeBoundary currently points to - the counterpart
         /// to Hide(), without a full geometry rebuild.</summary>
         public void Show() => ApplyActiveBoundary();
+
+        private IEnumerator FadeInteriorFillOut()
+        {
+            float startAlpha = interiorFillColor.a;
+            float elapsed = 0f;
+            while (elapsed < interiorFillFadeDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = interiorFillFadeDuration > 0f ? Mathf.Clamp01(elapsed / interiorFillFadeDuration) : 1f;
+                SetInteriorFillAlpha(Mathf.Lerp(startAlpha, 0f, t));
+                yield return null;
+            }
+
+            SetInteriorFillAlpha(0f);
+            _interiorFillMeshRenderer.enabled = false;
+            _interiorFillFadeRoutine = null;
+        }
+
+        private void SetInteriorFillAlpha(float alpha)
+        {
+            if (_interiorFillMaterial == null) return;
+            Color color = interiorFillColor;
+            color.a = alpha;
+            _interiorFillMaterial.SetColor("_Color", color);
+            _interiorFillMaterial.SetColor("_BaseColor", color);
+        }
 
         private (LineRenderer line, EdgeCollider2D collider) GetOrCreateOuterCircleObjects()
         {
@@ -190,6 +285,71 @@ namespace PolarBreakout
             line.positionCount = positions.Length;
             line.SetPositions(positions);
             collider.points = colliderPoints;
+        }
+
+        /// <summary>Builds (or updates) a flat-shaded fan mesh filling the same circle/hexagon
+        /// silhouette as BuildSmoothOuterBoundary - reuses PolarMeshUtility.BuildFilledCircleMesh
+        /// directly, since passing segments=6 produces the identical flat-top hexagon
+        /// BuildSmoothOuterBoundary's own hex case draws (same angle formula), so the fill and the
+        /// line it sits under always agree on shape without duplicating the math. Local-positioned
+        /// at interiorFillDepth along Z (not baked into the mesh itself) so it layers behind
+        /// gameplay (z=0) but in front of background art sitting further back.</summary>
+        private void BuildInteriorFill(PolarGridSettings settings, float radius)
+        {
+            // A rebuild always wins over an in-flight Hide() fade - otherwise that coroutine
+            // would finish moments later and disable the fresh fill BuildBoundary just set up.
+            if (_interiorFillFadeRoutine != null)
+            {
+                StopCoroutine(_interiorFillFadeRoutine);
+                _interiorFillFadeRoutine = null;
+            }
+
+            if (!buildInteriorFill)
+            {
+                if (_interiorFillMeshRenderer != null) _interiorFillMeshRenderer.enabled = false;
+                return;
+            }
+
+            if (_interiorFillMeshFilter == null || _interiorFillMeshRenderer == null)
+            {
+                var go = new GameObject("InteriorFill");
+                go.transform.SetParent(transform, false);
+                _interiorFillMeshFilter = go.AddComponent<MeshFilter>();
+                _interiorFillMeshRenderer = go.AddComponent<MeshRenderer>();
+                _interiorFillMeshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _interiorFillMeshRenderer.receiveShadows = false;
+            }
+
+            _interiorFillMeshRenderer.sortingOrder = interiorFillSortingOrder;
+            _interiorFillMeshFilter.transform.localPosition = new Vector3(0f, 0f, interiorFillDepth);
+
+            int segments = settings.arenaShape == PolarGridSettings.ArenaShape.Hexagon
+                ? 6
+                : Mathf.Max(3, outerCircleSegments);
+            _interiorFillMeshFilter.mesh = PolarMeshUtility.BuildFilledCircleMesh(radius, segments);
+
+            if (interiorFillMaterialOverride != null)
+            {
+                _interiorFillMeshRenderer.sharedMaterial = interiorFillMaterialOverride;
+            }
+            else
+            {
+                // A fresh transparent material per boundary, not the shared opaque procedural
+                // instance every other unlit line/quad in this project reuses - that single shared
+                // instance can only ever show one color/alpha at a time, and this fill specifically
+                // needs its own alpha-blended surface type to darken (not replace) whatever's
+                // behind it.
+                if (_interiorFillMaterial == null)
+                    _interiorFillMaterial = PolarMeshUtility.CreateTransparentUnlitMaterial(interiorFillColor);
+                else
+                {
+                    _interiorFillMaterial.SetColor("_Color", interiorFillColor);
+                    _interiorFillMaterial.SetColor("_BaseColor", interiorFillColor);
+                }
+                _interiorFillMeshRenderer.sharedMaterial = _interiorFillMaterial;
+            }
+
+            _interiorFillMeshRenderer.enabled = true;
         }
 
         /// <summary>Sets up a LineRenderer as a closed, world-space, unlit colored loop (unless

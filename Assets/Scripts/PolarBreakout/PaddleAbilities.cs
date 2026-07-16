@@ -39,6 +39,17 @@ namespace PolarBreakout
                  "around the barrel's own aim direction (averaged/centered on it) rather than " +
                  "all firing dead ahead.")]
         public float bulletSpreadDegrees = 10f;
+        [Tooltip("Optional. Spawned at each barrel's muzzle (the same spawn point its bullet " +
+                 "fires from) the instant it fires - every ParticleSystem anywhere in its " +
+                 "hierarchy is played, so a composite multi-layer effect (e.g. Explosion.prefab's " +
+                 "separate Fire/Flash/Sparks/Smoke children) can be used as-is. Scaled down by " +
+                 "muzzleFlashScale below to read as a small muzzle flash rather than a full-size " +
+                 "blast. Leave unset for no muzzle flash. Only plays for actual bullets, not while " +
+                 "the Laser Cannon card replaces barrels with a beam.")]
+        public GameObject muzzleFlashPrefab;
+        [Tooltip("Uniform scale applied to muzzleFlashPrefab when spawned, so it reads as sized " +
+                 "to the barrel tip rather than at whatever scale the prefab was authored at.")]
+        public float muzzleFlashScale = 0.35f;
 
         [Header("Laser Beam (Laser Cannon legendary)")]
         [Tooltip("Full width (world units) of the beam each turret fires while the Laser Cannon " +
@@ -787,6 +798,7 @@ namespace PolarBreakout
             }
 
             audioManager?.PlayBullet();
+            SpawnMuzzleFlash(spawnPos, fireAngleDegrees);
 
             int ricochets = runModifiers != null ? Mathf.RoundToInt(runModifiers.GetBonus(ModifierType.BulletRicochetBonus)) : 0;
 
@@ -820,6 +832,22 @@ namespace PolarBreakout
                     if (ballCollider != null) Physics2D.IgnoreCollision(bulletCollider, ballCollider, true);
                 }
             }
+        }
+
+        /// <summary>Spawns muzzleFlashPrefab at a barrel's muzzle (see FireBarrel's spawnPos),
+        /// scaled down by muzzleFlashScale and rotated to match the barrel's own aim direction -
+        /// plays every ParticleSystem anywhere in its hierarchy, the same "tint/play every layer"
+        /// pattern as BrickBreakEffects.SpawnBreakParticles, just without a tint since a muzzle
+        /// flash isn't tied to any particular brick/gameplay color.</summary>
+        private void SpawnMuzzleFlash(Vector2 spawnPos, float angleDegrees)
+        {
+            if (muzzleFlashPrefab == null) return;
+
+            GameObject instance = Instantiate(muzzleFlashPrefab, spawnPos, Quaternion.Euler(0f, 0f, angleDegrees));
+            instance.transform.localScale = Vector3.one * muzzleFlashScale;
+
+            foreach (ParticleSystem system in instance.GetComponentsInChildren<ParticleSystem>())
+                system.Play();
         }
 
         /// <summary>Fires one continuous beam from a single barrel - the whole beam appears
