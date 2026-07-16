@@ -7,13 +7,13 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Fresnel
-  m_Shader: {fileID: -6465566751694194690, guid: ae9522804c8612c4eb8ebed9cc2dfb6d, type: 3}
+  m_Name: BrickSigil
+  m_Shader: {fileID: -6465566751694194690, guid: 2c92a73a18733dc48ac5f805f073df09, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords: []
-  m_LightmapFlags: 4
+  m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -24,6 +24,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _Main_Tex:
+        m_Texture: {fileID: 2800000, guid: 7327fa8f3b18ab84794985eec31c83dc, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -38,14 +42,15 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _FresnelPower: 22.22
+    - _LineThickness: -2.6
     - _QueueControl: 0
     - _QueueOffset: 0
     m_Colors:
-    - _FresnelColour: {r: 0, g: 0, b: 0, a: 1}
+    - _BrickColour: {r: 1, g: 0, b: 0, a: 1}
+    - _IconColour: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &5151626897135624280
+--- !u!114 &5808402128962080116
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
