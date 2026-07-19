@@ -69,8 +69,8 @@ Material:
     - _Cull: 0
     - _DstBlend: 10
     - _DstBlendAlpha: 10
-    - _Erosion: 2.1
-    - _PortalSpeed: -0.2
+    - _Erosion: 2
+    - _PortalSpeed: -0.15
     - _QueueControl: 0
     - _QueueOffset: 0
     - _SrcBlend: 5
